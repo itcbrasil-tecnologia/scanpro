@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+// 1. useCallback importado do React
+import React, { useState, useEffect, useCallback } from "react";
 import { db } from "@/lib/firebase/config";
 import {
   collection,
@@ -10,12 +11,15 @@ import {
   query,
   where,
   doc,
+  setDoc,
+  deleteDoc,
 } from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
-import { Layers, Sheet, Trash2, ChevronDown } from "lucide-react";
+import { Layers, Sheet, Trash2, ChevronDown, Edit } from "lucide-react";
 import toast from "react-hot-toast";
 
+// --- Interfaces de Dados ---
 interface Project {
   id: string;
   name: string;
@@ -32,18 +36,47 @@ interface Notebook {
   umId: string;
 }
 
+// --- Subcomponente para cada notebook ---
+function NotebookListItem({
+  notebook,
+  onEdit,
+  onDelete,
+}: {
+  notebook: Notebook;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <li className="flex items-center justify-between py-2 px-3 hover:bg-slate-50 rounded-md">
+      <span className="text-gray-600 font-mono text-sm">
+        {notebook.hostname}
+      </span>
+      <div className="flex items-center space-x-3">
+        <button onClick={onEdit} className="text-gray-400 hover:text-teal-600">
+          <Edit size={16} />
+        </button>
+        <button onClick={onDelete} className="text-gray-400 hover:text-red-600">
+          <Trash2 size={16} />
+        </button>
+      </div>
+    </li>
+  );
+}
+
 export default function NotebooksPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [ums, setUms] = useState<UM[]>([]);
   const [notebooks, setNotebooks] = useState<Notebook[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [isSingleModalOpen, setIsSingleModalOpen] = useState(false);
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleteBatchModalOpen, setIsDeleteBatchModalOpen] = useState(false);
+  const [isDeleteSingleModalOpen, setIsDeleteSingleModalOpen] = useState(false);
 
   const [openItems, setOpenItems] = useState<Record<string, boolean>>({});
 
+  const [currentNotebook, setCurrentNotebook] = useState<Notebook | null>(null);
   const [hostname, setHostname] = useState("");
   const [selectedUmId, setSelectedUmId] = useState("");
 
@@ -54,8 +87,12 @@ export default function NotebooksPage() {
   const [generatedNames, setGeneratedNames] = useState<string[]>([]);
 
   const [umToDeleteFrom, setUmToDeleteFrom] = useState<UM | null>(null);
+  const [notebookToDelete, setNotebookToDelete] = useState<Notebook | null>(
+    null
+  );
 
-  const fetchData = async () => {
+  // 2. Função fetchData envolvida com useCallback
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
       const projectsSnapshot = await getDocs(collection(db, "projects"));
@@ -70,8 +107,9 @@ export default function NotebooksPage() {
       );
       setUms(umsList);
       if (umsList.length > 0) {
-        setSelectedUmId(umsList[0].id);
-        setBatchSelectedUmId(umsList[0].id);
+        // Apenas define o valor inicial se ele ainda não foi definido
+        setSelectedUmId((current) => current || umsList[0].id);
+        setBatchSelectedUmId((current) => current || umsList[0].id);
       }
 
       const notebooksSnapshot = await getDocs(collection(db, "notebooks"));
@@ -85,11 +123,12 @@ export default function NotebooksPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []); // O array vazio [] significa que esta função nunca mudará
 
+  // 3. fetchData adicionado ao array de dependências do useEffect
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const toggleDropdown = (id: string) => {
     setOpenItems((previousState) => ({
@@ -98,23 +137,61 @@ export default function NotebooksPage() {
     }));
   };
 
+  const openAddModal = () => {
+    setCurrentNotebook(null);
+    setHostname("");
+    setIsFormModalOpen(true);
+  };
+
+  const openEditModal = (notebook: Notebook) => {
+    setCurrentNotebook(notebook);
+    setHostname(notebook.hostname);
+    setSelectedUmId(notebook.umId);
+    setIsFormModalOpen(true);
+  };
+
+  const openDeleteSingleModal = (notebook: Notebook) => {
+    setNotebookToDelete(notebook);
+    setIsDeleteSingleModalOpen(true);
+  };
+
   const handleSaveSingle = async () => {
     if (!hostname || !selectedUmId) {
       toast.error("Hostname e UM são obrigatórios.");
       return;
     }
     try {
-      await addDoc(collection(db, "notebooks"), {
-        hostname,
-        umId: selectedUmId,
-      });
-      toast.success(`Notebook "${hostname}" adicionado com sucesso!`);
+      if (currentNotebook) {
+        const notebookRef = doc(db, "notebooks", currentNotebook.id);
+        await setDoc(notebookRef, { hostname, umId: selectedUmId });
+        toast.success(`Notebook "${hostname}" atualizado com sucesso!`);
+      } else {
+        await addDoc(collection(db, "notebooks"), {
+          hostname,
+          umId: selectedUmId,
+        });
+        toast.success(`Notebook "${hostname}" adicionado com sucesso!`);
+      }
       fetchData();
-      setIsSingleModalOpen(false);
-      setHostname("");
+      setIsFormModalOpen(false);
     } catch (error) {
       console.error("Erro ao salvar notebook:", error);
       toast.error("Ocorreu um erro ao salvar o notebook.");
+    }
+  };
+
+  const handleDeleteSingle = async () => {
+    if (!notebookToDelete) return;
+    try {
+      await deleteDoc(doc(db, "notebooks", notebookToDelete.id));
+      toast.success(
+        `Notebook "${notebookToDelete.hostname}" excluído com sucesso!`
+      );
+      fetchData();
+      setIsDeleteSingleModalOpen(false);
+    } catch (error) {
+      console.error("Erro ao excluir notebook:", error);
+      toast.error("Ocorreu um erro ao excluir o notebook.");
     }
   };
 
@@ -168,7 +245,7 @@ export default function NotebooksPage() {
 
       if (snapshot.empty) {
         toast.error("Nenhum notebook para excluir nesta UM.");
-        setIsDeleteModalOpen(false);
+        setIsDeleteBatchModalOpen(false);
         return;
       }
 
@@ -180,12 +257,16 @@ export default function NotebooksPage() {
         `Todos os notebooks da UM "${umToDeleteFrom.name}" foram excluídos.`
       );
       fetchData();
-      setIsDeleteModalOpen(false);
+      setIsDeleteBatchModalOpen(false);
     } catch (error) {
       console.error("Erro ao excluir em lote:", error);
       toast.error("Ocorreu um erro ao excluir os notebooks.");
     }
   };
+
+  const formModalTitle = currentNotebook
+    ? "Editar Notebook"
+    : "Adicionar Notebook";
 
   return (
     <div className="space-y-6">
@@ -195,7 +276,7 @@ export default function NotebooksPage() {
         </h1>
         <div className="flex space-x-2 mt-4 sm:mt-0">
           <button
-            onClick={() => setIsSingleModalOpen(true)}
+            onClick={openAddModal}
             className="flex items-center justify-center bg-teal-600 text-white px-4 py-2 rounded-lg shadow hover:bg-teal-700 transition-colors"
           >
             <Sheet size={20} className="mr-2" />
@@ -267,25 +348,27 @@ export default function NotebooksPage() {
                                   <button
                                     onClick={() => {
                                       setUmToDeleteFrom(um);
-                                      setIsDeleteModalOpen(true);
+                                      setIsDeleteBatchModalOpen(true);
                                     }}
                                     className="flex items-center text-sm text-red-600 hover:text-red-800 mb-3 ml-2"
                                   >
                                     <Trash2 size={16} className="mr-1" />
-                                    Excluir em Lote
+                                    Excluir Todos da UM
                                   </button>
-                                  <ul className="space-y-1 list-disc list-inside bg-white p-3 rounded-md">
+                                  <ul className="space-y-1 bg-white p-3 rounded-md">
                                     {umNotebooks
                                       .sort((a, b) =>
                                         a.hostname.localeCompare(b.hostname)
                                       )
                                       .map((notebook) => (
-                                        <li
+                                        <NotebookListItem
                                           key={notebook.id}
-                                          className="text-gray-600 font-mono text-sm"
-                                        >
-                                          {notebook.hostname}
-                                        </li>
+                                          notebook={notebook}
+                                          onEdit={() => openEditModal(notebook)}
+                                          onDelete={() =>
+                                            openDeleteSingleModal(notebook)
+                                          }
+                                        />
                                       ))}
                                   </ul>
                                 </>
@@ -307,9 +390,9 @@ export default function NotebooksPage() {
       )}
 
       <Modal
-        isOpen={isSingleModalOpen}
-        onClose={() => setIsSingleModalOpen(false)}
-        title="Adicionar Notebook"
+        isOpen={isFormModalOpen}
+        onClose={() => setIsFormModalOpen(false)}
+        title={formModalTitle}
       >
         <div className="space-y-4">
           <div>
@@ -464,11 +547,19 @@ export default function NotebooksPage() {
       </Modal>
 
       <ConfirmationModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
+        isOpen={isDeleteBatchModalOpen}
+        onClose={() => setIsDeleteBatchModalOpen(false)}
         onConfirm={handleDeleteBatch}
         title="Confirmar Exclusão em Lote"
         message={`Tem certeza que deseja excluir TODOS os notebooks da UM "${umToDeleteFrom?.name}"?`}
+      />
+
+      <ConfirmationModal
+        isOpen={isDeleteSingleModalOpen}
+        onClose={() => setIsDeleteSingleModalOpen(false)}
+        onConfirm={handleDeleteSingle}
+        title="Confirmar Exclusão"
+        message={`Tem certeza que deseja excluir o notebook "${notebookToDelete?.hostname}"?`}
       />
     </div>
   );
