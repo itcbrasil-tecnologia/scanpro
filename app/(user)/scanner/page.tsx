@@ -1,10 +1,18 @@
-// app/(user)/scanner/page.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Scanner, IDetectedBarcode } from "@yudiel/react-qr-scanner"; // CORREÇÃO: IDetectedBarcode
+import { Scanner, IDetectedBarcode } from "@yudiel/react-qr-scanner";
 import { useAuth } from "@/context/AuthContext";
+import { db } from "@/lib/firebase/config";
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  addDoc,
+  Timestamp,
+} from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
 import toast from "react-hot-toast";
 import {
@@ -15,47 +23,36 @@ import {
   ArrowRight,
 } from "lucide-react";
 
-// --- Interfaces e Dados Estáticos (Mock) ---
+// --- Interfaces de Dados ---
+interface Project {
+  id: string;
+  name: string;
+}
 interface UM {
   id: string;
   name: string;
   projectId: string;
 }
-interface Notebook {
-  id: string;
-  hostname: string;
-  umId: string;
-}
 interface SummaryData {
-  user?: string;
-  project: string;
-  um?: string;
+  userName?: string;
+  projectName: string;
+  umName?: string;
   date: string;
   startTime?: string;
   endTime: string;
-  totalDevices: number;
+  expectedCount: number;
   scannedCount: number;
   missingCount: number;
   missingDevices: string[];
 }
 
-const mockUms: UM[] = [
-  { id: "um1", name: "BSBIA01", projectId: "proj1" },
-  { id: "um2", name: "BSBIA02", projectId: "proj1" },
-  { id: "um3", name: "SPV01", projectId: "proj2" },
-];
-const mockNotebooks: Notebook[] = [
-  { id: "nb1", hostname: "BSBIA01-EST01", umId: "um1" },
-  { id: "nb2", hostname: "BSBIA01-EST02", umId: "um1" },
-  { id: "nb3", hostname: "BSBIA01-EST03", umId: "um1" },
-  { id: "nb4", hostname: "SPV01-ADV", umId: "um3" },
-  { id: "nb5", hostname: "SPV01-REC01", umId: "um3" },
-];
-// --- Fim dos Dados Estáticos ---
-
 export default function ScannerPage() {
   const { userProfile } = useAuth();
   const router = useRouter();
+
+  const [ums, setUms] = useState<UM[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [selectedUmId, setSelectedUmId] = useState<string>("");
   const [devicesToScan, setDevicesToScan] = useState<string[]>([]);
@@ -69,25 +66,64 @@ export default function ScannerPage() {
   const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
 
   useEffect(() => {
-    if (selectedUmId) {
-      const initialDevices = mockNotebooks
-        .filter((nb) => nb.umId === selectedUmId)
-        .map((nb) => nb.hostname)
-        .sort();
+    const fetchInitialData = async () => {
+      setIsLoading(true);
+      try {
+        const umsSnapshot = await getDocs(collection(db, "ums"));
+        const umsList = umsSnapshot.docs.map(
+          (document) => ({ id: document.id, ...document.data() } as UM)
+        );
+        setUms(umsList);
 
-      setDevicesToScan(initialDevices);
-      setScannedDevices([]);
-      setIsScanning(true);
-      setConferenceStartTime(new Date());
-    } else {
-      setIsScanning(false);
-      setDevicesToScan([]);
-      setConferenceStartTime(null);
-    }
+        const projectsSnapshot = await getDocs(collection(db, "projects"));
+        const projectsList = projectsSnapshot.docs.map(
+          (document) => ({ id: document.id, ...document.data() } as Project)
+        );
+        setProjects(projectsList);
+      } catch (error) {
+        toast.error("Erro ao carregar UMs e Projetos.");
+        console.error("Erro ao buscar dados iniciais:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchInitialData();
+  }, []);
+
+  useEffect(() => {
+    const fetchNotebooksForUM = async () => {
+      if (!selectedUmId) {
+        setIsScanning(false);
+        setDevicesToScan([]);
+        setScannedDevices([]);
+        setConferenceStartTime(null);
+        return;
+      }
+
+      try {
+        const notebooksQuery = query(
+          collection(db, "notebooks"),
+          where("umId", "==", selectedUmId)
+        );
+        const notebooksSnapshot = await getDocs(notebooksQuery);
+        const notebooksList = notebooksSnapshot.docs
+          .map((document) => document.data().hostname as string)
+          .sort();
+
+        setDevicesToScan(notebooksList);
+        setScannedDevices([]);
+        setIsScanning(true);
+        setConferenceStartTime(new Date());
+      } catch (error) {
+        toast.error("Erro ao carregar notebooks para esta UM.");
+        console.error("Erro ao buscar notebooks:", error);
+      }
+    };
+
+    fetchNotebooksForUM();
   }, [selectedUmId]);
 
   const handleScan = (result: IDetectedBarcode[]) => {
-    // CORREÇÃO: IDetectedBarcode
     const scannedText = result[0]?.rawValue;
     if (!scannedText) return;
 
@@ -97,27 +133,40 @@ export default function ScannerPage() {
     }
 
     if (devicesToScan.includes(scannedText)) {
-      setDevicesToScan((prev) =>
-        prev.filter((device) => device !== scannedText)
+      setDevicesToScan((previousState) =>
+        previousState.filter((device) => device !== scannedText)
       );
-      setScannedDevices((prev) => [...prev, scannedText].sort());
+      setScannedDevices((previousState) =>
+        [...previousState, scannedText].sort()
+      );
       toast.success(`"${scannedText}" Escaneado com sucesso!`);
+    } else {
+      toast.error(`"${scannedText}" não pertence a esta UM.`);
     }
   };
 
   const handleFinalizeConference = () => {
     setIsScanning(false);
     const endTime = new Date();
-    const selectedUM = mockUms.find((um) => um.id === selectedUmId);
+    const selectedUM = ums.find((um) => um.id === selectedUmId);
+    const selectedProject = projects.find(
+      (project) => project.id === selectedUM?.projectId
+    );
 
     const data: SummaryData = {
-      user: userProfile?.nome,
-      project: `Nome do Projeto (ID: ${selectedUM?.projectId})`,
-      um: selectedUM?.name,
+      userName: userProfile?.nome,
+      projectName: selectedProject?.name || "N/A",
+      umName: selectedUM?.name,
       date: endTime.toLocaleDateString("pt-BR"),
-      startTime: conferenceStartTime?.toLocaleTimeString("pt-BR"),
-      endTime: endTime.toLocaleTimeString("pt-BR"),
-      totalDevices: devicesToScan.length + scannedDevices.length,
+      startTime: conferenceStartTime?.toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      endTime: endTime.toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      expectedCount: devicesToScan.length + scannedDevices.length,
       scannedCount: scannedDevices.length,
       missingCount: devicesToScan.length,
       missingDevices: devicesToScan,
@@ -126,11 +175,31 @@ export default function ScannerPage() {
     setIsSummaryModalOpen(true);
   };
 
-  const handleConcludeAndSend = () => {
-    console.log("Enviando para o Telegram:", summaryData);
-    setIsSummaryModalOpen(false);
-    toast.success("CONFERÊNCIA ENVIADA COM SUCESSO");
-    router.push("/inicio");
+  const handleConcludeAndSend = async () => {
+    if (!summaryData) return;
+
+    try {
+      await addDoc(collection(db, "conferences"), {
+        ...summaryData,
+        startTime: Timestamp.fromDate(conferenceStartTime!),
+        endTime: Timestamp.now(),
+        userId: userProfile?.uid,
+      });
+
+      await fetch("/api/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(summaryData),
+      });
+
+      toast.success("CONFERÊNCIA ENVIADA COM SUCESSO");
+      router.push("/inicio");
+    } catch (error) {
+      console.error("Erro ao concluir conferência:", error);
+      toast.error("Não foi possível salvar ou notificar a conferência.");
+    } finally {
+      setIsSummaryModalOpen(false);
+    }
   };
 
   return (
@@ -145,11 +214,14 @@ export default function ScannerPage() {
         <select
           id="um-select"
           value={selectedUmId}
-          onChange={(e) => setSelectedUmId(e.target.value)}
-          className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md bg-white"
+          onChange={(event) => setSelectedUmId(event.target.value)}
+          disabled={isLoading}
+          className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm rounded-md bg-white"
         >
-          <option value="">-- Selecione para iniciar --</option>
-          {mockUms.map((um) => (
+          <option value="">
+            {isLoading ? "Carregando..." : "-- Selecione para iniciar --"}
+          </option>
+          {ums.map((um) => (
             <option key={um.id} value={um.id}>
               {um.name}
             </option>
@@ -225,7 +297,6 @@ export default function ScannerPage() {
         </>
       )}
 
-      {/* Modal de Resumo da Conferência */}
       <Modal
         isOpen={isSummaryModalOpen}
         onClose={() => setIsSummaryModalOpen(false)}
@@ -234,14 +305,15 @@ export default function ScannerPage() {
         {summaryData && (
           <div className="space-y-3 text-sm">
             <p>
-              <span className="font-semibold">Técnico:</span> {summaryData.user}
+              <span className="font-semibold">Técnico:</span>{" "}
+              {summaryData.userName}
             </p>
             <p>
               <span className="font-semibold">Projeto:</span>{" "}
-              {summaryData.project}
+              {summaryData.projectName}
             </p>
             <p>
-              <span className="font-semibold">UM:</span> {summaryData.um}
+              <span className="font-semibold">UM:</span> {summaryData.umName}
             </p>
             <p>
               <span className="font-semibold">Data:</span> {summaryData.date}
@@ -253,7 +325,7 @@ export default function ScannerPage() {
             <hr />
             <p>
               <span className="font-semibold">Total de Dispositivos:</span>{" "}
-              {summaryData.totalDevices}
+              {summaryData.expectedCount}
             </p>
             <p>
               <span className="font-semibold text-green-600">Escaneados:</span>{" "}
@@ -268,7 +340,7 @@ export default function ScannerPage() {
             {summaryData.missingCount > 0 && (
               <div>
                 <h4 className="font-semibold mt-2">Dispositivos Faltantes:</h4>
-                <ul className="text-xs h-24 overflow-y-auto bg-gray-100 p-2 rounded-md mt-1 font-mono">
+                <ul className="text-xs h-24 overflow-y-auto bg-slate-100 p-2 rounded-md mt-1 font-mono">
                   {summaryData.missingDevices.map((device: string) => (
                     <li key={device}>{device}</li>
                   ))}
@@ -278,7 +350,7 @@ export default function ScannerPage() {
             <div className="flex justify-end pt-4">
               <button
                 onClick={handleConcludeAndSend}
-                className="w-full flex items-center justify-center bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 transition-colors"
+                className="w-full flex items-center justify-center bg-teal-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-teal-700 transition-colors"
               >
                 CONCLUIR E ENVIAR <ArrowRight size={20} className="ml-2" />
               </button>

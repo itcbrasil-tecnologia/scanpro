@@ -1,12 +1,21 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
+import { db } from "@/lib/firebase/config";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  orderBy,
+  limit,
+} from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
 import { BookCheck, Camera } from "lucide-react";
+import toast from "react-hot-toast";
 
-// --- Interfaces e Dados Estáticos (Mock) ---
 interface Conference {
   id: string;
   date: string;
@@ -19,38 +28,65 @@ interface Conference {
   missingHostnames: string[];
 }
 
-const mockUserConferences: Conference[] = [
-  {
-    id: "conf1",
-    date: "2025-07-18",
-    startTime: "08:05",
-    endTime: "08:15",
-    um: "BSBIA01",
-    expected: 105,
-    scanned: 105,
-    missing: 0,
-    missingHostnames: [],
-  },
-  {
-    id: "conf2",
-    date: "2025-07-17",
-    startTime: "17:30",
-    endTime: "17:42",
-    um: "SPV01",
-    expected: 12,
-    scanned: 10,
-    missing: 2,
-    missingHostnames: ["SPV01-ADV", "SPV01-REC02"],
-  },
-];
-
 export default function InicioPage() {
   const { userProfile } = useAuth();
-  const [conferences] = useState<Conference[]>(mockUserConferences);
+  const [conferences, setConferences] = useState<Conference[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState<string[]>([]);
 
+  // A lógica de contagem diária pode ser implementada no futuro
   const dailyCounts = { completed: 1, total: 2 };
+
+  useEffect(() => {
+    const fetchUserConferences = async () => {
+      if (!userProfile) return; // Garante que o perfil do usuário já foi carregado
+
+      setIsLoading(true);
+      try {
+        const conferencesQuery = query(
+          collection(db, "conferences"),
+          where("userId", "==", userProfile.uid), // Filtra pelo UID do usuário logado
+          orderBy("endTime", "desc"),
+          limit(20) // Pega as últimas 20 conferências
+        );
+
+        const querySnapshot = await getDocs(conferencesQuery);
+        const userConferences = querySnapshot.docs.map((document) => {
+          const data = document.data();
+          return {
+            id: document.id,
+            date: data.endTime.toDate().toLocaleDateString("pt-BR"),
+            startTime: data.startTime
+              .toDate()
+              .toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            endTime: data.endTime
+              .toDate()
+              .toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            um: data.umName,
+            expected: data.expectedCount,
+            scanned: data.scannedCount,
+            missing: data.missingCount,
+            missingHostnames: data.missingDevices || [],
+          } as Conference;
+        });
+        setConferences(userConferences);
+      } catch (error) {
+        console.error("Erro ao buscar conferências do usuário:", error);
+        toast.error("Não foi possível carregar seu histórico.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUserConferences();
+  }, [userProfile]); // Roda o efeito quando o perfil do usuário estiver disponível
 
   const openDetailsModal = (hostnames: string[]) => {
     setModalContent(hostnames);
@@ -83,7 +119,7 @@ export default function InicioPage() {
               Contagens Diárias Disponíveis
             </h3>
             <div className="flex justify-center items-center my-2">
-              <BookCheck className="w-10 h-10 text-scanpro-teal" />
+              <BookCheck className="w-10 h-10 text-teal-600" />
               <p className="text-4xl font-bold text-gray-800 ml-4">
                 {dailyCounts.total - dailyCounts.completed}/{dailyCounts.total}
               </p>
@@ -92,7 +128,7 @@ export default function InicioPage() {
 
           <div className="sm:hidden">
             <Link href="/scanner" passHref>
-              <div className="w-full flex items-center justify-center bg-scanpro-teal text-white px-4 py-3 rounded-lg shadow-lg hover:bg-opacity-90 transition-colors font-bold text-lg">
+              <div className="w-full flex items-center justify-center bg-teal-600 text-white px-4 py-3 rounded-lg shadow-lg hover:bg-teal-700 transition-colors font-bold text-lg">
                 <Camera size={24} className="mr-3" />
                 INICIAR CONFERÊNCIA
               </div>
@@ -100,13 +136,12 @@ export default function InicioPage() {
           </div>
         </div>
 
-        <div className="md:col-span-2 bg-white p-4 rounded-lg shadow-md">
+        <div className="md:col-span-2 bg-white p-4 rounded-lg shadow-md overflow-hidden">
           <h2 className="text-xl font-bold text-gray-800 mb-4">
             Suas Últimas Conferências
           </h2>
           <div className="overflow-x-auto">
             <table className="w-full text-left">
-              {/* MUDANÇA APLICADA AQUI */}
               <thead className="bg-slate-200 border-b-2 border-slate-300">
                 <tr>
                   <th className="p-3 text-sm font-semibold text-slate-600">
@@ -127,42 +162,54 @@ export default function InicioPage() {
                 </tr>
               </thead>
               <tbody>
-                {conferences.map((conference) => (
-                  <tr
-                    key={conference.id}
-                    className="border-b hover:bg-slate-50"
-                  >
-                    <td className="p-3 text-sm">
-                      <p>
-                        {new Date(conference.date).toLocaleDateString("pt-BR", {
-                          timeZone: "UTC",
-                        })}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {conference.startTime} - {conference.endTime}
-                      </p>
-                    </td>
-                    <td className="p-3 text-sm font-medium">{conference.um}</td>
-                    <td className="p-3 text-sm text-center">
-                      {conference.scanned} / {conference.expected}
-                    </td>
-                    <td className="p-3 text-center">
-                      {renderStatus(conference)}
-                    </td>
-                    <td className="p-3 text-center">
-                      {conference.missing > 0 && (
-                        <button
-                          onClick={() =>
-                            openDetailsModal(conference.missingHostnames)
-                          }
-                          className="text-scanpro-teal hover:underline text-sm font-medium"
-                        >
-                          Ver
-                        </button>
-                      )}
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={5} className="text-center p-6 text-gray-500">
+                      Carregando histórico...
                     </td>
                   </tr>
-                ))}
+                ) : conferences.length > 0 ? (
+                  conferences.map((conference) => (
+                    <tr
+                      key={conference.id}
+                      className="border-b hover:bg-slate-50"
+                    >
+                      <td className="p-3 text-sm">
+                        <p>{conference.date}</p>
+                        <p className="text-xs text-gray-500">
+                          {conference.startTime} - {conference.endTime}
+                        </p>
+                      </td>
+                      <td className="p-3 text-sm font-medium">
+                        {conference.um}
+                      </td>
+                      <td className="p-3 text-sm text-center">
+                        {conference.scanned} / {conference.expected}
+                      </td>
+                      <td className="p-3 text-center">
+                        {renderStatus(conference)}
+                      </td>
+                      <td className="p-3 text-center">
+                        {conference.missing > 0 && (
+                          <button
+                            onClick={() =>
+                              openDetailsModal(conference.missingHostnames)
+                            }
+                            className="text-scanpro-teal hover:underline text-sm font-medium"
+                          >
+                            Ver
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="text-center p-6 text-gray-500">
+                      Nenhuma conferência encontrada.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
