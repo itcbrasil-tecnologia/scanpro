@@ -1,12 +1,21 @@
-// app/(admin)/ums/page.tsx
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { db } from "@/lib/firebase/config";
+import {
+  collection,
+  getDocs,
+  addDoc,
+  doc,
+  setDoc,
+  deleteDoc,
+} from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { Plus, Edit, Trash2, ChevronDown } from "lucide-react";
+import toast from "react-hot-toast";
 
-// Interfaces para os dados
+// Interfaces para os dados do Firestore
 interface Project {
   id: string;
   name: string;
@@ -20,23 +29,7 @@ interface UM {
   expectedNotebooks: number;
 }
 
-// --- Dados Estáticos (Mock) ---
-// Usaremos os projetos para popular o <select> no formulário
-const mockProjects: Project[] = [
-  { id: "proj1", name: "Projeto Alpha", color: "#4A90E2" },
-  { id: "proj2", name: "Projeto Beta", color: "#F5A623" },
-  { id: "proj3", name: "Projeto Gamma", color: "#50E3C2" },
-];
-
-const mockUms: UM[] = [
-  { id: "um1", name: "BSBIA01", projectId: "proj1", expectedNotebooks: 105 },
-  { id: "um2", name: "BSBIA02", projectId: "proj1", expectedNotebooks: 105 },
-  { id: "um3", name: "SPV01", projectId: "proj2", expectedNotebooks: 12 },
-  { id: "um4", name: "SPV02", projectId: "proj2", expectedNotebooks: 12 },
-];
-// --- Fim dos Dados Estáticos ---
-
-// Componente para o item da lista, que se adapta ao mobile
+// Componente para o item da lista (sem alterações)
 function UMListItem({
   um,
   project,
@@ -51,22 +44,23 @@ function UMListItem({
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   return (
-    <div className="bg-gray-50 rounded-md">
-      {/* Visão Desktop: Tabela */}
-      <div className="hidden sm:flex items-center justify-between p-3">
-        <div className="flex items-center flex-1">
+    <div className="bg-slate-50 rounded-md">
+      <div className="hidden sm:grid grid-cols-4 gap-4 items-center p-3">
+        <div className="col-span-1 flex items-center">
           <div
-            className="w-4 h-4 rounded-full mr-4"
+            className="w-4 h-4 rounded-full mr-4 flex-shrink-0"
             style={{ backgroundColor: project?.color }}
           ></div>
           <span className="font-semibold text-gray-700">{um.name}</span>
         </div>
-        <div className="flex-1">{project?.name}</div>
-        <div className="flex-1 text-center">{um.expectedNotebooks}</div>
-        <div className="flex items-center justify-end space-x-3 flex-1">
+        <div className="col-span-1 text-slate-600">{project?.name}</div>
+        <div className="col-span-1 text-center text-slate-600">
+          {um.expectedNotebooks}
+        </div>
+        <div className="col-span-1 flex items-center justify-end space-x-3">
           <button
             onClick={onEdit}
-            className="text-gray-500 hover:text-indigo-600"
+            className="text-gray-500 hover:text-scanpro-teal"
           >
             <Edit size={20} />
           </button>
@@ -79,7 +73,6 @@ function UMListItem({
         </div>
       </div>
 
-      {/* Visão Mobile: Dropdown [cite: 46] */}
       <div className="sm:hidden">
         <button
           onClick={() => setIsMobileOpen(!isMobileOpen)}
@@ -97,7 +90,7 @@ function UMListItem({
           />
         </button>
         {isMobileOpen && (
-          <div className="p-3 border-t border-gray-200">
+          <div className="p-4 border-t border-slate-200">
             <div className="flex justify-between items-center mb-4">
               <span className="text-sm text-gray-600">
                 Notebooks Esperados:
@@ -107,7 +100,7 @@ function UMListItem({
             <div className="flex justify-end space-x-4">
               <button
                 onClick={onEdit}
-                className="flex items-center text-sm p-2 rounded-md bg-gray-200 hover:bg-gray-300"
+                className="flex items-center text-sm p-2 rounded-md bg-slate-200 hover:bg-slate-300"
               >
                 <Edit size={16} className="mr-1" /> Editar
               </button>
@@ -126,8 +119,9 @@ function UMListItem({
 }
 
 export default function UMsPage() {
-  const [ums] = useState<UM[]>(mockUms);
-  const [projects] = useState<Project[]>(mockProjects);
+  const [ums, setUms] = useState<UM[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -135,12 +129,41 @@ export default function UMsPage() {
   const [currentUm, setCurrentUm] = useState<UM | null>(null);
   const [umToDelete, setUmToDelete] = useState<UM | null>(null);
 
-  // Estado do formulário
-  const [umName, setUmName] = useState("");
-  const [selectedProjectId, setSelectedProjectId] = useState("");
-  const [expectedNotebooks, setExpectedNotebooks] = useState(0);
+  const [formState, setFormState] = useState({
+    name: "",
+    projectId: "",
+    expectedNotebooks: 0,
+  });
 
-  // Agrupa as UMs por projeto [cite: 24, 45]
+  // Função para buscar todos os dados necessários do Firestore
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const projectsCollection = collection(db, "projects");
+      const projectSnapshot = await getDocs(projectsCollection);
+      const projectsList = projectSnapshot.docs.map(
+        (document) => ({ id: document.id, ...document.data() } as Project)
+      );
+      setProjects(projectsList);
+
+      const umsCollection = collection(db, "ums");
+      const umSnapshot = await getDocs(umsCollection);
+      const umsList = umSnapshot.docs.map(
+        (document) => ({ id: document.id, ...document.data() } as UM)
+      );
+      setUms(umsList);
+    } catch (error) {
+      console.error("Erro ao buscar dados:", error);
+      toast.error("Não foi possível carregar os dados.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
   const groupedUms = useMemo(() => {
     return projects
       .map((project) => ({
@@ -150,19 +173,30 @@ export default function UMsPage() {
       .filter((project) => project.ums.length > 0);
   }, [projects, ums]);
 
+  const handleFormChange = (
+    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
+    const { name, value } = event.target;
+    setFormState((previousState) => ({ ...previousState, [name]: value }));
+  };
+
   const openAddModal = () => {
     setCurrentUm(null);
-    setUmName("");
-    setSelectedProjectId(projects[0]?.id || "");
-    setExpectedNotebooks(0);
+    setFormState({
+      name: "",
+      projectId: projects[0]?.id || "",
+      expectedNotebooks: 0,
+    });
     setIsFormModalOpen(true);
   };
 
   const openEditModal = (um: UM) => {
     setCurrentUm(um);
-    setUmName(um.name);
-    setSelectedProjectId(um.projectId);
-    setExpectedNotebooks(um.expectedNotebooks);
+    setFormState({
+      name: um.name,
+      projectId: um.projectId,
+      expectedNotebooks: um.expectedNotebooks,
+    });
     setIsFormModalOpen(true);
   };
 
@@ -176,14 +210,48 @@ export default function UMsPage() {
     setIsDeleteModalOpen(false);
   };
 
-  const handleSave = () => {
-    // Lógica de salvar será implementada com Firebase
-    closeModals();
+  const handleSave = async () => {
+    if (!formState.name || !formState.projectId) {
+      toast.error("Nome da UM e Projeto são obrigatórios.");
+      return;
+    }
+
+    const umData = {
+      name: formState.name,
+      projectId: formState.projectId,
+      expectedNotebooks: Number(formState.expectedNotebooks) || 0,
+    };
+
+    try {
+      if (currentUm) {
+        const umRef = doc(db, "ums", currentUm.id);
+        await setDoc(umRef, umData);
+        toast.success(`UM "${umData.name}" atualizada com sucesso!`);
+      } else {
+        const umsCollection = collection(db, "ums");
+        await addDoc(umsCollection, umData);
+        toast.success(`UM "${umData.name}" adicionada com sucesso!`);
+      }
+      fetchData();
+      closeModals();
+    } catch (error) {
+      console.error("Erro ao salvar UM:", error);
+      toast.error("Ocorreu um erro ao salvar a UM.");
+    }
   };
 
-  const handleDelete = () => {
-    // Lógica de deletar será implementada com Firebase [cite: 25, 48, 49]
-    closeModals();
+  const handleDelete = async () => {
+    if (!umToDelete) return;
+    try {
+      const umRef = doc(db, "ums", umToDelete.id);
+      await deleteDoc(umRef);
+      toast.success(`UM "${umToDelete.name}" excluída com sucesso!`);
+      fetchData();
+      closeModals();
+    } catch (error) {
+      console.error("Erro ao excluir UM:", error);
+      toast.error("Ocorreu um erro ao excluir a UM.");
+    }
   };
 
   const modalTitle = currentUm ? "Editar UM" : "Adicionar Nova UM";
@@ -194,7 +262,7 @@ export default function UMsPage() {
         <h1 className="text-3xl font-bold text-gray-800">Gerenciar UMs</h1>
         <button
           onClick={openAddModal}
-          className="mt-4 sm:mt-0 flex items-center justify-center bg-indigo-600 text-white px-4 py-2 rounded-lg shadow hover:bg-indigo-700 transition-colors"
+          className="mt-4 sm:mt-0 flex items-center justify-center bg-scanpro-teal text-white px-4 py-2 rounded-lg shadow hover:bg-opacity-90 transition-colors"
         >
           <Plus size={20} className="mr-2" />
           <span className="hidden sm:inline">Adicionar UM</span>
@@ -202,72 +270,78 @@ export default function UMsPage() {
         </button>
       </div>
 
-      <div className="space-y-6">
-        {groupedUms.map((project) => (
-          <div key={project.id} className="bg-white p-4 rounded-lg shadow-md">
-            <h2 className="text-xl font-bold text-gray-700 mb-4 flex items-center">
-              <div
-                className="w-5 h-5 rounded-full mr-3"
-                style={{ backgroundColor: project.color }}
-              ></div>
-              {project.name}
-            </h2>
-            {/* Cabeçalho da Tabela - Apenas Desktop */}
-            <div className="hidden sm:flex items-center justify-between p-3 text-sm font-semibold text-gray-500 border-b">
-              <div className="flex-1">Nome da UM</div>
-              <div className="flex-1">Projeto</div>
-              <div className="flex-1 text-center">Notebooks Esperados</div>
-              <div className="flex-1 text-right">Ações</div>
+      {isLoading ? (
+        <p className="text-center text-gray-500 py-8">Carregando dados...</p>
+      ) : (
+        <div className="space-y-6">
+          {groupedUms.map((project) => (
+            <div key={project.id} className="bg-white p-4 rounded-lg shadow-md">
+              <h2 className="text-xl font-bold text-gray-700 mb-4 flex items-center">
+                <div
+                  className="w-5 h-5 rounded-full mr-3"
+                  style={{ backgroundColor: project.color }}
+                ></div>
+                {project.name}
+              </h2>
+              <div className="hidden sm:grid grid-cols-4 gap-4 p-3 text-sm font-semibold text-slate-500 border-b">
+                <div className="col-span-1">Nome da UM</div>
+                <div className="col-span-1">Projeto</div>
+                <div className="col-span-1 text-center">
+                  Notebooks Esperados
+                </div>
+                <div className="col-span-1 text-right">Ações</div>
+              </div>
+              <div className="space-y-2 mt-2">
+                {project.ums.map((um) => (
+                  <UMListItem
+                    key={um.id}
+                    um={um}
+                    project={projects.find((p) => p.id === um.projectId)}
+                    onEdit={() => openEditModal(um)}
+                    onDelete={() => openDeleteModal(um)}
+                  />
+                ))}
+              </div>
             </div>
-            <div className="space-y-2 mt-2">
-              {project.ums.map((um) => (
-                <UMListItem
-                  key={um.id}
-                  um={um}
-                  project={projects.find((p) => p.id === um.projectId)}
-                  onEdit={() => openEditModal(um)}
-                  onDelete={() => openDeleteModal(um)}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
-      {/* Modal de Adicionar/Editar UM */}
       <Modal isOpen={isFormModalOpen} onClose={closeModals} title={modalTitle}>
         <div className="space-y-4">
           <div>
             <label
-              htmlFor="umName"
+              htmlFor="name"
               className="block text-sm font-medium text-gray-700"
             >
               Nome da UM
             </label>
             <input
               type="text"
-              id="umName"
-              value={umName}
-              onChange={(e) => setUmName(e.target.value)}
+              id="name"
+              name="name"
+              value={formState.name}
+              onChange={handleFormChange}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
             />
           </div>
           <div>
             <label
-              htmlFor="project"
+              htmlFor="projectId"
               className="block text-sm font-medium text-gray-700"
             >
               Projeto
             </label>
             <select
-              id="project"
-              value={selectedProjectId}
-              onChange={(e) => setSelectedProjectId(e.target.value)}
+              id="projectId"
+              name="projectId"
+              value={formState.projectId}
+              onChange={handleFormChange}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
             >
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
                 </option>
               ))}
             </select>
@@ -282,15 +356,16 @@ export default function UMsPage() {
             <input
               type="number"
               id="expectedNotebooks"
-              value={expectedNotebooks}
-              onChange={(e) => setExpectedNotebooks(Number(e.target.value))}
+              name="expectedNotebooks"
+              value={formState.expectedNotebooks}
+              onChange={handleFormChange}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
             />
           </div>
           <div className="flex justify-end pt-4">
             <button
               onClick={handleSave}
-              className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700"
+              className="bg-scanpro-teal text-white px-6 py-2 rounded-lg hover:bg-opacity-90"
             >
               Salvar
             </button>
@@ -298,7 +373,6 @@ export default function UMsPage() {
         </div>
       </Modal>
 
-      {/* Modal de Confirmação para Excluir */}
       <ConfirmationModal
         isOpen={isDeleteModalOpen}
         onClose={closeModals}
