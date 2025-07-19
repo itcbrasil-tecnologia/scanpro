@@ -1,10 +1,21 @@
-// app/(admin)/notebooks/page.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { db } from "@/lib/firebase/config";
+// CORREÇÃO: 'getDoc' removido da importação
+import {
+  collection,
+  getDocs,
+  addDoc,
+  writeBatch,
+  query,
+  where,
+  doc,
+} from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
-import { Trash2, ChevronDown, Sheet, Layers } from "lucide-react";
+import { Layers, Sheet, Trash2, ChevronDown } from "lucide-react";
+import toast from "react-hot-toast";
 
 // --- Interfaces de Dados ---
 interface Project {
@@ -23,77 +34,159 @@ interface Notebook {
   umId: string;
 }
 
-// --- Dados Estáticos (Mock) ---
-const mockProjects: Project[] = [
-  { id: "proj1", name: "Projeto Alpha", color: "#4A90E2" },
-  { id: "proj2", name: "Projeto Beta", color: "#F5A623" },
-];
-const mockUms: UM[] = [
-  { id: "um1", name: "BSBIA01", projectId: "proj1" },
-  { id: "um2", name: "BSBIA02", projectId: "proj1" },
-  { id: "um3", name: "SPV01", projectId: "proj2" },
-];
-const mockNotebooks: Notebook[] = [
-  { id: "nb1", hostname: "BSBIA01-EST01", umId: "um1" },
-  { id: "nb2", hostname: "BSBIA01-EST02", umId: "um1" },
-  { id: "nb3", hostname: "SPV01-ADV", umId: "um3" },
-];
-// --- Fim dos Dados Estáticos ---
-
 export default function NotebooksPage() {
-  const [projects] = useState<Project[]>(mockProjects);
-  const [ums] = useState<UM[]>(mockUms);
-  const [notebooks] = useState<Notebook[]>(mockNotebooks);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [ums, setUms] = useState<UM[]>([]);
+  const [notebooks, setNotebooks] = useState<Notebook[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Controle de Modais
   const [isSingleModalOpen, setIsSingleModalOpen] = useState(false);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
-  // Controle dos dropdowns da lista
   const [openItems, setOpenItems] = useState<Record<string, boolean>>({});
 
-  // Formulário de Adição Individual
   const [hostname, setHostname] = useState("");
-  const [selectedUmId, setSelectedUmId] = useState(mockUms[0]?.id || "");
+  const [selectedUmId, setSelectedUmId] = useState("");
 
-  // Formulário de Adição em Lote
   const [prefix, setPrefix] = useState("");
   const [startNumber, setStartNumber] = useState(1);
   const [endNumber, setEndNumber] = useState(1);
-  const [batchSelectedUmId, setBatchSelectedUmId] = useState(
-    mockUms[0]?.id || ""
-  );
+  const [batchSelectedUmId, setBatchSelectedUmId] = useState("");
   const [generatedNames, setGeneratedNames] = useState<string[]>([]);
 
-  const [umToDelete, setUmToDelete] = useState<UM | null>(null);
+  const [umToDeleteFrom, setUmToDeleteFrom] = useState<UM | null>(null);
+
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      const projectsSnapshot = await getDocs(collection(db, "projects"));
+      const projectsList = projectsSnapshot.docs.map(
+        (document) => ({ id: document.id, ...document.data() } as Project)
+      );
+      setProjects(projectsList);
+
+      const umsSnapshot = await getDocs(collection(db, "ums"));
+      const umsList = umsSnapshot.docs.map(
+        (document) => ({ id: document.id, ...document.data() } as UM)
+      );
+      setUms(umsList);
+      if (umsList.length > 0) {
+        setSelectedUmId(umsList[0].id);
+        setBatchSelectedUmId(umsList[0].id);
+      }
+
+      const notebooksSnapshot = await getDocs(collection(db, "notebooks"));
+      const notebooksList = notebooksSnapshot.docs.map(
+        (document) => ({ id: document.id, ...document.data() } as Notebook)
+      );
+      setNotebooks(notebooksList);
+    } catch (error) {
+      console.error("Erro ao buscar dados:", error);
+      toast.error("Não foi possível carregar os dados.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const toggleDropdown = (id: string) => {
-    setOpenItems((prev) => ({ ...prev, [id]: !prev[id] }));
+    setOpenItems((previousState) => ({
+      ...previousState,
+      [id]: !previousState[id],
+    }));
+  };
+
+  const handleSaveSingle = async () => {
+    if (!hostname || !selectedUmId) {
+      toast.error("Hostname e UM são obrigatórios.");
+      return;
+    }
+    try {
+      await addDoc(collection(db, "notebooks"), {
+        hostname,
+        umId: selectedUmId,
+      });
+      toast.success(`Notebook "${hostname}" adicionado com sucesso!`);
+      fetchData();
+      setIsSingleModalOpen(false);
+      setHostname("");
+    } catch (error) {
+      console.error("Erro ao salvar notebook:", error);
+      toast.error("Ocorreu um erro ao salvar o notebook.");
+    }
   };
 
   const handleGenerateBatchNames = () => {
     if (endNumber < startNumber) {
-      alert("O número final não pode ser menor que o inicial.");
+      toast.error("O número final não pode ser menor que o inicial.");
       return;
     }
     const names = [];
     for (let i = startNumber; i <= endNumber; i++) {
-      // Regra de negócio: números de 1 a 9 com zero à esquerda
       const numberString = i < 10 ? String(i).padStart(2, "0") : String(i);
       names.push(`${prefix}${numberString}`);
     }
     setGeneratedNames(names);
   };
 
-  const handleSaveBatch = () => {
-    // Lógica para salvar notebooks em lote no Firebase
-    console.log(
-      `Salvando ${generatedNames.length} notebooks para a UM ${batchSelectedUmId}:`,
-      generatedNames
-    );
-    setIsBatchModalOpen(false);
-    setGeneratedNames([]);
+  const handleSaveBatch = async () => {
+    if (generatedNames.length === 0 || !batchSelectedUmId) {
+      toast.error("Gere os nomes e selecione uma UM antes de salvar.");
+      return;
+    }
+    try {
+      const batch = writeBatch(db);
+      const notebooksCollection = collection(db, "notebooks");
+      generatedNames.forEach((name) => {
+        const newNotebookRef = doc(notebooksCollection);
+        batch.set(newNotebookRef, { hostname: name, umId: batchSelectedUmId });
+      });
+      await batch.commit();
+      toast.success(
+        `${generatedNames.length} notebooks adicionados com sucesso!`
+      );
+      fetchData();
+      setIsBatchModalOpen(false);
+      setGeneratedNames([]);
+      setPrefix("");
+    } catch (error) {
+      console.error("Erro ao salvar em lote:", error);
+      toast.error("Ocorreu um erro ao salvar os notebooks.");
+    }
+  };
+
+  const handleDeleteBatch = async () => {
+    if (!umToDeleteFrom) return;
+    try {
+      const notebooksQuery = query(
+        collection(db, "notebooks"),
+        where("umId", "==", umToDeleteFrom.id)
+      );
+      const snapshot = await getDocs(notebooksQuery);
+
+      if (snapshot.empty) {
+        toast.error("Nenhum notebook para excluir nesta UM.");
+        setIsDeleteModalOpen(false);
+        return;
+      }
+
+      const batch = writeBatch(db);
+      snapshot.docs.forEach((document) => batch.delete(document.ref));
+      await batch.commit();
+
+      toast.success(
+        `Todos os notebooks da UM "${umToDeleteFrom.name}" foram excluídos.`
+      );
+      fetchData();
+      setIsDeleteModalOpen(false);
+    } catch (error) {
+      console.error("Erro ao excluir em lote:", error);
+      toast.error("Ocorreu um erro ao excluir os notebooks.");
+    }
   };
 
   return (
@@ -105,7 +198,7 @@ export default function NotebooksPage() {
         <div className="flex space-x-2 mt-4 sm:mt-0">
           <button
             onClick={() => setIsSingleModalOpen(true)}
-            className="flex items-center justify-center bg-indigo-600 text-white px-4 py-2 rounded-lg shadow hover:bg-indigo-700 transition-colors"
+            className="flex items-center justify-center bg-scanpro-teal text-white px-4 py-2 rounded-lg shadow hover:bg-opacity-90 transition-colors"
           >
             <Sheet size={20} className="mr-2" />
             <span className="hidden sm:inline">Adicionar Notebook</span>
@@ -122,97 +215,99 @@ export default function NotebooksPage() {
         </div>
       </div>
 
-      {/* Listagem Hierárquica */}
-      <div className="space-y-4">
-        {projects.map((project) => (
-          <div key={project.id}>
-            <button
-              onClick={() => toggleDropdown(project.id)}
-              className="w-full flex items-center p-3 bg-white rounded-lg shadow-md text-left"
-            >
-              <ChevronDown
-                size={20}
-                className={`mr-3 transition-transform ${
-                  openItems[project.id] ? "rotate-180" : ""
-                }`}
-                style={{ color: project.color }}
-              />
-              <span className="text-xl font-bold text-gray-800">
-                {project.name}
-              </span>
-            </button>
+      {isLoading ? (
+        <p className="text-center text-gray-500 py-8">Carregando dados...</p>
+      ) : (
+        <div className="space-y-4">
+          {projects.map((project) => (
+            <div key={project.id}>
+              <button
+                onClick={() => toggleDropdown(project.id)}
+                className="w-full flex items-center p-3 bg-white rounded-lg shadow-md text-left"
+              >
+                <ChevronDown
+                  size={20}
+                  className={`mr-3 transition-transform ${
+                    openItems[project.id] ? "rotate-180" : ""
+                  }`}
+                  style={{ color: project.color }}
+                />
+                <span className="text-xl font-bold text-gray-800">
+                  {project.name}
+                </span>
+              </button>
 
-            {openItems[project.id] && (
-              <div className="pl-4 mt-2 space-y-2">
-                {ums
-                  .filter((um) => um.projectId === project.id)
-                  .map((um) => {
-                    const umNotebooks = notebooks.filter(
-                      (nb) => nb.umId === um.id
-                    );
-                    return (
-                      <div key={um.id}>
-                        <button
-                          onClick={() => toggleDropdown(um.id)}
-                          className="w-full flex items-center p-3 bg-gray-50 rounded-lg text-left hover:bg-gray-100"
-                        >
-                          <ChevronDown
-                            size={18}
-                            className={`mr-2 transition-transform ${
-                              openItems[um.id] ? "rotate-180" : ""
-                            }`}
-                          />
-                          <span className="font-semibold text-gray-700">
-                            {um.name}
-                          </span>
-                        </button>
+              {openItems[project.id] && (
+                <div className="pl-4 mt-2 space-y-2">
+                  {ums
+                    .filter((um) => um.projectId === project.id)
+                    .map((um) => {
+                      const umNotebooks = notebooks.filter(
+                        (notebook) => notebook.umId === um.id
+                      );
+                      return (
+                        <div key={um.id}>
+                          <button
+                            onClick={() => toggleDropdown(um.id)}
+                            className="w-full flex items-center p-3 bg-slate-50 rounded-lg text-left hover:bg-slate-100"
+                          >
+                            <ChevronDown
+                              size={18}
+                              className={`mr-2 transition-transform ${
+                                openItems[um.id] ? "rotate-180" : ""
+                              }`}
+                            />
+                            <span className="font-semibold text-gray-700">
+                              {um.name}
+                            </span>
+                          </button>
 
-                        {openItems[um.id] && (
-                          <div className="pl-6 py-2">
-                            {umNotebooks.length > 0 ? (
-                              <>
-                                <button
-                                  onClick={() => {
-                                    setUmToDelete(um);
-                                    setIsDeleteModalOpen(true);
-                                  }}
-                                  className="flex items-center text-sm text-red-600 hover:text-red-800 mb-3 ml-2"
-                                >
-                                  <Trash2 size={16} className="mr-1" />
-                                  Excluir em Lote
-                                </button>
-                                <ul className="space-y-1 list-disc list-inside bg-white p-3 rounded-md">
-                                  {umNotebooks
-                                    .sort((a, b) =>
-                                      a.hostname.localeCompare(b.hostname)
-                                    )
-                                    .map((nb) => (
-                                      <li
-                                        key={nb.id}
-                                        className="text-gray-600 font-mono text-sm"
-                                      >
-                                        {nb.hostname}
-                                      </li>
-                                    ))}
-                                </ul>
-                              </>
-                            ) : (
-                              <p className="text-sm text-gray-500 italic px-3 py-2">
-                                Nenhum notebook cadastrado nesta UM.
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+                          {openItems[um.id] && (
+                            <div className="pl-6 py-2">
+                              {umNotebooks.length > 0 ? (
+                                <>
+                                  <button
+                                    onClick={() => {
+                                      setUmToDeleteFrom(um);
+                                      setIsDeleteModalOpen(true);
+                                    }}
+                                    className="flex items-center text-sm text-red-600 hover:text-red-800 mb-3 ml-2"
+                                  >
+                                    <Trash2 size={16} className="mr-1" />
+                                    Excluir em Lote
+                                  </button>
+                                  <ul className="space-y-1 list-disc list-inside bg-white p-3 rounded-md">
+                                    {umNotebooks
+                                      .sort((a, b) =>
+                                        a.hostname.localeCompare(b.hostname)
+                                      )
+                                      .map((notebook) => (
+                                        <li
+                                          key={notebook.id}
+                                          className="text-gray-600 font-mono text-sm"
+                                        >
+                                          {notebook.hostname}
+                                        </li>
+                                      ))}
+                                  </ul>
+                                </>
+                              ) : (
+                                <p className="text-sm text-gray-500 italic px-3 py-2">
+                                  Nenhum notebook cadastrado nesta UM.
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
-      {/* Modal de Adição Individual */}
       <Modal
         isOpen={isSingleModalOpen}
         onClose={() => setIsSingleModalOpen(false)}
@@ -230,21 +325,23 @@ export default function NotebooksPage() {
               type="text"
               id="hostname"
               value={hostname}
-              onChange={(e) => setHostname(e.target.value)}
+              onChange={(event) =>
+                setHostname(event.target.value.toUpperCase())
+              }
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
             />
           </div>
           <div>
             <label
-              htmlFor="um"
+              htmlFor="umId"
               className="block text-sm font-medium text-gray-700"
             >
               Unidade Móvel (UM)
             </label>
             <select
-              id="um"
+              id="umId"
               value={selectedUmId}
-              onChange={(e) => setSelectedUmId(e.target.value)}
+              onChange={(event) => setSelectedUmId(event.target.value)}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
             >
               {ums.map((um) => (
@@ -255,14 +352,16 @@ export default function NotebooksPage() {
             </select>
           </div>
           <div className="flex justify-end pt-2">
-            <button className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700">
+            <button
+              onClick={handleSaveSingle}
+              className="bg-scanpro-teal text-white px-6 py-2 rounded-lg hover:bg-opacity-90"
+            >
               Salvar
             </button>
           </div>
         </div>
       </Modal>
 
-      {/* Modal de Adição em Lote */}
       <Modal
         isOpen={isBatchModalOpen}
         onClose={() => setIsBatchModalOpen(false)}
@@ -271,15 +370,15 @@ export default function NotebooksPage() {
         <div className="space-y-4">
           <div>
             <label
-              htmlFor="batch-um"
+              htmlFor="batchUmId"
               className="block text-sm font-medium text-gray-700"
             >
               Unidade Móvel (UM)
             </label>
             <select
-              id="batch-um"
+              id="batchUmId"
               value={batchSelectedUmId}
-              onChange={(e) => setBatchSelectedUmId(e.target.value)}
+              onChange={(event) => setBatchSelectedUmId(event.target.value)}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
             >
               {ums.map((um) => (
@@ -301,7 +400,7 @@ export default function NotebooksPage() {
               id="prefix"
               placeholder="Ex: BSBIA01-EST"
               value={prefix}
-              onChange={(e) => setPrefix(e.target.value.toUpperCase())}
+              onChange={(event) => setPrefix(event.target.value.toUpperCase())}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
             />
           </div>
@@ -317,7 +416,7 @@ export default function NotebooksPage() {
                 type="number"
                 id="start"
                 value={startNumber}
-                onChange={(e) => setStartNumber(Number(e.target.value))}
+                onChange={(event) => setStartNumber(Number(event.target.value))}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
               />
             </div>
@@ -332,7 +431,7 @@ export default function NotebooksPage() {
                 type="number"
                 id="end"
                 value={endNumber}
-                onChange={(e) => setEndNumber(Number(e.target.value))}
+                onChange={(event) => setEndNumber(Number(event.target.value))}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
               />
             </div>
@@ -340,7 +439,7 @@ export default function NotebooksPage() {
           <div className="flex justify-center pt-2">
             <button
               onClick={handleGenerateBatchNames}
-              className="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700"
+              className="bg-slate-600 text-white px-6 py-2 rounded-lg hover:bg-slate-700"
             >
               Gerar Pré-visualização
             </button>
@@ -350,13 +449,13 @@ export default function NotebooksPage() {
               <h4 className="font-semibold">
                 Notebooks a serem criados ({generatedNames.length}):
               </h4>
-              <div className="h-32 overflow-y-auto bg-gray-100 p-2 rounded-md font-mono text-sm">
+              <div className="h-32 overflow-y-auto bg-slate-100 p-2 rounded-md font-mono text-sm">
                 {generatedNames.join("\n")}
               </div>
               <div className="flex justify-end pt-2">
                 <button
                   onClick={handleSaveBatch}
-                  className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700"
+                  className="bg-scanpro-teal text-white px-6 py-2 rounded-lg hover:bg-opacity-90"
                 >
                   Salvar Lote
                 </button>
@@ -366,16 +465,12 @@ export default function NotebooksPage() {
         </div>
       </Modal>
 
-      {/* Modal de Exclusão em Lote */}
       <ConfirmationModal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={() => {
-          console.log("Confirmou exclusão");
-          setIsDeleteModalOpen(false);
-        }}
+        onConfirm={handleDeleteBatch}
         title="Confirmar Exclusão em Lote"
-        message={`Tem certeza que deseja excluir TODOS os notebooks da UM "${umToDelete?.name}"?`}
+        message={`Tem certeza que deseja excluir TODOS os notebooks da UM "${umToDeleteFrom?.name}"?`}
       />
     </div>
   );
