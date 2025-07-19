@@ -6,12 +6,12 @@ import { getFirestore } from "firebase/firestore";
 // Suas chaves do Firebase. NUNCA exponha chaves sensíveis no lado do cliente.
 // As chaves do SDK do cliente são projetadas para serem públicas.
 const firebaseConfig = {
-  apiKey: "AIzaSyAWGRIFERJ6I5NITSpe_mvNxbQ0xC2yMlE",
-  authDomain: "itcbrasil-adbed.firebaseapp.com",
-  projectId: "itcbrasil-adbed",
-  storageBucket: "itcbrasil-adbed.firebasestorage.app", // Mantido conforme solicitado.
-  messagingSenderId: "765244535921",
-  appId: "1:765244535921:web:7370a2b1bba7d5582ed7d0",
+  apiKey: "AIzaSyCfmPQEWQH-PTsFiiEuaBs9uxpghK0qYjk",
+  authDomain: "scanpro-fbd26.firebaseapp.com",
+  projectId: "scanpro-fbd26",
+  storageBucket: "scanpro-fbd26.firebasestorage.app",
+  messagingSenderId: "72131923710",
+  appId: "1:72131923710:web:6d7cbb53553f452cafdfaf",
 };
 
 // Inicializa o Firebase

@@ -1,32 +1,33 @@
 // components/layout/UserLayout.tsx
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react"; // Importar useEffect
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { Navbar } from "@/components/ui/Navbar";
-// A importação de 'UserProfile' foi removida.
 
 export function UserLayout({ children }: { children: React.ReactNode }) {
   const { userProfile, loading } = useAuth();
   const router = useRouter();
 
-  if (loading) {
+  // Lógica de redirecionamento movida para dentro do useEffect
+  useEffect(() => {
+    if (!loading && !userProfile) {
+      router.replace("/");
+    } else if (
+      userProfile &&
+      (userProfile.role === "MASTER" || userProfile.role === "ADMIN")
+    ) {
+      router.replace("/dashboard");
+    }
+  }, [userProfile, loading, router]);
+
+  if (loading || !userProfile || userProfile.role !== "USER") {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-screen bg-slate-100">
         <div>Carregando...</div>
       </div>
     );
-  }
-
-  if (!userProfile) {
-    router.replace("/");
-    return null;
-  }
-
-  if (userProfile.role === "MASTER" || userProfile.role === "ADMIN") {
-    router.replace("/dashboard");
-    return null;
   }
 
   return (

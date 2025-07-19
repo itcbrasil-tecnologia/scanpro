@@ -1,6 +1,5 @@
 // components/ui/ConfirmationModal.tsx
 import React from "react";
-// A importação do 'Modal' foi removida para corrigir o aviso.
 
 interface ConfirmationModalProps {
   isOpen: boolean;
@@ -20,7 +19,8 @@ export function ConfirmationModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
+    // MUDANÇA AQUI: Trocamos 'bg-opacity-60' por 'bg-black/60'
+    <div className="fixed inset-0 bg-black/60 z-50 flex justify-center items-center p-4 backdrop-blur-sm">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
         <div className="p-6">
           <h3 className="text-lg font-bold text-gray-900">{title}</h3>

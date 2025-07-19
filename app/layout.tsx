@@ -1,9 +1,7 @@
-// app/layout.tsx
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { Toaster } from "react-hot-toast";
-import { AuthContextProvider } from "@/context/AuthContext"; // Importar
+import { ClientProviders } from "@/providers/client-providers";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -19,41 +17,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body className={`${inter.className} bg-slate-50 text-slate-800`}>
-        <AuthContextProvider>
-          {" "}
-          {/* Envolver a aplicação */}
-          <Toaster
-            position="bottom-center"
-            toastOptions={{
-              style: {
-                borderRadius: "8px",
-                padding: "16px",
-              },
-              success: {
-                style: {
-                  background: "#10B981",
-                  color: "white",
-                },
-                iconTheme: {
-                  primary: "white",
-                  secondary: "#10B981",
-                },
-              },
-              error: {
-                style: {
-                  background: "#EF4444",
-                  color: "white",
-                },
-                iconTheme: {
-                  primary: "white",
-                  secondary: "#EF4444",
-                },
-              },
-            }}
-          />
-          {children}
-        </AuthContextProvider>
+      <body className={`${inter.className} bg-background-light text-slate-800`}>
+        <ClientProviders>{children}</ClientProviders>
       </body>
     </html>
   );

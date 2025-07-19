@@ -15,7 +15,8 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
+    // MUDANÇA AQUI: Trocamos 'bg-opacity-50' por 'bg-black/60' para um controle melhor da transparência
+    <div className="fixed inset-0 bg-black/60 z-50 flex justify-center items-center p-4 backdrop-blur-sm">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-lg">
         <div className="flex justify-between items-center p-4 border-b">
           <h3 className="text-xl font-bold text-gray-800">{title}</h3>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Camada_1" data-name="Camada 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 60">
+  <g>
+    <rect x="6.2" y="9.09" width="11.39" height="11.39" fill="#006e71"/>
+    <rect x="6.2" y="24.65" width="11.39" height="11.39" fill="#006e71"/>
+    <rect x="6.2" y="39.45" width="11.39" height="11.39" fill="#006e71"/>
+    <rect x="20.35" y="39.38" width="11.39" height="11.39" fill="#006e71"/>
+    <rect x="34.23" y="9.16" width="11.39" height="11.39" fill="#006e71"/>
+    <rect x="20.35" y="9.16" width="11.39" height="11.39" fill="#006e71"/>
+    <rect x="34.23" y="24.72" width="11.39" height="11.39" fill="#006e71"/>
+    <rect x="34.23" y="39.52" width="11.39" height="11.39" fill="#006e71"/>
+    <rect x="20.35" y="24.65" width="11.39" height="11.39" fill="#008f95"/>
+  </g>
+  <g isolation="isolate">
+    <text transform="translate(53.29 38.32)" fill="#006e71" font-family="Arial-BoldMT, Arial" font-size="27.23" font-weight="700" isolation="isolate"><tspan x="0" y="0">Scan</tspan></text>
+    <text transform="translate(118.06 38.32)" fill="#491027" font-family="Arial-BoldMT, Arial" font-size="25.72" font-weight="700" isolation="isolate"><tspan x="0" y="0">PRO</tspan></text>
+  </g>
+</svg>

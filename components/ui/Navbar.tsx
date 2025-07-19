@@ -1,8 +1,8 @@
-// components/ui/Navbar.tsx
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase/config";
@@ -16,10 +16,11 @@ import {
   X,
   LayoutDashboard,
   FileText,
-  Building,
   Laptop,
   Users,
   Home,
+  Truck,
+  BriefcaseBusiness,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -41,8 +42,8 @@ export function Navbar({ userProfile }: NavbarProps) {
     try {
       await signOut(auth);
       toast.success("Você saiu com sucesso!");
+      router.push("/");
     } catch (error) {
-      // Adicionamos o console.error para usar a variável e registrar o erro.
       console.error("Erro ao tentar sair:", error);
       toast.error("Erro ao tentar sair.");
     }
@@ -75,8 +76,8 @@ export function Navbar({ userProfile }: NavbarProps) {
     { name: "Relatórios", href: "/relatorios", icon: FileText },
   ];
   const adminDropdownItems = [
-    { name: "Projetos", href: "/projetos", icon: Building },
-    { name: "UMs", href: "/ums", icon: Building },
+    { name: "Projetos", href: "/projetos", icon: BriefcaseBusiness },
+    { name: "UMs", href: "/ums", icon: Truck },
     { name: "Notebooks", href: "/notebooks", icon: Laptop },
     ...(userProfile.role === "MASTER"
       ? [{ name: "Usuários", href: "/usuarios", icon: Users }]
@@ -92,10 +93,10 @@ export function Navbar({ userProfile }: NavbarProps) {
   }) => (
     <Link href={href} passHref>
       <div
-        className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+        className={`px-4 py-2 rounded-md text-base font-medium transition-colors ${
           pathname === href
-            ? "bg-indigo-700 text-white"
-            : "text-gray-300 hover:bg-indigo-600 hover:text-white"
+            ? "bg-black/20 text-white"
+            : "text-white hover:bg-black/10"
         }`}
       >
         {children}
@@ -103,80 +104,98 @@ export function Navbar({ userProfile }: NavbarProps) {
     </Link>
   );
 
+  const Logo = () => (
+    <Link
+      href={isAdminOrMaster ? "/dashboard" : "/inicio"}
+      className="flex-shrink-0 flex items-center"
+    >
+      <Image
+        src="/Logo.svg"
+        alt="ScanPRO Logo"
+        width={120}
+        height={30}
+        priority
+      />
+    </Link>
+  );
+
   if (isAdminOrMaster) {
     return (
-      <nav className="bg-indigo-800 shadow-md">
+      <nav className="bg-navbar-gray sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center">
-              <Link href="/dashboard" className="text-white font-bold text-xl">
-                ScanPRO
-              </Link>
-              <div className="hidden md:block ml-10">
-                <div className="flex items-baseline space-x-4">
-                  {adminMenuItems.map((item) => (
-                    <NavLink key={item.name} href={item.href}>
-                      {item.name}
-                    </NavLink>
-                  ))}
-                  <div className="relative" ref={adminDropdownRef}>
-                    <button
-                      onClick={() => setIsAdminDropdownOpen((prev) => !prev)}
-                      className={`px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center ${
-                        pathname.startsWith("/projetos") ||
-                        pathname.startsWith("/ums") ||
-                        pathname.startsWith("/notebooks") ||
-                        pathname.startsWith("/usuarios")
-                          ? "bg-indigo-700 text-white"
-                          : "text-gray-300 hover:bg-indigo-600 hover:text-white"
-                      }`}
-                    >
-                      <span>Administração</span>
-                      <ChevronDown size={16} className="ml-1" />
-                    </button>
-                    {isAdminDropdownOpen && (
-                      <div className="origin-top-right absolute mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-10">
-                        {adminDropdownItems.map((item) => (
-                          <Link
-                            key={item.name}
-                            href={item.href}
-                            className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            onClick={() => setIsAdminDropdownOpen(false)}
-                          >
-                            <item.icon size={16} className="mr-2" /> {item.name}
-                          </Link>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+            <div className="flex-shrink-0">
+              <Logo />
+            </div>
+
+            <div className="hidden md:flex flex-1 items-center justify-center">
+              <div className="flex items-baseline space-x-4">
+                {adminMenuItems.map((item) => (
+                  <NavLink key={item.name} href={item.href}>
+                    {item.name}
+                  </NavLink>
+                ))}
+                <div className="relative" ref={adminDropdownRef}>
+                  <button
+                    onClick={() => setIsAdminDropdownOpen((prev) => !prev)}
+                    className={`px-4 py-2 rounded-md text-base font-medium transition-colors flex items-center ${
+                      pathname.startsWith("/projetos") ||
+                      pathname.startsWith("/ums") ||
+                      pathname.startsWith("/notebooks") ||
+                      pathname.startsWith("/usuarios")
+                        ? "bg-black/20 text-white"
+                        : "text-white hover:bg-black/10"
+                    }`}
+                  >
+                    <span>Administração</span>
+                    <ChevronDown size={16} className="ml-1" />
+                  </button>
+                  {isAdminDropdownOpen && (
+                    <div className="origin-top-right absolute mt-2 w-48 rounded-md shadow-lg py-1 bg-navbar-gray z-10">
+                      {adminDropdownItems.map((item) => (
+                        <Link
+                          key={item.name}
+                          href={item.href}
+                          className="flex items-center px-4 py-2 text-sm text-white hover:bg-black/10"
+                          onClick={() => setIsAdminDropdownOpen(false)}
+                        >
+                          <item.icon size={16} className="mr-2" /> {item.name}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
 
-            <div className="hidden md:block" ref={userDropdownRef}>
+            <div
+              className="hidden md:block flex-shrink-0"
+              ref={userDropdownRef}
+            >
               <div className="relative">
                 <button
                   onClick={() => setIsUserDropdownOpen((prev) => !prev)}
-                  className="flex items-center text-sm rounded-full text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-indigo-800 focus:ring-white"
+                  className="flex items-center text-sm rounded-full text-white hover:bg-black/10 p-2 focus:outline-none"
                 >
                   <User size={24} />
                   <span className="ml-2">{userProfile.nome.split(" ")[0]}</span>
                   <ChevronDown size={16} className="ml-1" />
                 </button>
                 {isUserDropdownOpen && (
-                  <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-10">
-                    <div className="px-4 py-2 text-sm text-gray-500 border-b">
+                  <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg py-1 bg-white z-10">
+                    <div className="px-4 py-2 text-sm text-slate-500 border-b">
                       <p>Sessão iniciada como</p>
-                      <p className="font-medium text-gray-800 truncate">
+                      <p className="font-medium text-slate-800 truncate">
                         {userProfile.email}
                       </p>
                     </div>
                     <Link
                       href="/alterar-senha"
-                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
                       onClick={() => setIsUserDropdownOpen(false)}
                     >
-                      <KeyRound size={16} className="mr-2" /> Alterar Senha
+                      <KeyRound size={16} className="mr-2 text-slate-500" />{" "}
+                      Alterar Senha
                     </Link>
                     <button
                       onClick={handleLogout}
@@ -190,9 +209,12 @@ export function Navbar({ userProfile }: NavbarProps) {
             </div>
 
             <div className="md:hidden flex items-center">
+              <div className="md:hidden absolute left-4">
+                <Logo />
+              </div>
               <button
                 onClick={() => setIsMobileMenuOpen((prev) => !prev)}
-                className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-indigo-700 focus:outline-none"
+                className="inline-flex items-center justify-center p-2 rounded-md text-white hover:bg-black/10 focus:outline-none"
               >
                 {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
               </button>
@@ -201,19 +223,19 @@ export function Navbar({ userProfile }: NavbarProps) {
         </div>
 
         {isMobileMenuOpen && (
-          <div className="md:hidden">
+          <div className="md:hidden bg-navbar-gray border-t border-black/20">
             <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
               {adminMenuItems.map((item) => (
                 <Link
                   key={item.name}
                   href={item.href}
-                  className="flex items-center text-gray-300 hover:bg-indigo-700 hover:text-white px-3 py-2 rounded-md text-base font-medium"
+                  className="flex items-center text-white hover:bg-black/10 px-3 py-2 rounded-md text-base font-medium"
                 >
                   <item.icon size={18} className="mr-3" />
                   {item.name}
                 </Link>
               ))}
-              <div className="text-gray-300 px-3 py-2 text-base font-medium">
+              <div className="text-slate-300 px-3 py-2 text-sm font-semibold">
                 Administração
               </div>
               <div className="pl-4">
@@ -221,7 +243,7 @@ export function Navbar({ userProfile }: NavbarProps) {
                   <Link
                     key={item.name}
                     href={item.href}
-                    className="flex items-center text-gray-300 hover:bg-indigo-700 hover:text-white px-3 py-2 rounded-md text-base font-medium"
+                    className="flex items-center text-white hover:bg-black/10 px-3 py-2 rounded-md text-base font-medium"
                   >
                     <item.icon size={18} className="mr-3" />
                     {item.name}
@@ -229,14 +251,14 @@ export function Navbar({ userProfile }: NavbarProps) {
                 ))}
               </div>
             </div>
-            <div className="pt-4 pb-3 border-t border-indigo-700">
+            <div className="pt-4 pb-3 border-t border-black/20">
               <div className="flex items-center px-5">
                 <User size={24} className="text-white" />
                 <div className="ml-3">
                   <div className="text-base font-medium leading-none text-white">
                     {userProfile.nome}
                   </div>
-                  <div className="text-sm font-medium leading-none text-gray-400">
+                  <div className="text-sm font-medium leading-none text-slate-300">
                     {userProfile.email}
                   </div>
                 </div>
@@ -244,16 +266,16 @@ export function Navbar({ userProfile }: NavbarProps) {
               <div className="mt-3 px-2 space-y-1">
                 <Link
                   href="/alterar-senha"
-                  className="flex items-center text-gray-300 hover:bg-indigo-700 hover:text-white px-3 py-2 rounded-md text-base font-medium"
+                  className="flex items-center text-white hover:bg-black/10 px-3 py-2 rounded-md text-base font-medium"
                 >
                   <KeyRound size={18} className="mr-3" />
                   Alterar Senha
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="w-full text-left flex items-center text-red-400 hover:bg-indigo-700 hover:text-white px-3 py-2 rounded-md text-base font-medium"
+                  className="w-full text-left flex items-center text-red-300 hover:bg-black/10 hover:text-red-200 px-3 py-2 rounded-md text-base font-medium"
                 >
-                  <LogOut size={18} className="mr-3 text-red-400" />
+                  <LogOut size={18} className="mr-3" />
                   Sair
                 </button>
               </div>
@@ -263,36 +285,36 @@ export function Navbar({ userProfile }: NavbarProps) {
       </nav>
     );
   } else {
+    // LAYOUT PARA USER (TÉCNICO)
     return (
-      <nav className="bg-indigo-800 shadow-md">
+      <nav className="bg-navbar-gray sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <Link href="/inicio" className="text-white font-bold text-xl">
-              ScanPRO
-            </Link>
+            <Logo />
             <div className="relative" ref={userDropdownRef}>
               <button
                 onClick={() => setIsUserDropdownOpen((prev) => !prev)}
-                className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-white hover:bg-indigo-700 focus:outline-none"
+                className="inline-flex items-center justify-center p-2 rounded-md text-white hover:bg-black/10 focus:outline-none"
               >
                 <Menu size={24} />
               </button>
               {isUserDropdownOpen && (
-                <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-10">
+                <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg py-1 bg-white z-10">
                   <Link
                     href="/inicio"
-                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
                     onClick={() => setIsUserDropdownOpen(false)}
                   >
-                    <Home size={16} className="mr-2" /> Início
+                    <Home size={16} className="mr-2 text-slate-500" /> Início
                   </Link>
                   <div className="border-t my-1"></div>
                   <Link
                     href="/alterar-senha"
-                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
                     onClick={() => setIsUserDropdownOpen(false)}
                   >
-                    <KeyRound size={16} className="mr-2" /> Alterar Senha
+                    <KeyRound size={16} className="mr-2 text-slate-500" />{" "}
+                    Alterar Senha
                   </Link>
                   <button
                     onClick={handleLogout}

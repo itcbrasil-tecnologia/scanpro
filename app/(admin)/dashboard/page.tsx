@@ -1,26 +1,19 @@
-// app/(admin)/dashboard/page.tsx
 "use client";
 
 import React, { useState } from "react";
 import { DashboardCard } from "@/components/ui/DashboardCard";
 import { Modal } from "@/components/ui/Modal";
-import { Users, Building, Laptop } from "lucide-react";
+import { Users, BriefcaseBusiness, Truck, Laptop } from "lucide-react";
 
-// Dados estáticos para a interface (serão substituídos por dados do Firebase)
-const summaryData = {
-  technicians: 7,
-  projects: 4,
-  ums: 12,
-  notebooks: 153,
-};
+type ModalListItem = string | { name: string; whatsapp?: string };
 
-const mockTechnicians = [
+const mockTechnicians: ModalListItem[] = [
   { name: "João Marcos", whatsapp: "(61) 99999-0001" },
   { name: "José Frederico", whatsapp: "(61) 99999-0002" },
   { name: "Lucas Andrade", whatsapp: "(61) 99999-0003" },
 ];
 
-const mockProjects = [
+const mockProjects: ModalListItem[] = [
   { name: "Projeto Alpha" },
   { name: "Projeto Beta" },
   { name: "Projeto Gamma" },
@@ -53,18 +46,13 @@ const mockConferences = [
   },
 ];
 
-// 1. TIPO ESPECÍFICO PARA OS ITENS DO MODAL, SUBSTITUINDO O 'any'
-type ModalListItem = string | { name: string; whatsapp?: string };
-
 export default function DashboardPage() {
-  // 2. ATUALIZAÇÃO DO ESTADO PARA USAR O NOVO TIPO
-  const [modalContent, setModalContent] = useState<{
-    title: string;
-    data: ModalListItem[];
-  }>({ title: "", data: [] });
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalContent, setModalContent] = useState({
+    title: "",
+    data: [] as ModalListItem[],
+  });
 
-  // 3. ATUALIZAÇÃO DA FUNÇÃO PARA USAR O NOVO TIPO
   const openModal = (title: string, data: ModalListItem[]) => {
     setModalContent({ title, data });
     setIsModalOpen(true);
@@ -92,11 +80,10 @@ export default function DashboardPage() {
     <div className="space-y-8">
       <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
 
-      {/* Seção de Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <DashboardCard
           title="Técnicos Cadastrados"
-          value={summaryData.technicians}
+          value={7}
           icon={Users}
           onDetailsClick={() =>
             openModal("Técnicos Cadastrados", mockTechnicians)
@@ -104,75 +91,74 @@ export default function DashboardPage() {
         />
         <DashboardCard
           title="Projetos"
-          value={summaryData.projects}
-          icon={Building}
+          value={4}
+          icon={BriefcaseBusiness}
           onDetailsClick={() => openModal("Projetos", mockProjects)}
         />
-        <DashboardCard title="UMs" value={summaryData.ums} icon={Building} />
+        <DashboardCard title="UMs" value={12} icon={Truck} />
         <DashboardCard
           title="Notebooks Cadastrados"
-          value={summaryData.notebooks}
+          value={153}
           icon={Laptop}
         />
       </div>
 
-      {/* Seção da Tabela */}
       <div className="bg-white p-6 rounded-lg shadow-md">
         <h2 className="text-xl font-bold text-gray-800 mb-4">
           Últimas Conferências
         </h2>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
-            <thead className="bg-gray-50 border-b">
+            <thead className="bg-slate-100 border-b-2 border-slate-200">
               <tr>
-                <th className="p-3 text-sm font-semibold text-gray-600">
+                <th className="p-3 text-sm font-semibold text-slate-600">
                   Data
                 </th>
-                <th className="p-3 text-sm font-semibold text-gray-600">
+                <th className="p-3 text-sm font-semibold text-slate-600">
                   Horários
                 </th>
-                <th className="p-3 text-sm font-semibold text-gray-600">
+                <th className="p-3 text-sm font-semibold text-slate-600">
                   Projeto
                 </th>
-                <th className="p-3 text-sm font-semibold text-gray-600">
+                <th className="p-3 text-sm font-semibold text-slate-600">
                   Técnico
                 </th>
-                <th className="p-3 text-sm font-semibold text-gray-600 text-center">
+                <th className="p-3 text-sm font-semibold text-slate-600 text-center">
                   Contagem
                 </th>
-                <th className="p-3 text-sm font-semibold text-gray-600 text-center">
+                <th className="p-3 text-sm font-semibold text-slate-600 text-center">
                   Status
                 </th>
-                <th className="p-3 text-sm font-semibold text-gray-600 text-center">
+                <th className="p-3 text-sm font-semibold text-slate-600 text-center">
                   Detalhes
                 </th>
               </tr>
             </thead>
             <tbody>
-              {mockConferences.map((conf, index) => (
-                <tr key={index} className="border-b hover:bg-gray-50">
-                  <td className="p-3">{conf.date}</td>
+              {mockConferences.map((conference, index) => (
+                <tr key={index} className="border-b hover:bg-slate-50">
+                  <td className="p-3">{conference.date}</td>
                   <td className="p-3">
-                    {conf.startTime} - {conf.endTime}
+                    {conference.startTime} - {conference.endTime}
                   </td>
                   <td className="p-3">
-                    {conf.project} ({conf.um})
+                    {conference.project} ({conference.um})
                   </td>
-                  <td className="p-3">{conf.technician}</td>
+                  <td className="p-3">{conference.technician}</td>
                   <td className="p-3 text-center">
-                    {conf.scanned} / {conf.expected}
-                  </td>
-                  <td className="p-3 text-center">
-                    {renderStatus(conf.scanned, conf.expected)}
+                    {conference.scanned} / {conference.expected}
                   </td>
                   <td className="p-3 text-center">
-                    {conf.missing > 0 && (
+                    {renderStatus(conference.scanned, conference.expected)}
+                  </td>
+                  <td className="p-3 text-center">
+                    {conference.missing > 0 && (
                       <button
-                        className="text-indigo-600 hover:underline text-sm font-medium"
+                        className="text-scanpro-teal hover:underline text-sm font-medium"
                         onClick={() =>
                           openModal(
                             "Dispositivos Não Escaneados",
-                            conf.missingHostnames
+                            conference.missingHostnames
                           )
                         }
                       >
@@ -185,14 +171,13 @@ export default function DashboardPage() {
             </tbody>
           </table>
         </div>
-        {/* Lógica de Paginação será adicionada aqui */}
         <div className="flex justify-end items-center mt-4 text-sm">
           <span>Itens por página: 7</span>
           <div className="ml-4">
-            <button className="px-3 py-1 border rounded-md hover:bg-gray-100">
+            <button className="px-3 py-1 border rounded-md hover:bg-slate-100">
               Anterior
             </button>
-            <button className="px-3 py-1 border rounded-md hover:bg-gray-100 ml-2">
+            <button className="px-3 py-1 border rounded-md hover:bg-slate-100 ml-2">
               Próximo
             </button>
           </div>
@@ -205,7 +190,6 @@ export default function DashboardPage() {
         title={modalContent.title}
       >
         <ul className="space-y-2">
-          {/* 4. LÓGICA DE RENDERIZAÇÃO ATUALIZADA PARA LIDAR COM O NOVO TIPO */}
           {modalContent.data.map((item, index) => (
             <li
               key={index}
