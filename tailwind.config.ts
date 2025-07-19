@@ -7,18 +7,12 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      // Mantemos apenas as cores da marca, que estão funcionando bem
       colors: {
-        // Cores da marca baseadas na logo
         "scanpro-teal": {
-          DEFAULT: "#04787D",
-          light: "#2DD4BF",
+          DEFAULT: "#008F95",
+          dark: "#006E71",
         },
-        "scanpro-maroon": {
-          DEFAULT: "#4C0519",
-        },
-        // Novas cores de fundo personalizadas
-        "navbar-gray": "#808080",
-        "background-light": "#E0E0E0",
       },
     },
   },

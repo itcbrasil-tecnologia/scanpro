@@ -32,16 +32,6 @@ interface Conference {
   missingHostnames: string[];
 }
 
-// --- Dados Estáticos para os Modais (serão substituídos no futuro) ---
-const mockTechnicians: ModalListItem[] = [
-  { name: "João Marcos", whatsapp: "(61) 99999-0001" },
-  { name: "José Frederico", whatsapp: "(61) 99999-0002" },
-];
-const mockProjects: ModalListItem[] = [
-  { name: "Projeto Alpha" },
-  { name: "Projeto Beta" },
-];
-
 export default function DashboardPage() {
   const [summaryData, setSummaryData] = useState({
     technicians: 0,
@@ -58,21 +48,37 @@ export default function DashboardPage() {
     data: [] as ModalListItem[] | string[],
   });
 
+  // MUDANÇA: Estados para armazenar as listas para os modais
+  const [techniciansList, setTechniciansList] = useState<ModalListItem[]>([]);
+  const [projectsList, setProjectsList] = useState<ModalListItem[]>([]);
+
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        // 1. Faz a contagem dos documentos para os cards
+        // 1. Faz a contagem e busca os dados para os cards e modais
         const projectsSnapshot = await getDocs(collection(db, "projects"));
         const umsSnapshot = await getDocs(collection(db, "ums"));
         const notebooksSnapshot = await getDocs(collection(db, "notebooks"));
 
-        // Contagem de técnicos (filtrando por perfil 'USER')
         const techniciansQuery = query(
           collection(db, "users"),
           where("role", "==", "USER")
         );
         const techniciansSnapshot = await getDocs(techniciansQuery);
+
+        // MUDANÇA: Mapeia e armazena a lista de projetos para o modal
+        const projectsData = projectsSnapshot.docs.map((document) => ({
+          name: document.data().name,
+        }));
+        setProjectsList(projectsData);
+
+        // MUDANÇA: Mapeia e armazena a lista de técnicos para o modal
+        const techniciansData = techniciansSnapshot.docs.map((document) => ({
+          name: document.data().nome,
+          whatsapp: document.data().whatsapp,
+        }));
+        setTechniciansList(techniciansData);
 
         setSummaryData({
           technicians: techniciansSnapshot.size,
@@ -81,7 +87,7 @@ export default function DashboardPage() {
           notebooks: notebooksSnapshot.size,
         });
 
-        // 2. Busca as últimas 10 conferências
+        // 2. Busca as últimas 10 conferências (lógica inalterada)
         const conferencesQuery = query(
           collection(db, "conferences"),
           orderBy("endTime", "desc"),
@@ -92,7 +98,6 @@ export default function DashboardPage() {
           const data = document.data();
           return {
             id: document.id,
-            // Conversão de Timestamps do Firebase para strings legíveis
             date: data.endTime.toDate().toLocaleDateString("pt-BR"),
             startTime: data.startTime
               .toDate()
@@ -159,15 +164,17 @@ export default function DashboardPage() {
           title="Técnicos Cadastrados"
           value={isLoading ? "..." : summaryData.technicians}
           icon={Users}
+          // MUDANÇA: Passa a lista de técnicos para o modal
           onDetailsClick={() =>
-            openModal("Técnicos Cadastrados", mockTechnicians)
+            openModal("Técnicos Cadastrados", techniciansList)
           }
         />
         <DashboardCard
           title="Projetos"
           value={isLoading ? "..." : summaryData.projects}
           icon={BriefcaseBusiness}
-          onDetailsClick={() => openModal("Projetos", mockProjects)}
+          // MUDANÇA: Passa a lista de projetos para o modal
+          onDetailsClick={() => openModal("Projetos", projectsList)}
         />
         <DashboardCard
           title="UMs"
@@ -181,13 +188,13 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="bg-white p-6 rounded-lg shadow-md">
+      <div className="bg-white p-6 rounded-lg shadow-md overflow-hidden">
         <h2 className="text-xl font-bold text-gray-800 mb-4">
           Últimas Conferências
         </h2>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
-            <thead className="bg-slate-100 border-b-2 border-slate-200">
+            <thead className="bg-slate-200 border-b-2 border-slate-300">
               <tr>
                 <th className="p-3 text-sm font-semibold text-slate-600">
                   Data

@@ -1,4 +1,3 @@
-// app/(user)/inicio/page.tsx
 "use client";
 
 import React, { useState } from "react";
@@ -10,7 +9,7 @@ import { BookCheck, Camera } from "lucide-react";
 // --- Interfaces e Dados Estáticos (Mock) ---
 interface Conference {
   id: string;
-  date: string; // Formato YYYY-MM-DD
+  date: string;
   startTime: string;
   endTime: string;
   um: string;
@@ -44,10 +43,9 @@ const mockUserConferences: Conference[] = [
     missingHostnames: ["SPV01-ADV", "SPV01-REC02"],
   },
 ];
-// --- Fim dos Dados Estáticos ---
 
 export default function InicioPage() {
-  const { userProfile } = useAuth(); // Agora esta variável será usada
+  const { userProfile } = useAuth();
   const [conferences] = useState<Conference[]>(mockUserConferences);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState<string[]>([]);
@@ -74,7 +72,6 @@ export default function InicioPage() {
 
   return (
     <div className="space-y-6">
-      {/* Título de Boas-Vindas */}
       <h1 className="text-3xl font-bold text-gray-800">
         Bem-vindo, {userProfile?.nome?.split(" ")[0]}!
       </h1>
@@ -86,7 +83,7 @@ export default function InicioPage() {
               Contagens Diárias Disponíveis
             </h3>
             <div className="flex justify-center items-center my-2">
-              <BookCheck className="w-10 h-10 text-indigo-500" />
+              <BookCheck className="w-10 h-10 text-scanpro-teal" />
               <p className="text-4xl font-bold text-gray-800 ml-4">
                 {dailyCounts.total - dailyCounts.completed}/{dailyCounts.total}
               </p>
@@ -95,7 +92,7 @@ export default function InicioPage() {
 
           <div className="sm:hidden">
             <Link href="/scanner" passHref>
-              <div className="w-full flex items-center justify-center bg-indigo-600 text-white px-4 py-3 rounded-lg shadow-lg hover:bg-indigo-700 transition-colors font-bold text-lg">
+              <div className="w-full flex items-center justify-center bg-scanpro-teal text-white px-4 py-3 rounded-lg shadow-lg hover:bg-opacity-90 transition-colors font-bold text-lg">
                 <Camera size={24} className="mr-3" />
                 INICIAR CONFERÊNCIA
               </div>
@@ -109,28 +106,32 @@ export default function InicioPage() {
           </h2>
           <div className="overflow-x-auto">
             <table className="w-full text-left">
-              <thead className="bg-gray-50 border-b">
+              {/* MUDANÇA APLICADA AQUI */}
+              <thead className="bg-slate-200 border-b-2 border-slate-300">
                 <tr>
-                  <th className="p-3 text-sm font-semibold text-gray-600">
+                  <th className="p-3 text-sm font-semibold text-slate-600">
                     Data
                   </th>
-                  <th className="p-3 text-sm font-semibold text-gray-600">
+                  <th className="p-3 text-sm font-semibold text-slate-600">
                     UM
                   </th>
-                  <th className="p-3 text-sm font-semibold text-gray-600 text-center">
+                  <th className="p-3 text-sm font-semibold text-slate-600 text-center">
                     Contagem
                   </th>
-                  <th className="p-3 text-sm font-semibold text-gray-600 text-center">
+                  <th className="p-3 text-sm font-semibold text-slate-600 text-center">
                     Status
                   </th>
-                  <th className="p-3 text-sm font-semibold text-gray-600 text-center">
+                  <th className="p-3 text-sm font-semibold text-slate-600 text-center">
                     Detalhes
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {conferences.map((conference) => (
-                  <tr key={conference.id} className="border-b hover:bg-gray-50">
+                  <tr
+                    key={conference.id}
+                    className="border-b hover:bg-slate-50"
+                  >
                     <td className="p-3 text-sm">
                       <p>
                         {new Date(conference.date).toLocaleDateString("pt-BR", {
@@ -154,7 +155,7 @@ export default function InicioPage() {
                           onClick={() =>
                             openDetailsModal(conference.missingHostnames)
                           }
-                          className="text-indigo-600 hover:underline text-sm font-medium"
+                          className="text-scanpro-teal hover:underline text-sm font-medium"
                         >
                           Ver
                         </button>

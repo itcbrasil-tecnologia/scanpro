@@ -52,7 +52,6 @@ export default function ReportsPage() {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        // Carregar dados para os filtros
         const projectsSnapshot = await getDocs(collection(db, "projects"));
         setProjects(
           projectsSnapshot.docs.map((doc) => ({
@@ -78,21 +77,24 @@ export default function ReportsPage() {
           }))
         );
 
-        // Carregar todas as conferências
         const confSnapshot = await getDocs(collection(db, "conferences"));
         const conferencesList = confSnapshot.docs.map((doc) => {
           const data = doc.data();
           return {
             id: doc.id,
-            date: data.endTime.toDate().toISOString().split("T")[0], // Formato YYYY-MM-DD
-            startTime: data.startTime.toDate().toLocaleTimeString("pt-BR", {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-            endTime: data.endTime.toDate().toLocaleTimeString("pt-BR", {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
+            date: data.endTime.toDate().toISOString().split("T")[0],
+            startTime: data.startTime
+              .toDate()
+              .toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            endTime: data.endTime
+              .toDate()
+              .toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
             projectName: data.projectName,
             umName: data.umName,
             userName: data.userName,
@@ -250,7 +252,8 @@ export default function ReportsPage() {
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
-            <thead className="bg-slate-100 border-b-2 border-slate-200">
+            {/* MUDANÇA APLICADA AQUI */}
+            <thead className="bg-slate-200 border-b-2 border-slate-300">
               <tr>
                 <th className="p-3 text-sm font-semibold text-slate-600">
                   Data

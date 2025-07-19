@@ -1,48 +1,16 @@
-// app/(admin)/usuarios/page.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { db } from "@/lib/firebase/config";
+import { collection, getDocs, doc, setDoc } from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { Plus, Edit, Trash2, ChevronDown } from "lucide-react";
 import { UserProfile, UserRole } from "@/types";
+import toast from "react-hot-toast";
 
-// --- Dados Estáticos (Mock) ---
-const mockUsers: UserProfile[] = [
-  {
-    uid: "master1",
-    nome: "Admin Master",
-    email: "master@scanpro.com",
-    whatsapp: "(61) 98888-0001",
-    role: "MASTER",
-  },
-  {
-    uid: "admin1",
-    nome: "Admin Gestor",
-    email: "admin@scanpro.com",
-    whatsapp: "(61) 98888-0002",
-    role: "ADMIN",
-  },
-  {
-    uid: "user1",
-    nome: "João Marcos",
-    email: "joao.marcos@tecnico.com",
-    whatsapp: "(61) 98888-0003",
-    role: "USER",
-  },
-  {
-    uid: "user2",
-    nome: "Lucas Veras",
-    email: "lucas.veras@tecnico.com",
-    whatsapp: "(61) 98888-0004",
-    role: "USER",
-  },
-];
-// --- Fim dos Dados Estáticos ---
-
-// Componente para o item da lista, adaptável para mobile conforme o escopo
 function UserListItem({
   user,
   onEdit,
@@ -60,8 +28,7 @@ function UserListItem({
   };
 
   return (
-    <div className="bg-gray-50 rounded-lg">
-      {/* Visão Desktop: Tabela */}
+    <div className="bg-slate-50 rounded-lg">
       <div className="hidden sm:grid grid-cols-12 gap-4 items-center p-3">
         <div className="col-span-3 font-semibold text-gray-800">
           {user.nome}
@@ -80,7 +47,7 @@ function UserListItem({
         <div className="col-span-1 flex items-center justify-end space-x-3">
           <button
             onClick={onEdit}
-            className="text-gray-500 hover:text-indigo-600"
+            className="text-gray-500 hover:text-teal-600"
           >
             <Edit size={20} />
           </button>
@@ -93,7 +60,6 @@ function UserListItem({
         </div>
       </div>
 
-      {/* Visão Mobile: Dropdown */}
       <div className="sm:hidden">
         <button
           onClick={() => setIsMobileOpen(!isMobileOpen)}
@@ -117,7 +83,7 @@ function UserListItem({
           />
         </button>
         {isMobileOpen && (
-          <div className="p-4 border-t border-gray-200 space-y-3">
+          <div className="p-4 border-t border-slate-200 space-y-3">
             <div>
               <p className="text-xs text-gray-500">Email</p>
               <p>{user.email}</p>
@@ -129,7 +95,7 @@ function UserListItem({
             <div className="flex justify-end space-x-4 pt-2">
               <button
                 onClick={onEdit}
-                className="flex items-center text-sm p-2 rounded-md bg-gray-200 hover:bg-gray-300"
+                className="flex items-center text-sm p-2 rounded-md bg-slate-200 hover:bg-slate-300"
               >
                 <Edit size={16} className="mr-1" /> Editar
               </button>
@@ -151,15 +117,17 @@ export default function UsersPage() {
   const { userProfile } = useAuth();
   const router = useRouter();
 
-  const [users] = useState<UserProfile[]>(mockUsers);
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
 
-  // Estado do formulário
+  // CORREÇÃO: Adicionado 'uid' ao estado inicial para que o TypeScript reconheça a propriedade.
   const [formState, setFormState] = useState({
+    uid: "",
     nome: "",
     email: "",
     whatsapp: "",
@@ -167,15 +135,38 @@ export default function UsersPage() {
     role: "USER" as UserRole,
   });
 
-  // Acesso exclusivo para MASTER
+  const fetchUsers = async () => {
+    setIsLoading(true);
+    try {
+      const usersCollection = collection(db, "users");
+      const usersSnapshot = await getDocs(usersCollection);
+      const usersList = usersSnapshot.docs.map(
+        (document) => ({ uid: document.id, ...document.data() } as UserProfile)
+      );
+      setUsers(usersList);
+    } catch (error) {
+      console.error("Erro ao buscar usuários:", error);
+      toast.error("Não foi possível carregar os usuários.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (userProfile && userProfile.role === "MASTER") {
+      fetchUsers();
+    }
+  }, [userProfile]);
+
   if (userProfile && userProfile.role !== "MASTER") {
-    router.replace("/dashboard"); // Redireciona se não for MASTER
+    router.replace("/dashboard");
     return null;
   }
 
   const openAddModal = () => {
     setCurrentUser(null);
     setFormState({
+      uid: "",
       nome: "",
       email: "",
       whatsapp: "",
@@ -187,7 +178,7 @@ export default function UsersPage() {
 
   const openEditModal = (user: UserProfile) => {
     setCurrentUser(user);
-    setFormState({ ...user, senha: "" }); // Não preenche a senha no modo de edição
+    setFormState({ ...user, senha: "" });
     setIsFormModalOpen(true);
   };
 
@@ -200,17 +191,72 @@ export default function UsersPage() {
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = event.target;
-    setFormState((prev) => ({ ...prev, [name]: value }));
+    setFormState((previousState) => ({ ...previousState, [name]: value }));
   };
 
-  const handleSave = () => {
-    // Lógica para salvar (criar ou editar) usuário no Firebase Auth e Firestore
-    setIsFormModalOpen(false);
+  const handleSave = async () => {
+    if (currentUser) {
+      try {
+        const userRef = doc(db, "users", currentUser.uid);
+        // CORREÇÃO: Desativando o aviso de 'variáveis não utilizadas' para esta linha específica.
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { senha, uid, ...profileData } = formState;
+        await setDoc(userRef, profileData, { merge: true });
+        toast.success(`Usuário "${formState.nome}" atualizado com sucesso!`);
+        fetchUsers();
+        setIsFormModalOpen(false);
+      } catch (error) {
+        console.error("Erro ao atualizar usuário:", error);
+        toast.error("Não foi possível atualizar o usuário.");
+      }
+    } else {
+      if (!formState.email || !formState.senha) {
+        toast.error(
+          "Email e Senha são obrigatórios para criar um novo usuário."
+        );
+        return;
+      }
+      try {
+        const response = await fetch("/api/users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formState),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message);
+
+        toast.success(result.message);
+        fetchUsers();
+        setIsFormModalOpen(false);
+      } catch (error) {
+        console.error("Erro ao criar usuário:", error);
+        toast.error(
+          `Erro: ${
+            error instanceof Error ? error.message : "Erro desconhecido"
+          }`
+        );
+      }
+    }
   };
 
-  const handleDelete = () => {
-    // Lógica para deletar usuário
-    setIsDeleteModalOpen(false);
+  const handleDelete = async () => {
+    if (!userToDelete) return;
+    try {
+      const response = await fetch(`/api/users?uid=${userToDelete.uid}`, {
+        method: "DELETE",
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message);
+
+      toast.success(result.message);
+      fetchUsers();
+      setIsDeleteModalOpen(false);
+    } catch (error) {
+      console.error("Erro ao deletar usuário:", error);
+      toast.error(
+        `Erro: ${error instanceof Error ? error.message : "Erro desconhecido"}`
+      );
+    }
   };
 
   const modalTitle = currentUser ? "Editar Usuário" : "Adicionar Novo Usuário";
@@ -221,7 +267,7 @@ export default function UsersPage() {
         <h1 className="text-3xl font-bold text-gray-800">Gerenciar Usuários</h1>
         <button
           onClick={openAddModal}
-          className="mt-4 sm:mt-0 flex items-center justify-center bg-indigo-600 text-white px-4 py-2 rounded-lg shadow hover:bg-indigo-700 transition-colors"
+          className="mt-4 sm:mt-0 flex items-center justify-center bg-teal-600 text-white px-4 py-2 rounded-lg shadow hover:bg-teal-700 transition-colors"
         >
           <Plus size={20} className="mr-2" />
           <span className="hidden sm:inline">Adicionar Usuários</span>
@@ -229,29 +275,34 @@ export default function UsersPage() {
         </button>
       </div>
 
-      {/* Tabela de Usuários */}
       <div className="bg-white p-4 rounded-lg shadow-md">
-        {/* Cabeçalho da Tabela - Apenas Desktop */}
-        <div className="hidden sm:grid grid-cols-12 gap-4 p-3 text-sm font-bold text-gray-500 border-b">
-          <div className="col-span-3">Nome</div>
-          <div className="col-span-4">Email</div>
-          <div className="col-span-2">Whatsapp</div>
-          <div className="col-span-2">Perfil</div>
-          <div className="col-span-1 text-right">Ações</div>
-        </div>
-        <div className="space-y-2 mt-2">
-          {users.map((user) => (
-            <UserListItem
-              key={user.uid}
-              user={user}
-              onEdit={() => openEditModal(user)}
-              onDelete={() => openDeleteModal(user)}
-            />
-          ))}
-        </div>
+        {isLoading ? (
+          <p className="text-center text-gray-500 py-8">
+            Carregando usuários...
+          </p>
+        ) : (
+          <>
+            <div className="hidden sm:grid grid-cols-12 gap-4 p-3 text-sm font-bold text-slate-500 border-b">
+              <div className="col-span-3">Nome</div>
+              <div className="col-span-4">Email</div>
+              <div className="col-span-2">Whatsapp</div>
+              <div className="col-span-2">Perfil</div>
+              <div className="col-span-1 text-right">Ações</div>
+            </div>
+            <div className="space-y-2 mt-2">
+              {users.map((user) => (
+                <UserListItem
+                  key={user.uid}
+                  user={user}
+                  onEdit={() => openEditModal(user)}
+                  onDelete={() => openDeleteModal(user)}
+                />
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Modal de Adicionar/Editar Usuário */}
       <Modal
         isOpen={isFormModalOpen}
         onClose={() => setIsFormModalOpen(false)}
@@ -327,7 +378,7 @@ export default function UsersPage() {
           <div className="flex justify-end pt-4">
             <button
               onClick={handleSave}
-              className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700"
+              className="bg-teal-600 text-white px-6 py-2 rounded-lg hover:bg-teal-700"
             >
               Salvar
             </button>
@@ -335,7 +386,6 @@ export default function UsersPage() {
         </div>
       </Modal>
 
-      {/* Modal de Confirmação para Excluir */}
       <ConfirmationModal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}

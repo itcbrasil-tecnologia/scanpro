@@ -16,7 +16,6 @@ import { Plus, Edit, Trash2 } from "lucide-react";
 import { SketchPicker, ColorResult } from "react-color";
 import toast from "react-hot-toast";
 
-// Tipagem para um objeto de Projeto, agora com 'id' opcional
 interface Project {
   id: string;
   name: string;
@@ -35,7 +34,6 @@ export default function ProjectsPage() {
 
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
 
-  // Função para carregar os projetos do Firestore
   const fetchProjects = async () => {
     setIsLoading(true);
     try {
@@ -55,7 +53,6 @@ export default function ProjectsPage() {
     }
   };
 
-  // Carrega os projetos quando o componente é montado
   useEffect(() => {
     fetchProjects();
   }, []);
@@ -100,17 +97,15 @@ export default function ProjectsPage() {
 
     try {
       if (currentProject) {
-        // Editar projeto existente
         const projectRef = doc(db, "projects", currentProject.id);
         await setDoc(projectRef, projectData);
         toast.success(`Projeto "${projectName}" atualizado com sucesso!`);
       } else {
-        // Adicionar novo projeto
         const projectsCollection = collection(db, "projects");
         await addDoc(projectsCollection, projectData);
         toast.success(`Projeto "${projectName}" adicionado com sucesso!`);
       }
-      fetchProjects(); // Recarrega a lista de projetos
+      fetchProjects();
       closeModals();
     } catch (error) {
       console.error("Erro ao salvar projeto:", error);
@@ -122,12 +117,10 @@ export default function ProjectsPage() {
     if (!projectToDelete) return;
 
     try {
-      // Lógica de verificação (não pode haver UMs associadas) virá aqui
-      // Por enquanto, apenas deletamos
       const projectRef = doc(db, "projects", projectToDelete.id);
       await deleteDoc(projectRef);
       toast.success(`Projeto "${projectToDelete.name}" excluído com sucesso!`);
-      fetchProjects(); // Recarrega a lista
+      fetchProjects();
       closeModals();
     } catch (error) {
       console.error("Erro ao excluir projeto:", error);
@@ -145,7 +138,7 @@ export default function ProjectsPage() {
         <h1 className="text-3xl font-bold text-gray-800">Gerenciar Projetos</h1>
         <button
           onClick={openAddModal}
-          className="mt-4 sm:mt-0 flex items-center justify-center bg-scanpro-teal text-white px-4 py-2 rounded-lg shadow hover:bg-opacity-90 transition-colors"
+          className="mt-4 sm:mt-0 flex items-center justify-center bg-teal-600 text-white px-4 py-2 rounded-lg shadow hover:bg-teal-700 transition-colors"
         >
           <Plus size={20} className="mr-2" />
           <span className="hidden sm:inline">Adicionar Projeto</span>
@@ -176,7 +169,7 @@ export default function ProjectsPage() {
                   <div className="flex items-center space-x-3">
                     <button
                       onClick={() => openEditModal(project)}
-                      className="text-gray-500 hover:text-scanpro-teal"
+                      className="text-gray-500 hover:text-teal-600"
                     >
                       <Edit size={20} />
                     </button>
@@ -212,7 +205,7 @@ export default function ProjectsPage() {
               id="projectName"
               value={projectName}
               onChange={(event) => setProjectName(event.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-scanpro-teal focus:border-scanpro-teal"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
             />
           </div>
           <div>
@@ -229,7 +222,7 @@ export default function ProjectsPage() {
           <div className="flex justify-end pt-4">
             <button
               onClick={handleSave}
-              className="bg-scanpro-teal text-white px-6 py-2 rounded-lg hover:bg-opacity-90"
+              className="bg-teal-600 text-white px-6 py-2 rounded-lg hover:bg-teal-700"
             >
               Salvar
             </button>

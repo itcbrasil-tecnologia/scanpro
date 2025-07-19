@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import { db } from "@/lib/firebase/config";
-// CORREÇÃO: 'getDoc' removido da importação
 import {
   collection,
   getDocs,
@@ -17,7 +16,6 @@ import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { Layers, Sheet, Trash2, ChevronDown } from "lucide-react";
 import toast from "react-hot-toast";
 
-// --- Interfaces de Dados ---
 interface Project {
   id: string;
   name: string;
@@ -198,7 +196,7 @@ export default function NotebooksPage() {
         <div className="flex space-x-2 mt-4 sm:mt-0">
           <button
             onClick={() => setIsSingleModalOpen(true)}
-            className="flex items-center justify-center bg-scanpro-teal text-white px-4 py-2 rounded-lg shadow hover:bg-opacity-90 transition-colors"
+            className="flex items-center justify-center bg-teal-600 text-white px-4 py-2 rounded-lg shadow hover:bg-teal-700 transition-colors"
           >
             <Sheet size={20} className="mr-2" />
             <span className="hidden sm:inline">Adicionar Notebook</span>
@@ -354,7 +352,7 @@ export default function NotebooksPage() {
           <div className="flex justify-end pt-2">
             <button
               onClick={handleSaveSingle}
-              className="bg-scanpro-teal text-white px-6 py-2 rounded-lg hover:bg-opacity-90"
+              className="bg-teal-600 text-white px-6 py-2 rounded-lg hover:bg-teal-700"
             >
               Salvar
             </button>
@@ -455,7 +453,7 @@ export default function NotebooksPage() {
               <div className="flex justify-end pt-2">
                 <button
                   onClick={handleSaveBatch}
-                  className="bg-scanpro-teal text-white px-6 py-2 rounded-lg hover:bg-opacity-90"
+                  className="bg-teal-600 text-white px-6 py-2 rounded-lg hover:bg-teal-700"
                 >
                   Salvar Lote
                 </button>
