@@ -1,25 +1,28 @@
-// components/layout/AdminLayout.tsx
 "use client";
 
-import React, { useEffect } from "react"; // Importar useEffect
+import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { Navbar } from "@/components/ui/Navbar";
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { userProfile, loading } = useAuth();
+  const { user, userProfile, loading } = useAuth();
   const router = useRouter();
 
-  // Lógica de redirecionamento movida para dentro do useEffect
   useEffect(() => {
-    if (!loading && !userProfile) {
+    // Se o carregamento terminou e não há usuário, redireciona para o login.
+    if (!loading && !user) {
       router.replace("/");
-    } else if (userProfile && userProfile.role === "USER") {
+    }
+    // Se o perfil foi carregado e é de um técnico, redireciona para a página dele.
+    else if (userProfile && userProfile.role === "USER") {
       router.replace("/inicio");
     }
-  }, [userProfile, loading, router]);
+  }, [user, userProfile, loading, router]);
 
-  if (loading || !userProfile || userProfile.role === "USER") {
+  // Exibe "Carregando..." enquanto a autenticação está pendente
+  // OU se já temos um usuário mas ainda não carregamos seu perfil do Firestore.
+  if (loading || !userProfile) {
     return (
       <div className="flex items-center justify-center h-screen bg-slate-100">
         <div>Carregando...</div>
@@ -27,10 +30,16 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-slate-100">
-      <Navbar userProfile={userProfile} />
-      <main className="p-4 sm:p-6 lg:p-8">{children}</main>
-    </div>
-  );
+  // Se o perfil estiver carregado e for do tipo correto, exibe o conteúdo.
+  if (userProfile.role === "ADMIN" || userProfile.role === "MASTER") {
+    return (
+      <div className="min-h-screen bg-slate-100">
+        <Navbar userProfile={userProfile} />
+        <main className="p-4 sm:p-6 lg:p-8">{children}</main>
+      </div>
+    );
+  }
+
+  // Caso contrário, não renderiza nada enquanto o redirecionamento acontece.
+  return null;
 }

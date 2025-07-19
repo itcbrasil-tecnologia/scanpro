@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
 import { auth } from "@/lib/firebase/config";
+import { useAuth } from "@/context/AuthContext";
 import toast from "react-hot-toast";
 
 export default function LoginPage() {
@@ -13,6 +14,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+
+  // Efeito que redireciona o utilizador se ele já estiver logado
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.replace("/inicio"); // Redireciona para a página inicial padrão
+    }
+  }, [user, authLoading, router]);
 
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -24,23 +33,32 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      toast.success("Login realizado com sucesso! Redirecionando...");
-      // A mágica acontece aqui: não fazemos mais nada.
-      // O AuthContext e os Layouts cuidarão do redirecionamento.
-      // O botão permanecerá desativado enquanto a página é trocada.
+      toast.success("Login realizado com sucesso!");
+      // CORREÇÃO: Reintroduzimos o push para forçar a navegação.
+      router.push("/inicio");
     } catch (error) {
-      if (error instanceof FirebaseError) {
-        console.error("Erro no login (Firebase):", error.code);
+      if (
+        error instanceof FirebaseError &&
+        error.code === "auth/invalid-credential"
+      ) {
         toast.error("E-mail ou senha inválidos. Tente novamente.");
       } else {
         console.error("Erro no login (desconhecido):", error);
         toast.error("Ocorreu um erro inesperado.");
       }
-      // Só reativamos o botão em caso de erro.
-      setIsLoading(false);
+      setIsLoading(false); // Reativa o botão apenas em caso de erro.
     }
-    // O bloco 'finally' foi removido para evitar reativar o botão em caso de sucesso.
   };
+
+  // Se a autenticação estiver a carregar ou se o utilizador já estiver logado,
+  // mostra um ecrã de carregamento para evitar que o formulário pisque no ecrã.
+  if (authLoading || user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-100">
+        <p>Carregando...</p>
+      </div>
+    );
+  }
 
   return (
     <main className="flex items-center justify-center min-h-screen bg-slate-100">
