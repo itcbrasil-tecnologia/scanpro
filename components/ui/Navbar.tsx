@@ -285,13 +285,60 @@ export function Navbar({ userProfile }: NavbarProps) {
       </nav>
     );
   } else {
-    // LAYOUT PARA USER (TÉCNICO)
+    // LAYOUT PARA USER (TÉCNICO) - MUDANÇA APLICADA AQUI
     return (
       <nav className="bg-slate-800 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <Logo />
-            <div className="relative" ref={userDropdownRef}>
+            {/* Menu Desktop para Técnico */}
+            <div className="hidden md:block" ref={userDropdownRef}>
+              <div className="relative">
+                <button
+                  onClick={() => setIsUserDropdownOpen((prev) => !prev)}
+                  className="flex items-center text-sm rounded-full text-slate-300 hover:text-white hover:bg-slate-700 p-2 focus:outline-none"
+                >
+                  <User size={24} />
+                  <span className="ml-2">{userProfile.nome.split(" ")[0]}</span>
+                  <ChevronDown size={16} className="ml-1" />
+                </button>
+                {isUserDropdownOpen && (
+                  <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg py-1 bg-white z-10">
+                    <div className="px-4 py-2 text-sm text-slate-500 border-b">
+                      <p>Sessão iniciada como</p>
+                      <p className="font-medium text-slate-800 truncate">
+                        {userProfile.email}
+                      </p>
+                    </div>
+                    <Link
+                      href="/inicio"
+                      className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                      onClick={() => setIsUserDropdownOpen(false)}
+                    >
+                      <Home size={16} className="mr-2 text-slate-500" /> Início
+                    </Link>
+                    <div className="border-t my-1"></div>
+                    <Link
+                      href="/alterar-senha"
+                      className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                      onClick={() => setIsUserDropdownOpen(false)}
+                    >
+                      <KeyRound size={16} className="mr-2 text-slate-500" />{" "}
+                      Alterar Senha
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                    >
+                      <LogOut size={16} className="mr-2 text-red-600" />{" "}
+                      <span className="text-red-600">Sair</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+            {/* Menu Mobile para Técnico */}
+            <div className="md:hidden" ref={userDropdownRef}>
               <button
                 onClick={() => setIsUserDropdownOpen((prev) => !prev)}
                 className="inline-flex items-center justify-center p-2 rounded-md text-slate-300 hover:text-white focus:outline-none"

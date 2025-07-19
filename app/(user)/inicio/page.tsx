@@ -11,6 +11,7 @@ import {
   getDocs,
   orderBy,
   limit,
+  Timestamp,
 } from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
 import { BookCheck, Camera } from "lucide-react";
@@ -35,24 +36,51 @@ export default function InicioPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState<string[]>([]);
 
-  // A lógica de contagem diária pode ser implementada no futuro
-  const dailyCounts = { completed: 1, total: 2 };
+  const [dailyCounts, setDailyCounts] = useState({ completed: 0, total: 2 });
 
   useEffect(() => {
-    const fetchUserConferences = async () => {
-      if (!userProfile) return; // Garante que o perfil do usuário já foi carregado
+    // CORREÇÃO: Esta verificação impede a execução do código se o userProfile ainda não foi carregado.
+    // Isso resolve o erro "Unsupported field value: undefined".
+    if (!userProfile) {
+      return;
+    }
 
+    const fetchUserData = async () => {
       setIsLoading(true);
       try {
-        const conferencesQuery = query(
-          collection(db, "conferences"),
-          where("userId", "==", userProfile.uid), // Filtra pelo UID do usuário logado
-          orderBy("endTime", "desc"),
-          limit(20) // Pega as últimas 20 conferências
+        const today = new Date();
+        const startOfDay = new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          today.getDate()
+        );
+        const endOfDay = new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          today.getDate() + 1
         );
 
-        const querySnapshot = await getDocs(conferencesQuery);
-        const userConferences = querySnapshot.docs.map((document) => {
+        const dailyCountQuery = query(
+          collection(db, "conferences"),
+          where("userId", "==", userProfile.uid),
+          where("endTime", ">=", Timestamp.fromDate(startOfDay)),
+          where("endTime", "<", Timestamp.fromDate(endOfDay))
+        );
+        const dailySnapshot = await getDocs(dailyCountQuery);
+        setDailyCounts((currentCounts) => ({
+          ...currentCounts,
+          completed: dailySnapshot.size,
+        }));
+
+        const historyQuery = query(
+          collection(db, "conferences"),
+          where("userId", "==", userProfile.uid),
+          orderBy("endTime", "desc"),
+          limit(20)
+        );
+
+        const historySnapshot = await getDocs(historyQuery);
+        const userConferences = historySnapshot.docs.map((document) => {
           const data = document.data();
           return {
             id: document.id,
@@ -78,15 +106,15 @@ export default function InicioPage() {
         });
         setConferences(userConferences);
       } catch (error) {
-        console.error("Erro ao buscar conferências do usuário:", error);
-        toast.error("Não foi possível carregar seu histórico.");
+        console.error("Erro ao buscar dados do usuário:", error);
+        toast.error("Não foi possível carregar os seus dados.");
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchUserConferences();
-  }, [userProfile]); // Roda o efeito quando o perfil do usuário estiver disponível
+    fetchUserData();
+  }, [userProfile]);
 
   const openDetailsModal = (hostnames: string[]) => {
     setModalContent(hostnames);
@@ -112,8 +140,8 @@ export default function InicioPage() {
         Bem-vindo, {userProfile?.nome?.split(" ")[0]}!
       </h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-        <div className="md:col-span-1 space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+        <div className="lg:col-span-1 space-y-4">
           <div className="bg-white p-4 rounded-lg shadow-md text-center">
             <h3 className="font-bold text-gray-700">
               Contagens Diárias Disponíveis
@@ -136,9 +164,9 @@ export default function InicioPage() {
           </div>
         </div>
 
-        <div className="md:col-span-2 bg-white p-4 rounded-lg shadow-md overflow-hidden">
+        <div className="lg:col-span-3 bg-white p-4 rounded-lg shadow-md overflow-hidden">
           <h2 className="text-xl font-bold text-gray-800 mb-4">
-            Suas Últimas Conferências
+            As suas Últimas Conferências
           </h2>
           <div className="overflow-x-auto">
             <table className="w-full text-left">
@@ -165,7 +193,7 @@ export default function InicioPage() {
                 {isLoading ? (
                   <tr>
                     <td colSpan={5} className="text-center p-6 text-gray-500">
-                      Carregando histórico...
+                      A carregar histórico...
                     </td>
                   </tr>
                 ) : conferences.length > 0 ? (

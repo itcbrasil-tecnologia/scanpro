@@ -24,8 +24,10 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      toast.success("Login realizado com sucesso!");
-      router.push("/inicio");
+      toast.success("Login realizado com sucesso! Redirecionando...");
+      // A mágica acontece aqui: não fazemos mais nada.
+      // O AuthContext e os Layouts cuidarão do redirecionamento.
+      // O botão permanecerá desativado enquanto a página é trocada.
     } catch (error) {
       if (error instanceof FirebaseError) {
         console.error("Erro no login (Firebase):", error.code);
@@ -34,9 +36,10 @@ export default function LoginPage() {
         console.error("Erro no login (desconhecido):", error);
         toast.error("Ocorreu um erro inesperado.");
       }
-    } finally {
+      // Só reativamos o botão em caso de erro.
       setIsLoading(false);
     }
+    // O bloco 'finally' foi removido para evitar reativar o botão em caso de sucesso.
   };
 
   return (
@@ -51,7 +54,6 @@ export default function LoginPage() {
             className="mx-auto mb-4"
             priority
           />
-          {/* O <h1>ScanPRO</h1> foi removido daqui */}
           <p className="mt-2 text-sm text-gray-600">
             Acesse sua conta para continuar
           </p>
