@@ -16,7 +16,8 @@ export default function LoginPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
 
-  // Efeito que redireciona o utilizador se ele já estiver logado
+  // EFEITO ADICIONADO: Este hook observa o estado de autenticação.
+  // Assim que o 'user' for detectado, ele força o redirecionamento.
   useEffect(() => {
     if (!authLoading && user) {
       router.replace("/inicio"); // Redireciona para a página inicial padrão
@@ -33,9 +34,8 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      toast.success("Login realizado com sucesso!");
-      // CORREÇÃO: Reintroduzimos o push para forçar a navegação.
-      router.push("/inicio");
+      toast.success("Login realizado com sucesso! Redirecionando...");
+      // A partir daqui, o useEffect acima e os Layouts cuidarão do redirecionamento.
     } catch (error) {
       if (
         error instanceof FirebaseError &&
@@ -119,7 +119,7 @@ export default function LoginPage() {
               disabled={isLoading}
               className="w-full px-4 py-2 font-semibold text-white bg-teal-600 rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:bg-teal-400 disabled:cursor-not-allowed"
             >
-              {isLoading ? "Entrando..." : "Entrar"}
+              {isLoading ? "Redirecionando..." : "Entrar"}
             </button>
           </div>
         </form>
