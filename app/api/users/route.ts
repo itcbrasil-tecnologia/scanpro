@@ -1,43 +1,55 @@
 // app/api/users/route.ts
 import { NextResponse } from "next/server";
-
-// ATENÇÃO: Em um projeto real, esta rota seria protegida e usaria o Firebase Admin SDK
-// para criar e deletar usuários com segurança.
-// Como estamos simulando o backend, vamos apenas retornar respostas de sucesso.
+import admin from "@/lib/firebase/admin";
 
 /**
- * Rota para CRIAR um novo usuário.
- * Recebe os dados do usuário e simula a criação.
+ * Rota para CRIAR um novo usuário REAL no Firebase.
  */
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    // CORREÇÃO: 'email' removido da desestruturação pois não era usado.
-    const { nome } = body;
+    const { email, senha, nome, whatsapp, role } = await request.json();
 
-    console.log("API Rota: Tentando criar usuário:", body);
+    // 1. Cria o usuário no Firebase Authentication
+    const userRecord = await admin.auth().createUser({
+      email: email,
+      password: senha,
+      displayName: nome,
+    });
 
-    // LÓGICA DO FIREBASE ADMIN SDK (simulada):
-    // 1. Verificar se quem chama é um MASTER.
-    // 2. admin.auth().createUser({ email, password });
-    // 3. admin.firestore().collection('users').doc(newUser.uid).set({ nome, email, ... });
+    // 2. Salva o perfil customizado no Firestore
+    await admin.firestore().collection("users").doc(userRecord.uid).set({
+      nome: nome,
+      email: email,
+      whatsapp: whatsapp,
+      role: role,
+    });
 
     return NextResponse.json(
-      { message: `Usuário ${nome} criado com sucesso (simulado).` },
+      { message: `Usuário ${nome} criado com sucesso.` },
       { status: 201 }
     );
-  } catch (error) {
+  } catch (error: unknown) {
+    // Captura o erro como 'unknown'
     console.error("API Rota: Erro ao criar usuário:", error);
-    return NextResponse.json(
-      { message: "Erro interno do servidor." },
-      { status: 500 }
-    );
+
+    let message = "Erro ao criar usuário.";
+
+    // CORREÇÃO: Verificação de tipo segura sem usar 'as any'
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as { code: unknown }).code === "auth/email-already-exists"
+    ) {
+      message = "Este e-mail já está em uso.";
+    }
+
+    return NextResponse.json({ message }, { status: 400 });
   }
 }
 
 /**
- * Rota para DELETAR um usuário.
- * Recebe o UID do usuário e simula a exclusão.
+ * Rota para DELETAR um usuário REAL no Firebase.
  */
 export async function DELETE(request: Request) {
   try {
@@ -51,21 +63,20 @@ export async function DELETE(request: Request) {
       );
     }
 
-    console.log("API Rota: Tentando deletar usuário com UID:", uid);
+    // 1. Deleta o usuário do Firebase Authentication
+    await admin.auth().deleteUser(uid);
 
-    // LÓGICA DO FIREBASE ADMIN SDK (simulada):
-    // 1. Verificar se quem chama é um MASTER.
-    // 2. admin.auth().deleteUser(uid);
-    // 3. admin.firestore().collection('users').doc(uid).delete();
+    // 2. Deleta o perfil do Firestore
+    await admin.firestore().collection("users").doc(uid).delete();
 
     return NextResponse.json(
-      { message: `Usuário deletado com sucesso (simulado).` },
+      { message: `Usuário deletado com sucesso.` },
       { status: 200 }
     );
   } catch (error) {
     console.error("API Rota: Erro ao deletar usuário:", error);
     return NextResponse.json(
-      { message: "Erro interno do servidor." },
+      { message: "Erro ao deletar usuário." },
       { status: 500 }
     );
   }
