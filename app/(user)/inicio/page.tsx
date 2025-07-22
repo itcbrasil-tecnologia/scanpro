@@ -17,6 +17,7 @@ import { Modal } from "@/components/ui/Modal";
 import { BookCheck, Camera } from "lucide-react";
 import toast from "react-hot-toast";
 
+// A interface representa os dados APÓS serem formatados para exibição.
 interface Conference {
   id: string;
   date: string;
@@ -35,12 +36,10 @@ export default function InicioPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState<string[]>([]);
-
   const [dailyCounts, setDailyCounts] = useState({ completed: 0, total: 2 });
 
   useEffect(() => {
-    // CORREÇÃO: Esta verificação impede a execução do código se o userProfile ainda não foi carregado.
-    // Isso resolve o erro "Unsupported field value: undefined".
+    // Guarda de proteção: Essencial para não executar a consulta antes do perfil do usuário ser carregado.
     if (!userProfile) {
       return;
     }
@@ -48,6 +47,10 @@ export default function InicioPage() {
     const fetchUserData = async () => {
       setIsLoading(true);
       try {
+        // --- ÍNDICE ÚNICO NECESSÁRIO ---
+        // Ambas as consultas abaixo são atendidas de forma eficiente por um único índice composto no Firestore:
+        // Coleção: conferences | Campos: userId (asc), endTime (desc)
+
         const today = new Date();
         const startOfDay = new Date(
           today.getFullYear(),
@@ -60,6 +63,7 @@ export default function InicioPage() {
           today.getDate() + 1
         );
 
+        // --- CONSULTA 1: Contagens Diárias ---
         const dailyCountQuery = query(
           collection(db, "conferences"),
           where("userId", "==", userProfile.uid),
@@ -72,6 +76,7 @@ export default function InicioPage() {
           completed: dailySnapshot.size,
         }));
 
+        // --- CONSULTA 2: Histórico de Conferências ---
         const historyQuery = query(
           collection(db, "conferences"),
           where("userId", "==", userProfile.uid),
@@ -82,6 +87,7 @@ export default function InicioPage() {
         const historySnapshot = await getDocs(historyQuery);
         const userConferences = historySnapshot.docs.map((document) => {
           const data = document.data();
+          // Mapeamento seguro dos dados do Firestore para a nossa interface do frontend.
           return {
             id: document.id,
             date: data.endTime.toDate().toLocaleDateString("pt-BR"),
@@ -114,7 +120,7 @@ export default function InicioPage() {
     };
 
     fetchUserData();
-  }, [userProfile]);
+  }, [userProfile]); // O efeito é re-executado sempre que o userProfile mudar.
 
   const openDetailsModal = (hostnames: string[]) => {
     setModalContent(hostnames);
@@ -126,7 +132,6 @@ export default function InicioPage() {
     const style = isComplete
       ? "bg-green-100 text-green-800"
       : "bg-red-100 text-red-800";
-
     return (
       <span className={`px-3 py-1 text-xs font-bold rounded-full ${style}`}>
         CONCLUÍDO
@@ -134,6 +139,7 @@ export default function InicioPage() {
     );
   };
 
+  // O restante do seu JSX permanece o mesmo, pois já está excelente.
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold text-gray-800">
@@ -223,7 +229,7 @@ export default function InicioPage() {
                             onClick={() =>
                               openDetailsModal(conference.missingHostnames)
                             }
-                            className="text-scanpro-teal hover:underline text-sm font-medium"
+                            className="text-teal-600 hover:underline text-sm font-medium"
                           >
                             Ver
                           </button>
