@@ -7,7 +7,6 @@ import { Download, Filter, XCircle } from "lucide-react";
 import Papa from "papaparse";
 import toast from "react-hot-toast";
 
-// --- Interfaces para os Dados ---
 interface Conference {
   id: string;
   date: string;
@@ -25,10 +24,12 @@ interface Project {
   id: string;
   name: string;
 }
+
 interface UM {
   id: string;
   name: string;
 }
+
 interface User {
   uid: string;
   nome: string;
@@ -40,7 +41,6 @@ export default function ReportsPage() {
   const [ums, setUms] = useState<UM[]>([]);
   const [technicians, setTechnicians] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
   const [filters, setFilters] = useState({
     date: "",
     projectId: "",
@@ -106,7 +106,9 @@ export default function ReportsPage() {
         setAllConferences(conferencesList);
       } catch (error) {
         console.error("Erro ao buscar dados para relatórios:", error);
-        toast.error("Não foi possível carregar os dados.");
+        toast.error("Não foi possível carregar os dados.", {
+          id: "global-toast",
+        });
       } finally {
         setIsLoading(false);
       }
@@ -145,7 +147,7 @@ export default function ReportsPage() {
 
   const handleExportCSV = () => {
     if (filteredConferences.length === 0) {
-      toast.error("Nenhum dado para exportar.");
+      toast.error("Nenhum dado para exportar.", { id: "global-toast" });
       return;
     }
     const csvData = Papa.unparse(
@@ -162,7 +164,6 @@ export default function ReportsPage() {
       })),
       { header: true }
     );
-
     const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
@@ -179,7 +180,6 @@ export default function ReportsPage() {
       <h1 className="text-3xl font-bold text-gray-800">
         Relatórios de Conferências
       </h1>
-
       <div className="bg-white p-4 rounded-lg shadow-md">
         <div className="flex items-center mb-4">
           <Filter size={20} className="mr-2 text-gray-600" />
@@ -248,11 +248,9 @@ export default function ReportsPage() {
           </button>
         </div>
       </div>
-
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
-            {/* MUDANÇA APLICADA AQUI */}
             <thead className="bg-slate-200 border-b-2 border-slate-300">
               <tr>
                 <th className="p-3 text-sm font-semibold text-slate-600">

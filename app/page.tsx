@@ -16,42 +16,42 @@ export default function LoginPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
 
-  // EFEITO ADICIONADO: Este hook observa o estado de autenticação.
-  // Assim que o 'user' for detectado, ele força o redirecionamento.
   useEffect(() => {
     if (!authLoading && user) {
-      router.replace("/inicio"); // Redireciona para a página inicial padrão
+      router.replace("/inicio");
     }
   }, [user, authLoading, router]);
 
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!email || !password) {
-      toast.error("Por favor, preencha e-mail e senha.");
+      toast.error("Por favor, preencha e-mail e senha.", {
+        id: "global-toast",
+      });
       return;
     }
-
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      toast.success("Login realizado com sucesso! Redirecionando...");
-      // A partir daqui, o useEffect acima e os Layouts cuidarão do redirecionamento.
+      toast.success("Login realizado com sucesso! Redirecionando...", {
+        id: "global-toast",
+      });
     } catch (error) {
       if (
         error instanceof FirebaseError &&
         error.code === "auth/invalid-credential"
       ) {
-        toast.error("E-mail ou senha inválidos. Tente novamente.");
+        toast.error("E-mail ou senha inválidos. Tente novamente.", {
+          id: "global-toast",
+        });
       } else {
         console.error("Erro no login (desconhecido):", error);
-        toast.error("Ocorreu um erro inesperado.");
+        toast.error("Ocorreu um erro inesperado.", { id: "global-toast" });
       }
-      setIsLoading(false); // Reativa o botão apenas em caso de erro.
+      setIsLoading(false);
     }
   };
 
-  // Se a autenticação estiver a carregar ou se o utilizador já estiver logado,
-  // mostra um ecrã de carregamento para evitar que o formulário pisque no ecrã.
   if (authLoading || user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-100">

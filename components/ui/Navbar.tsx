@@ -32,23 +32,20 @@ export function Navbar({ userProfile }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAdminDropdownOpen, setIsAdminDropdownOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
-  // NOVO ESTADO: Controla o dropdown de administração no modo celular
   const [isMobileAdminOpen, setIsMobileAdminOpen] = useState(false);
-
   const pathname = usePathname();
   const router = useRouter();
-
   const adminDropdownRef = useRef<HTMLDivElement>(null);
   const userDropdownRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      toast.success("Você saiu com sucesso!");
+      toast.success("Você saiu com sucesso!", { id: "global-toast" });
       router.push("/");
     } catch (error) {
       console.error("Erro ao tentar sair:", error);
-      toast.error("Erro ao tentar sair.");
+      toast.error("Erro ao tentar sair.", { id: "global-toast" });
     }
   };
 
@@ -78,6 +75,7 @@ export function Navbar({ userProfile }: NavbarProps) {
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Relatórios", href: "/relatorios", icon: FileText },
   ];
+
   const adminDropdownItems = [
     { name: "Projetos", href: "/projetos", icon: BriefcaseBusiness },
     { name: "UMs", href: "/ums", icon: Truck },
@@ -87,7 +85,6 @@ export function Navbar({ userProfile }: NavbarProps) {
       : []),
   ];
 
-  // NOVA FUNÇÃO: Fecha o menu mobile ao clicar num link
   const handleMobileLinkClick = () => {
     setIsMobileMenuOpen(false);
     setIsMobileAdminOpen(false);
@@ -128,7 +125,6 @@ export function Navbar({ userProfile }: NavbarProps) {
     </Link>
   );
 
-  // Componente reutilizável para o menu do usuário (desktop e técnico)
   const UserMenu = () => (
     <div className="relative" ref={userDropdownRef}>
       <button
@@ -162,7 +158,8 @@ export function Navbar({ userProfile }: NavbarProps) {
             className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
             onClick={() => setIsUserDropdownOpen(false)}
           >
-            <KeyRound size={16} className="mr-2 text-slate-500" /> Alterar Senha
+            <KeyRound size={16} className="mr-2 text-slate-500" />
+            Alterar Senha
           </Link>
           <button
             onClick={handleLogout}
@@ -182,8 +179,6 @@ export function Navbar({ userProfile }: NavbarProps) {
           <div className="flex-shrink-0">
             <Logo />
           </div>
-
-          {/* Menus Desktop para Admin/Master */}
           {isAdminOrMaster && (
             <div className="hidden md:flex flex-1 items-center justify-center">
               <div className="flex items-baseline space-x-4">
@@ -216,7 +211,8 @@ export function Navbar({ userProfile }: NavbarProps) {
                           className="flex items-center px-4 py-2 text-sm text-slate-200 hover:bg-slate-700 hover:text-white"
                           onClick={() => setIsAdminDropdownOpen(false)}
                         >
-                          <item.icon size={16} className="mr-2" /> {item.name}
+                          <item.icon size={16} className="mr-2" />
+                          {item.name}
                         </Link>
                       ))}
                     </div>
@@ -225,13 +221,9 @@ export function Navbar({ userProfile }: NavbarProps) {
               </div>
             </div>
           )}
-
-          {/* Menu de Usuário Desktop (para todos os perfis) */}
           <div className="hidden md:block flex-shrink-0">
             <UserMenu />
           </div>
-
-          {/* Botão do Menu Mobile */}
           <div className="md:hidden flex items-center">
             <div className="md:hidden absolute left-4">
               <Logo />
@@ -245,8 +237,6 @@ export function Navbar({ userProfile }: NavbarProps) {
           </div>
         </div>
       </div>
-
-      {/* Conteúdo do Menu Mobile */}
       {isMobileMenuOpen && (
         <div className="md:hidden bg-slate-800 border-t border-slate-700">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
@@ -263,8 +253,6 @@ export function Navbar({ userProfile }: NavbarProps) {
                     {item.name}
                   </Link>
                 ))}
-
-                {/* MUDANÇA: Dropdown de Administração no Mobile */}
                 <button
                   onClick={() => setIsMobileAdminOpen((prev) => !prev)}
                   className="w-full flex items-center justify-between text-slate-200 hover:bg-slate-700 hover:text-white px-3 py-2 rounded-md text-base font-medium"

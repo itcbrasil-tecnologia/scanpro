@@ -14,7 +14,6 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
-// Ícones atualizados e novos
 import { ScanBarcode, Camera, CheckCircle } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -37,23 +36,19 @@ export default function InicioPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState<string[]>([]);
 
-  // O valor 'total' agora é dinâmico, buscando do perfil do usuário.
   const [dailyCounts, setDailyCounts] = useState({
     completed: 0,
-    total: userProfile?.dailyConferenceGoal || 2, // Usa o valor do perfil ou 2 como fallback
+    total: userProfile?.dailyConferenceGoal || 2,
   });
 
   useEffect(() => {
     if (!userProfile) {
       return;
     }
-
-    // Atualiza o total de contagens assim que o perfil do usuário for carregado.
     setDailyCounts((prev) => ({
       ...prev,
       total: userProfile.dailyConferenceGoal || 2,
     }));
-
     const fetchUserData = async () => {
       setIsLoading(true);
       try {
@@ -115,12 +110,13 @@ export default function InicioPage() {
         setConferences(userConferences);
       } catch (error) {
         console.error("Erro ao buscar dados do usuário:", error);
-        toast.error("Não foi possível carregar os seus dados.");
+        toast.error("Não foi possível carregar os seus dados.", {
+          id: "global-toast",
+        });
       } finally {
         setIsLoading(false);
       }
     };
-
     fetchUserData();
   }, [userProfile]);
 
@@ -148,7 +144,6 @@ export default function InicioPage() {
       <h1 className="text-3xl font-bold text-gray-800">
         Bem-vindo, {userProfile?.nome?.split(" ")[0]}!
       </h1>
-
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
         <div className="lg:col-span-1 space-y-4">
           <div className="bg-white p-4 rounded-lg shadow-md text-center">
@@ -156,15 +151,12 @@ export default function InicioPage() {
               Contagens Diárias Disponíveis
             </h3>
             <div className="flex justify-center items-center my-2">
-              {/* TAREFA 2: Ícone alterado para ScanBarcode */}
               <ScanBarcode className="w-10 h-10 text-teal-600" />
               <p className="text-4xl font-bold text-gray-800 ml-4">
                 {dailyCounts.total - dailyCounts.completed}/{dailyCounts.total}
               </p>
             </div>
           </div>
-
-          {/* TAREFA 1: Lógica de ativação do botão */}
           <div className="sm:hidden">
             {allDailyCountsCompleted ? (
               <div className="w-full flex items-center justify-center bg-gray-200 text-gray-500 px-4 py-3 rounded-lg font-bold text-lg">
@@ -181,7 +173,6 @@ export default function InicioPage() {
             )}
           </div>
         </div>
-
         <div className="lg:col-span-3 bg-white p-4 rounded-lg shadow-md overflow-hidden">
           <h2 className="text-xl font-bold text-gray-800 mb-4">
             As suas Últimas Conferências
@@ -241,7 +232,7 @@ export default function InicioPage() {
                             onClick={() =>
                               openDetailsModal(conference.missingHostnames)
                             }
-                            className="text-teal-600 hover:underline text-sm font-medium"
+                            className="text-scanpro-teal hover:underline text-sm font-medium"
                           >
                             Ver
                           </button>
@@ -261,7 +252,6 @@ export default function InicioPage() {
           </div>
         </div>
       </div>
-
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

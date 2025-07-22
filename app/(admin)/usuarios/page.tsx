@@ -26,7 +26,6 @@ function UserListItem({
     ADMIN: "bg-blue-200 text-blue-800",
     USER: "bg-green-200 text-green-800",
   };
-
   return (
     <div className="bg-slate-50 rounded-lg">
       <div className="hidden sm:grid grid-cols-12 gap-4 items-center p-3">
@@ -59,7 +58,6 @@ function UserListItem({
           </button>
         </div>
       </div>
-
       <div className="sm:hidden">
         <button
           onClick={() => setIsMobileOpen(!isMobileOpen)}
@@ -116,16 +114,12 @@ function UserListItem({
 export default function UsersPage() {
   const { userProfile } = useAuth();
   const router = useRouter();
-
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
-
-  // CORREÇÃO: Adicionado 'uid' ao estado inicial para que o TypeScript reconheça a propriedade.
   const [formState, setFormState] = useState({
     uid: "",
     nome: "",
@@ -141,12 +135,14 @@ export default function UsersPage() {
       const usersCollection = collection(db, "users");
       const usersSnapshot = await getDocs(usersCollection);
       const usersList = usersSnapshot.docs.map(
-        (document) => ({ uid: document.id, ...document.data() } as UserProfile)
+        (doc) => ({ uid: doc.id, ...doc.data() } as UserProfile)
       );
       setUsers(usersList);
     } catch (error) {
       console.error("Erro ao buscar usuários:", error);
-      toast.error("Não foi possível carregar os usuários.");
+      toast.error("Não foi possível carregar os usuários.", {
+        id: "global-toast",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -178,7 +174,10 @@ export default function UsersPage() {
 
   const openEditModal = (user: UserProfile) => {
     setCurrentUser(user);
-    setFormState({ ...user, senha: "" });
+    setFormState({
+      ...user,
+      senha: "",
+    });
     setIsFormModalOpen(true);
   };
 
@@ -191,28 +190,35 @@ export default function UsersPage() {
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = event.target;
-    setFormState((previousState) => ({ ...previousState, [name]: value }));
+    setFormState((previousState) => ({
+      ...previousState,
+      [name]: value,
+    }));
   };
 
   const handleSave = async () => {
     if (currentUser) {
       try {
         const userRef = doc(db, "users", currentUser.uid);
-        // CORREÇÃO: Desativando o aviso de 'variáveis não utilizadas' para esta linha específica.
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { senha, uid, ...profileData } = formState;
         await setDoc(userRef, profileData, { merge: true });
-        toast.success(`Usuário "${formState.nome}" atualizado com sucesso!`);
+        toast.success(`Usuário "${formState.nome}" atualizado com sucesso!`, {
+          id: "global-toast",
+        });
         fetchUsers();
         setIsFormModalOpen(false);
       } catch (error) {
         console.error("Erro ao atualizar usuário:", error);
-        toast.error("Não foi possível atualizar o usuário.");
+        toast.error("Não foi possível atualizar o usuário.", {
+          id: "global-toast",
+        });
       }
     } else {
       if (!formState.email || !formState.senha) {
         toast.error(
-          "Email e Senha são obrigatórios para criar um novo usuário."
+          "Email e Senha são obrigatórios para criar um novo usuário.",
+          { id: "global-toast" }
         );
         return;
       }
@@ -224,8 +230,7 @@ export default function UsersPage() {
         });
         const result = await response.json();
         if (!response.ok) throw new Error(result.message);
-
-        toast.success(result.message);
+        toast.success(result.message, { id: "global-toast" });
         fetchUsers();
         setIsFormModalOpen(false);
       } catch (error) {
@@ -233,7 +238,8 @@ export default function UsersPage() {
         toast.error(
           `Erro: ${
             error instanceof Error ? error.message : "Erro desconhecido"
-          }`
+          }`,
+          { id: "global-toast" }
         );
       }
     }
@@ -247,14 +253,14 @@ export default function UsersPage() {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.message);
-
-      toast.success(result.message);
+      toast.success(result.message, { id: "global-toast" });
       fetchUsers();
       setIsDeleteModalOpen(false);
     } catch (error) {
       console.error("Erro ao deletar usuário:", error);
       toast.error(
-        `Erro: ${error instanceof Error ? error.message : "Erro desconhecido"}`
+        `Erro: ${error instanceof Error ? error.message : "Erro desconhecido"}`,
+        { id: "global-toast" }
       );
     }
   };
@@ -274,7 +280,6 @@ export default function UsersPage() {
           <span className="sm:hidden">Usuários</span>
         </button>
       </div>
-
       <div className="bg-white p-4 rounded-lg shadow-md">
         {isLoading ? (
           <p className="text-center text-gray-500 py-8">
@@ -302,7 +307,6 @@ export default function UsersPage() {
           </>
         )}
       </div>
-
       <Modal
         isOpen={isFormModalOpen}
         onClose={() => setIsFormModalOpen(false)}
@@ -385,7 +389,6 @@ export default function UsersPage() {
           </div>
         </div>
       </Modal>
-
       <ConfirmationModal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}

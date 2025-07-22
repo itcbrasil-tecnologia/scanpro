@@ -40,7 +40,6 @@ function UMListItem({
   onDelete: () => void;
 }) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-
   return (
     <div className="bg-slate-50 rounded-md">
       <div className="hidden sm:grid grid-cols-4 gap-4 items-center p-3">
@@ -70,7 +69,6 @@ function UMListItem({
           </button>
         </div>
       </div>
-
       <div className="sm:hidden">
         <button
           onClick={() => setIsMobileOpen(!isMobileOpen)}
@@ -120,13 +118,10 @@ export default function UMsPage() {
   const [ums, setUms] = useState<UM[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-
   const [currentUm, setCurrentUm] = useState<UM | null>(null);
   const [umToDelete, setUmToDelete] = useState<UM | null>(null);
-
   const [formState, setFormState] = useState({
     name: "",
     projectId: "",
@@ -139,19 +134,21 @@ export default function UMsPage() {
       const projectsCollection = collection(db, "projects");
       const projectSnapshot = await getDocs(projectsCollection);
       const projectsList = projectSnapshot.docs.map(
-        (document) => ({ id: document.id, ...document.data() } as Project)
+        (doc) => ({ id: doc.id, ...doc.data() } as Project)
       );
       setProjects(projectsList);
 
       const umsCollection = collection(db, "ums");
       const umSnapshot = await getDocs(umsCollection);
       const umsList = umSnapshot.docs.map(
-        (document) => ({ id: document.id, ...document.data() } as UM)
+        (doc) => ({ id: doc.id, ...doc.data() } as UM)
       );
       setUms(umsList);
     } catch (error) {
       console.error("Erro ao buscar dados:", error);
-      toast.error("Não foi possível carregar os dados.");
+      toast.error("Não foi possível carregar os dados.", {
+        id: "global-toast",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -209,31 +206,35 @@ export default function UMsPage() {
 
   const handleSave = async () => {
     if (!formState.name || !formState.projectId) {
-      toast.error("Nome da UM e Projeto são obrigatórios.");
+      toast.error("Nome da UM e Projeto são obrigatórios.", {
+        id: "global-toast",
+      });
       return;
     }
-
     const umData = {
       name: formState.name,
       projectId: formState.projectId,
       expectedNotebooks: Number(formState.expectedNotebooks) || 0,
     };
-
     try {
       if (currentUm) {
         const umRef = doc(db, "ums", currentUm.id);
         await setDoc(umRef, umData);
-        toast.success(`UM "${umData.name}" atualizada com sucesso!`);
+        toast.success(`UM "${umData.name}" atualizada com sucesso!`, {
+          id: "global-toast",
+        });
       } else {
         const umsCollection = collection(db, "ums");
         await addDoc(umsCollection, umData);
-        toast.success(`UM "${umData.name}" adicionada com sucesso!`);
+        toast.success(`UM "${umData.name}" adicionada com sucesso!`, {
+          id: "global-toast",
+        });
       }
       fetchData();
       closeModals();
     } catch (error) {
       console.error("Erro ao salvar UM:", error);
-      toast.error("Ocorreu um erro ao salvar a UM.");
+      toast.error("Ocorreu um erro ao salvar a UM.", { id: "global-toast" });
     }
   };
 
@@ -242,12 +243,14 @@ export default function UMsPage() {
     try {
       const umRef = doc(db, "ums", umToDelete.id);
       await deleteDoc(umRef);
-      toast.success(`UM "${umToDelete.name}" excluída com sucesso!`);
+      toast.success(`UM "${umToDelete.name}" excluída com sucesso!`, {
+        id: "global-toast",
+      });
       fetchData();
       closeModals();
     } catch (error) {
       console.error("Erro ao excluir UM:", error);
-      toast.error("Ocorreu um erro ao excluir a UM.");
+      toast.error("Ocorreu um erro ao excluir a UM.", { id: "global-toast" });
     }
   };
 
@@ -266,7 +269,6 @@ export default function UMsPage() {
           <span className="sm:hidden">UM</span>
         </button>
       </div>
-
       {isLoading ? (
         <p className="text-center text-gray-500 py-8">Carregando dados...</p>
       ) : (
@@ -289,7 +291,7 @@ export default function UMsPage() {
                 <div className="col-span-1 text-right">Ações</div>
               </div>
               <div className="space-y-2 mt-2">
-                {project.ums.map((um) => (
+                {project.ums.map((um: UM) => (
                   <UMListItem
                     key={um.id}
                     um={um}
@@ -303,7 +305,6 @@ export default function UMsPage() {
           ))}
         </div>
       )}
-
       <Modal isOpen={isFormModalOpen} onClose={closeModals} title={modalTitle}>
         <div className="space-y-4">
           <div>
@@ -369,7 +370,6 @@ export default function UMsPage() {
           </div>
         </div>
       </Modal>
-
       <ConfirmationModal
         isOpen={isDeleteModalOpen}
         onClose={closeModals}

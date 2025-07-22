@@ -1,6 +1,5 @@
 "use client";
 
-// 1. useCallback importado do React
 import React, { useState, useEffect, useCallback } from "react";
 import { db } from "@/lib/firebase/config";
 import {
@@ -19,24 +18,24 @@ import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { Layers, Sheet, Trash2, ChevronDown, Edit } from "lucide-react";
 import toast from "react-hot-toast";
 
-// --- Interfaces de Dados ---
 interface Project {
   id: string;
   name: string;
   color: string;
 }
+
 interface UM {
   id: string;
   name: string;
   projectId: string;
 }
+
 interface Notebook {
   id: string;
   hostname: string;
   umId: string;
 }
 
-// --- Subcomponente para cada notebook ---
 function NotebookListItem({
   notebook,
   onEdit,
@@ -68,64 +67,59 @@ export default function NotebooksPage() {
   const [ums, setUms] = useState<UM[]>([]);
   const [notebooks, setNotebooks] = useState<Notebook[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
   const [isDeleteBatchModalOpen, setIsDeleteBatchModalOpen] = useState(false);
   const [isDeleteSingleModalOpen, setIsDeleteSingleModalOpen] = useState(false);
-
   const [openItems, setOpenItems] = useState<Record<string, boolean>>({});
-
   const [currentNotebook, setCurrentNotebook] = useState<Notebook | null>(null);
   const [hostname, setHostname] = useState("");
   const [selectedUmId, setSelectedUmId] = useState("");
-
   const [prefix, setPrefix] = useState("");
   const [startNumber, setStartNumber] = useState(1);
   const [endNumber, setEndNumber] = useState(1);
   const [batchSelectedUmId, setBatchSelectedUmId] = useState("");
   const [generatedNames, setGeneratedNames] = useState<string[]>([]);
-
   const [umToDeleteFrom, setUmToDeleteFrom] = useState<UM | null>(null);
   const [notebookToDelete, setNotebookToDelete] = useState<Notebook | null>(
     null
   );
 
-  // 2. Função fetchData envolvida com useCallback
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
       const projectsSnapshot = await getDocs(collection(db, "projects"));
       const projectsList = projectsSnapshot.docs.map(
-        (document) => ({ id: document.id, ...document.data() } as Project)
+        (doc) => ({ id: doc.id, ...doc.data() } as Project)
       );
       setProjects(projectsList);
 
       const umsSnapshot = await getDocs(collection(db, "ums"));
       const umsList = umsSnapshot.docs.map(
-        (document) => ({ id: document.id, ...document.data() } as UM)
+        (doc) => ({ id: doc.id, ...doc.data() } as UM)
       );
       setUms(umsList);
+
       if (umsList.length > 0) {
-        // Apenas define o valor inicial se ele ainda não foi definido
         setSelectedUmId((current) => current || umsList[0].id);
         setBatchSelectedUmId((current) => current || umsList[0].id);
       }
 
       const notebooksSnapshot = await getDocs(collection(db, "notebooks"));
       const notebooksList = notebooksSnapshot.docs.map(
-        (document) => ({ id: document.id, ...document.data() } as Notebook)
+        (doc) => ({ id: doc.id, ...doc.data() } as Notebook)
       );
       setNotebooks(notebooksList);
     } catch (error) {
       console.error("Erro ao buscar dados:", error);
-      toast.error("Não foi possível carregar os dados.");
+      toast.error("Não foi possível carregar os dados.", {
+        id: "global-toast",
+      });
     } finally {
       setIsLoading(false);
     }
-  }, []); // O array vazio [] significa que esta função nunca mudará
+  }, []);
 
-  // 3. fetchData adicionado ao array de dependências do useEffect
   useEffect(() => {
     fetchData();
   }, [fetchData]);
@@ -157,26 +151,32 @@ export default function NotebooksPage() {
 
   const handleSaveSingle = async () => {
     if (!hostname || !selectedUmId) {
-      toast.error("Hostname e UM são obrigatórios.");
+      toast.error("Hostname e UM são obrigatórios.", { id: "global-toast" });
       return;
     }
     try {
       if (currentNotebook) {
         const notebookRef = doc(db, "notebooks", currentNotebook.id);
         await setDoc(notebookRef, { hostname, umId: selectedUmId });
-        toast.success(`Notebook "${hostname}" atualizado com sucesso!`);
+        toast.success(`Notebook "${hostname}" atualizado com sucesso!`, {
+          id: "global-toast",
+        });
       } else {
         await addDoc(collection(db, "notebooks"), {
           hostname,
           umId: selectedUmId,
         });
-        toast.success(`Notebook "${hostname}" adicionado com sucesso!`);
+        toast.success(`Notebook "${hostname}" adicionado com sucesso!`, {
+          id: "global-toast",
+        });
       }
       fetchData();
       setIsFormModalOpen(false);
     } catch (error) {
       console.error("Erro ao salvar notebook:", error);
-      toast.error("Ocorreu um erro ao salvar o notebook.");
+      toast.error("Ocorreu um erro ao salvar o notebook.", {
+        id: "global-toast",
+      });
     }
   };
 
@@ -185,19 +185,24 @@ export default function NotebooksPage() {
     try {
       await deleteDoc(doc(db, "notebooks", notebookToDelete.id));
       toast.success(
-        `Notebook "${notebookToDelete.hostname}" excluído com sucesso!`
+        `Notebook "${notebookToDelete.hostname}" excluído com sucesso!`,
+        { id: "global-toast" }
       );
       fetchData();
       setIsDeleteSingleModalOpen(false);
     } catch (error) {
       console.error("Erro ao excluir notebook:", error);
-      toast.error("Ocorreu um erro ao excluir o notebook.");
+      toast.error("Ocorreu um erro ao excluir o notebook.", {
+        id: "global-toast",
+      });
     }
   };
 
   const handleGenerateBatchNames = () => {
     if (endNumber < startNumber) {
-      toast.error("O número final não pode ser menor que o inicial.");
+      toast.error("O número final não pode ser menor que o inicial.", {
+        id: "global-toast",
+      });
       return;
     }
     const names = [];
@@ -210,7 +215,9 @@ export default function NotebooksPage() {
 
   const handleSaveBatch = async () => {
     if (generatedNames.length === 0 || !batchSelectedUmId) {
-      toast.error("Gere os nomes e selecione uma UM antes de salvar.");
+      toast.error("Gere os nomes e selecione uma UM antes de salvar.", {
+        id: "global-toast",
+      });
       return;
     }
     try {
@@ -222,7 +229,8 @@ export default function NotebooksPage() {
       });
       await batch.commit();
       toast.success(
-        `${generatedNames.length} notebooks adicionados com sucesso!`
+        `${generatedNames.length} notebooks adicionados com sucesso!`,
+        { id: "global-toast" }
       );
       fetchData();
       setIsBatchModalOpen(false);
@@ -230,7 +238,9 @@ export default function NotebooksPage() {
       setPrefix("");
     } catch (error) {
       console.error("Erro ao salvar em lote:", error);
-      toast.error("Ocorreu um erro ao salvar os notebooks.");
+      toast.error("Ocorreu um erro ao salvar os notebooks.", {
+        id: "global-toast",
+      });
     }
   };
 
@@ -242,25 +252,27 @@ export default function NotebooksPage() {
         where("umId", "==", umToDeleteFrom.id)
       );
       const snapshot = await getDocs(notebooksQuery);
-
       if (snapshot.empty) {
-        toast.error("Nenhum notebook para excluir nesta UM.");
+        toast.error("Nenhum notebook para excluir nesta UM.", {
+          id: "global-toast",
+        });
         setIsDeleteBatchModalOpen(false);
         return;
       }
-
       const batch = writeBatch(db);
-      snapshot.docs.forEach((document) => batch.delete(document.ref));
+      snapshot.docs.forEach((doc) => batch.delete(doc.ref));
       await batch.commit();
-
       toast.success(
-        `Todos os notebooks da UM "${umToDeleteFrom.name}" foram excluídos.`
+        `Todos os notebooks da UM "${umToDeleteFrom.name}" foram excluídos.`,
+        { id: "global-toast" }
       );
       fetchData();
       setIsDeleteBatchModalOpen(false);
     } catch (error) {
       console.error("Erro ao excluir em lote:", error);
-      toast.error("Ocorreu um erro ao excluir os notebooks.");
+      toast.error("Ocorreu um erro ao excluir os notebooks.", {
+        id: "global-toast",
+      });
     }
   };
 
@@ -293,7 +305,6 @@ export default function NotebooksPage() {
           </button>
         </div>
       </div>
-
       {isLoading ? (
         <p className="text-center text-gray-500 py-8">Carregando dados...</p>
       ) : (
@@ -303,19 +314,18 @@ export default function NotebooksPage() {
               <button
                 onClick={() => toggleDropdown(project.id)}
                 className="w-full flex items-center p-3 bg-white rounded-lg shadow-md text-left"
+                style={{ color: project.color }}
               >
                 <ChevronDown
                   size={20}
                   className={`mr-3 transition-transform ${
                     openItems[project.id] ? "rotate-180" : ""
                   }`}
-                  style={{ color: project.color }}
                 />
                 <span className="text-xl font-bold text-gray-800">
                   {project.name}
                 </span>
               </button>
-
               {openItems[project.id] && (
                 <div className="pl-4 mt-2 space-y-2">
                   {ums
@@ -340,7 +350,6 @@ export default function NotebooksPage() {
                               {um.name}
                             </span>
                           </button>
-
                           {openItems[um.id] && (
                             <div className="pl-6 py-2">
                               {umNotebooks.length > 0 ? (
@@ -388,7 +397,6 @@ export default function NotebooksPage() {
           ))}
         </div>
       )}
-
       <Modal
         isOpen={isFormModalOpen}
         onClose={() => setIsFormModalOpen(false)}
@@ -442,7 +450,6 @@ export default function NotebooksPage() {
           </div>
         </div>
       </Modal>
-
       <Modal
         isOpen={isBatchModalOpen}
         onClose={() => setIsBatchModalOpen(false)}
@@ -545,7 +552,6 @@ export default function NotebooksPage() {
           )}
         </div>
       </Modal>
-
       <ConfirmationModal
         isOpen={isDeleteBatchModalOpen}
         onClose={() => setIsDeleteBatchModalOpen(false)}
@@ -553,7 +559,6 @@ export default function NotebooksPage() {
         title="Confirmar Exclusão em Lote"
         message={`Tem certeza que deseja excluir TODOS os notebooks da UM "${umToDeleteFrom?.name}"?`}
       />
-
       <ConfirmationModal
         isOpen={isDeleteSingleModalOpen}
         onClose={() => setIsDeleteSingleModalOpen(false)}

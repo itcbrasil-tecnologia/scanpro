@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Scanner, IDetectedBarcode } from "@yudiel/react-qr-scanner";
+import { Scanner, IDetectedBarcode } from "@yudiel/react-qr-scanner"; // CORREÇÃO AQUI
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase/config";
 import {
@@ -23,7 +23,6 @@ import {
   ArrowRight,
 } from "lucide-react";
 
-// --- Interfaces de Dados ---
 interface Project {
   id: string;
   name: string;
@@ -49,16 +48,13 @@ interface SummaryData {
 export default function ScannerPage() {
   const { userProfile } = useAuth();
   const router = useRouter();
-
   const [ums, setUms] = useState<UM[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
   const [selectedUmId, setSelectedUmId] = useState<string>("");
   const [devicesToScan, setDevicesToScan] = useState<string[]>([]);
   const [scannedDevices, setScannedDevices] = useState<string[]>([]);
   const [isScanning, setIsScanning] = useState(false);
-
   const [conferenceStartTime, setConferenceStartTime] = useState<Date | null>(
     null
   );
@@ -71,17 +67,17 @@ export default function ScannerPage() {
       try {
         const umsSnapshot = await getDocs(collection(db, "ums"));
         const umsList = umsSnapshot.docs.map(
-          (document) => ({ id: document.id, ...document.data() } as UM)
+          (doc) => ({ id: doc.id, ...doc.data() } as UM)
         );
         setUms(umsList);
 
         const projectsSnapshot = await getDocs(collection(db, "projects"));
         const projectsList = projectsSnapshot.docs.map(
-          (document) => ({ id: document.id, ...document.data() } as Project)
+          (doc) => ({ id: doc.id, ...doc.data() } as Project)
         );
         setProjects(projectsList);
       } catch (error) {
-        toast.error("Erro ao carregar UMs e Projetos.");
+        toast.error("Erro ao carregar UMs e Projetos.", { id: "global-toast" });
         console.error("Erro ao buscar dados iniciais:", error);
       } finally {
         setIsLoading(false);
@@ -99,7 +95,6 @@ export default function ScannerPage() {
         setConferenceStartTime(null);
         return;
       }
-
       try {
         const notebooksQuery = query(
           collection(db, "notebooks"),
@@ -107,31 +102,29 @@ export default function ScannerPage() {
         );
         const notebooksSnapshot = await getDocs(notebooksQuery);
         const notebooksList = notebooksSnapshot.docs
-          .map((document) => document.data().hostname as string)
+          .map((doc) => doc.data().hostname as string)
           .sort();
-
         setDevicesToScan(notebooksList);
         setScannedDevices([]);
         setIsScanning(true);
         setConferenceStartTime(new Date());
       } catch (error) {
-        toast.error("Erro ao carregar notebooks para esta UM.");
+        toast.error("Erro ao carregar notebooks para esta UM.", {
+          id: "global-toast",
+        });
         console.error("Erro ao buscar notebooks:", error);
       }
     };
-
     fetchNotebooksForUM();
   }, [selectedUmId]);
 
   const handleScan = (result: IDetectedBarcode[]) => {
     const scannedText = result[0]?.rawValue;
     if (!scannedText) return;
-
     if (scannedDevices.includes(scannedText)) {
-      toast.error(`"${scannedText}" já escaneado.`);
+      toast.error(`"${scannedText}" já escaneado.`, { id: "global-toast" });
       return;
     }
-
     if (devicesToScan.includes(scannedText)) {
       setDevicesToScan((previousState) =>
         previousState.filter((device) => device !== scannedText)
@@ -139,9 +132,13 @@ export default function ScannerPage() {
       setScannedDevices((previousState) =>
         [...previousState, scannedText].sort()
       );
-      toast.success(`"${scannedText}" Escaneado com sucesso!`);
+      toast.success(`"${scannedText}" Escaneado com sucesso!`, {
+        id: "global-toast",
+      });
     } else {
-      toast.error(`"${scannedText}" não pertence a esta UM.`);
+      toast.error(`"${scannedText}" não pertence a esta UM.`, {
+        id: "global-toast",
+      });
     }
   };
 
@@ -152,7 +149,6 @@ export default function ScannerPage() {
     const selectedProject = projects.find(
       (project) => project.id === selectedUM?.projectId
     );
-
     const data: SummaryData = {
       userName: userProfile?.nome,
       projectName: selectedProject?.name || "N/A",
@@ -177,7 +173,6 @@ export default function ScannerPage() {
 
   const handleConcludeAndSend = async () => {
     if (!summaryData) return;
-
     try {
       await addDoc(collection(db, "conferences"), {
         ...summaryData,
@@ -185,18 +180,18 @@ export default function ScannerPage() {
         endTime: Timestamp.now(),
         userId: userProfile?.uid,
       });
-
       await fetch("/api/notify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(summaryData),
       });
-
-      toast.success("CONFERÊNCIA ENVIADA COM SUCESSO");
+      toast.success("CONFERÊNCIA ENVIADA COM SUCESSO", { id: "global-toast" });
       router.push("/inicio");
     } catch (error) {
       console.error("Erro ao concluir conferência:", error);
-      toast.error("Não foi possível salvar ou notificar a conferência.");
+      toast.error("Não foi possível salvar ou notificar a conferência.", {
+        id: "global-toast",
+      });
     } finally {
       setIsSummaryModalOpen(false);
     }
@@ -219,7 +214,7 @@ export default function ScannerPage() {
           className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm rounded-md bg-white"
         >
           <option value="">
-            {isLoading ? "Carregando..." : "-- Selecione para iniciar --"}
+            {isLoading ? "Carregando..." : "-- Selecione para iniciar"}
           </option>
           {ums.map((um) => (
             <option key={um.id} value={um.id}>
@@ -228,7 +223,6 @@ export default function ScannerPage() {
           ))}
         </select>
       </div>
-
       {isScanning && (
         <>
           <div className="bg-white p-4 rounded-lg shadow-md">
@@ -236,7 +230,7 @@ export default function ScannerPage() {
               2. Escaneie os QR Codes
             </h3>
             <div className="w-full max-w-sm mx-auto rounded-lg overflow-hidden border-2 border-dashed">
-              <Scanner
+              <Scanner // CORREÇÃO AQUI
                 onScan={handleScan}
                 allowMultiple={false}
                 components={{ finder: false }}
@@ -244,14 +238,13 @@ export default function ScannerPage() {
               />
             </div>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-white p-4 rounded-lg shadow-md">
               <h3 className="font-bold text-gray-700 flex items-center">
                 <List className="mr-2" />A SEREM ESCANEADOS (
                 {devicesToScan.length})
               </h3>
-              <ul className="h-48 overflow-y-auto mt-2 space-y-1 pr-2">
+              <ul className="h-48 overflow-y-auto mt-2 space-y-1 px-2">
                 {devicesToScan.map((device) => (
                   <li
                     key={device}
@@ -279,7 +272,6 @@ export default function ScannerPage() {
               </ul>
             </div>
           </div>
-
           <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-md">
             <button
               onClick={() => setSelectedUmId("")}
@@ -296,7 +288,6 @@ export default function ScannerPage() {
           </div>
         </>
       )}
-
       <Modal
         isOpen={isSummaryModalOpen}
         onClose={() => setIsSummaryModalOpen(false)}

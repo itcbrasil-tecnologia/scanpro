@@ -15,7 +15,6 @@ import { Modal } from "@/components/ui/Modal";
 import { Users, BriefcaseBusiness, Truck, Laptop } from "lucide-react";
 import toast from "react-hot-toast";
 
-// --- Interfaces para os Dados ---
 type ModalListItem = { name: string; whatsapp?: string };
 
 interface Conference {
@@ -41,14 +40,12 @@ export default function DashboardPage() {
   });
   const [conferences, setConferences] = useState<Conference[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalContent, setModalContent] = useState({
-    title: "",
-    data: [] as ModalListItem[] | string[],
-  });
+  const [modalContent, setModalContent] = useState<{
+    title: string;
+    data: ModalListItem[] | string[];
+  }>({ title: "", data: [] });
 
-  // MUDANÇA: Estados para armazenar as listas para os modais
   const [techniciansList, setTechniciansList] = useState<ModalListItem[]>([]);
   const [projectsList, setProjectsList] = useState<ModalListItem[]>([]);
 
@@ -56,27 +53,23 @@ export default function DashboardPage() {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        // 1. Faz a contagem e busca os dados para os cards e modais
         const projectsSnapshot = await getDocs(collection(db, "projects"));
         const umsSnapshot = await getDocs(collection(db, "ums"));
         const notebooksSnapshot = await getDocs(collection(db, "notebooks"));
-
         const techniciansQuery = query(
           collection(db, "users"),
           where("role", "==", "USER")
         );
         const techniciansSnapshot = await getDocs(techniciansQuery);
 
-        // MUDANÇA: Mapeia e armazena a lista de projetos para o modal
-        const projectsData = projectsSnapshot.docs.map((document) => ({
-          name: document.data().name,
+        const projectsData = projectsSnapshot.docs.map((doc) => ({
+          name: doc.data().name,
         }));
         setProjectsList(projectsData);
 
-        // MUDANÇA: Mapeia e armazena a lista de técnicos para o modal
-        const techniciansData = techniciansSnapshot.docs.map((document) => ({
-          name: document.data().nome,
-          whatsapp: document.data().whatsapp,
+        const techniciansData = techniciansSnapshot.docs.map((doc) => ({
+          name: doc.data().nome,
+          whatsapp: doc.data().whatsapp,
         }));
         setTechniciansList(techniciansData);
 
@@ -87,17 +80,16 @@ export default function DashboardPage() {
           notebooks: notebooksSnapshot.size,
         });
 
-        // 2. Busca as últimas 10 conferências (lógica inalterada)
         const conferencesQuery = query(
           collection(db, "conferences"),
           orderBy("endTime", "desc"),
           limit(10)
         );
         const conferencesSnapshot = await getDocs(conferencesQuery);
-        const conferencesList = conferencesSnapshot.docs.map((document) => {
-          const data = document.data();
+        const conferencesList = conferencesSnapshot.docs.map((doc) => {
+          const data = doc.data();
           return {
-            id: document.id,
+            id: doc.id,
             date: data.endTime.toDate().toLocaleDateString("pt-BR"),
             startTime: data.startTime
               .toDate()
@@ -123,12 +115,13 @@ export default function DashboardPage() {
         setConferences(conferencesList);
       } catch (error) {
         console.error("Erro ao buscar dados do dashboard:", error);
-        toast.error("Não foi possível carregar os dados do dashboard.");
+        toast.error("Não foi possível carregar os dados do dashboard.", {
+          id: "global-toast",
+        });
       } finally {
         setIsLoading(false);
       }
     };
-
     fetchData();
   }, []);
 
@@ -158,13 +151,11 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
-
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <DashboardCard
           title="Técnicos Cadastrados"
           value={isLoading ? "..." : summaryData.technicians}
           icon={Users}
-          // MUDANÇA: Passa a lista de técnicos para o modal
           onDetailsClick={() =>
             openModal("Técnicos Cadastrados", techniciansList)
           }
@@ -173,7 +164,6 @@ export default function DashboardPage() {
           title="Projetos"
           value={isLoading ? "..." : summaryData.projects}
           icon={BriefcaseBusiness}
-          // MUDANÇA: Passa a lista de projetos para o modal
           onDetailsClick={() => openModal("Projetos", projectsList)}
         />
         <DashboardCard
@@ -187,7 +177,6 @@ export default function DashboardPage() {
           icon={Laptop}
         />
       </div>
-
       <div className="bg-white p-6 rounded-lg shadow-md overflow-hidden">
         <h2 className="text-xl font-bold text-gray-800 mb-4">
           Últimas Conferências
@@ -237,7 +226,7 @@ export default function DashboardPage() {
                       {conference.startTime} - {conference.endTime}
                     </td>
                     <td className="p-3">
-                      {conference.project} ({conference.um})
+                      {conference.project} / {conference.um}
                     </td>
                     <td className="p-3">{conference.technician}</td>
                     <td className="p-3 text-center">
@@ -285,7 +274,6 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
-
       <Modal
         isOpen={isModalOpen}
         onClose={closeModal}
@@ -299,7 +287,7 @@ export default function DashboardPage() {
             >
               {typeof item === "string"
                 ? item
-                : `${item.name} ${item.whatsapp ? `- ${item.whatsapp}` : ""}`}
+                : `${item.name} ${item.whatsapp ? `(${item.whatsapp})` : ""}`}
             </li>
           ))}
         </ul>

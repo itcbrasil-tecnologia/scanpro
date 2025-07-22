@@ -27,11 +27,9 @@ export default function ProjectsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const [projectName, setProjectName] = useState("");
   const [projectColor, setProjectColor] = useState("#FFFFFF");
-
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
 
   const fetchProjects = async () => {
@@ -39,15 +37,20 @@ export default function ProjectsPage() {
     try {
       const projectsCollection = collection(db, "projects");
       const projectSnapshot = await getDocs(projectsCollection);
-      const projectsList = projectSnapshot.docs.map((document) => ({
-        id: document.id,
-        name: document.data().name,
-        color: document.data().color,
-      }));
+      const projectsList = projectSnapshot.docs.map(
+        (doc) =>
+          ({
+            id: doc.id,
+            name: doc.data().name,
+            color: doc.data().color,
+          } as Project)
+      );
       setProjects(projectsList);
     } catch (error) {
       console.error("Erro ao buscar projetos:", error);
-      toast.error("Não foi possível carregar os projetos.");
+      toast.error("Não foi possível carregar os projetos.", {
+        id: "global-toast",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -89,42 +92,49 @@ export default function ProjectsPage() {
 
   const handleSave = async () => {
     if (!projectName) {
-      toast.error("O nome do projeto é obrigatório.");
+      toast.error("O nome do projeto é obrigatório.", { id: "global-toast" });
       return;
     }
-
     const projectData = { name: projectName, color: projectColor };
-
     try {
       if (currentProject) {
         const projectRef = doc(db, "projects", currentProject.id);
         await setDoc(projectRef, projectData);
-        toast.success(`Projeto "${projectName}" atualizado com sucesso!`);
+        toast.success(`Projeto "${projectName}" atualizado com sucesso!`, {
+          id: "global-toast",
+        });
       } else {
         const projectsCollection = collection(db, "projects");
         await addDoc(projectsCollection, projectData);
-        toast.success(`Projeto "${projectName}" adicionado com sucesso!`);
+        toast.success(`Projeto "${projectName}" adicionado com sucesso!`, {
+          id: "global-toast",
+        });
       }
       fetchProjects();
       closeModals();
     } catch (error) {
       console.error("Erro ao salvar projeto:", error);
-      toast.error("Ocorreu um erro ao salvar o projeto.");
+      toast.error("Ocorreu um erro ao salvar o projeto.", {
+        id: "global-toast",
+      });
     }
   };
 
   const handleDelete = async () => {
     if (!projectToDelete) return;
-
     try {
       const projectRef = doc(db, "projects", projectToDelete.id);
       await deleteDoc(projectRef);
-      toast.success(`Projeto "${projectToDelete.name}" excluído com sucesso!`);
+      toast.success(`Projeto "${projectToDelete.name}" excluído com sucesso!`, {
+        id: "global-toast",
+      });
       fetchProjects();
       closeModals();
     } catch (error) {
       console.error("Erro ao excluir projeto:", error);
-      toast.error("Ocorreu um erro ao excluir o projeto.");
+      toast.error("Ocorreu um erro ao excluir o projeto.", {
+        id: "global-toast",
+      });
     }
   };
 
@@ -145,7 +155,6 @@ export default function ProjectsPage() {
           <span className="sm:hidden">Projeto</span>
         </button>
       </div>
-
       <div className="bg-white p-4 rounded-lg shadow-md">
         {isLoading ? (
           <p className="text-center text-gray-500">Carregando projetos...</p>
@@ -190,7 +199,6 @@ export default function ProjectsPage() {
           </ul>
         )}
       </div>
-
       <Modal isOpen={isFormModalOpen} onClose={closeModals} title={modalTitle}>
         <div className="space-y-4">
           <div>
@@ -229,7 +237,6 @@ export default function ProjectsPage() {
           </div>
         </div>
       </Modal>
-
       <ConfirmationModal
         isOpen={isDeleteModalOpen}
         onClose={closeModals}
