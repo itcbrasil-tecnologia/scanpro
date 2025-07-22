@@ -14,10 +14,10 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
-import { BookCheck, Camera } from "lucide-react";
+// Ícones atualizados e novos
+import { ScanBarcode, Camera, CheckCircle } from "lucide-react";
 import toast from "react-hot-toast";
 
-// A interface representa os dados APÓS serem formatados para exibição.
 interface Conference {
   id: string;
   date: string;
@@ -36,21 +36,27 @@ export default function InicioPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState<string[]>([]);
-  const [dailyCounts, setDailyCounts] = useState({ completed: 0, total: 2 });
+
+  // O valor 'total' agora é dinâmico, buscando do perfil do usuário.
+  const [dailyCounts, setDailyCounts] = useState({
+    completed: 0,
+    total: userProfile?.dailyConferenceGoal || 2, // Usa o valor do perfil ou 2 como fallback
+  });
 
   useEffect(() => {
-    // Guarda de proteção: Essencial para não executar a consulta antes do perfil do usuário ser carregado.
     if (!userProfile) {
       return;
     }
 
+    // Atualiza o total de contagens assim que o perfil do usuário for carregado.
+    setDailyCounts((prev) => ({
+      ...prev,
+      total: userProfile.dailyConferenceGoal || 2,
+    }));
+
     const fetchUserData = async () => {
       setIsLoading(true);
       try {
-        // --- ÍNDICE ÚNICO NECESSÁRIO ---
-        // Ambas as consultas abaixo são atendidas de forma eficiente por um único índice composto no Firestore:
-        // Coleção: conferences | Campos: userId (asc), endTime (desc)
-
         const today = new Date();
         const startOfDay = new Date(
           today.getFullYear(),
@@ -63,7 +69,6 @@ export default function InicioPage() {
           today.getDate() + 1
         );
 
-        // --- CONSULTA 1: Contagens Diárias ---
         const dailyCountQuery = query(
           collection(db, "conferences"),
           where("userId", "==", userProfile.uid),
@@ -76,18 +81,15 @@ export default function InicioPage() {
           completed: dailySnapshot.size,
         }));
 
-        // --- CONSULTA 2: Histórico de Conferências ---
         const historyQuery = query(
           collection(db, "conferences"),
           where("userId", "==", userProfile.uid),
           orderBy("endTime", "desc"),
           limit(20)
         );
-
         const historySnapshot = await getDocs(historyQuery);
         const userConferences = historySnapshot.docs.map((document) => {
           const data = document.data();
-          // Mapeamento seguro dos dados do Firestore para a nossa interface do frontend.
           return {
             id: document.id,
             date: data.endTime.toDate().toLocaleDateString("pt-BR"),
@@ -120,7 +122,7 @@ export default function InicioPage() {
     };
 
     fetchUserData();
-  }, [userProfile]); // O efeito é re-executado sempre que o userProfile mudar.
+  }, [userProfile]);
 
   const openDetailsModal = (hostnames: string[]) => {
     setModalContent(hostnames);
@@ -139,7 +141,8 @@ export default function InicioPage() {
     );
   };
 
-  // O restante do seu JSX permanece o mesmo, pois já está excelente.
+  const allDailyCountsCompleted = dailyCounts.completed >= dailyCounts.total;
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold text-gray-800">
@@ -153,20 +156,29 @@ export default function InicioPage() {
               Contagens Diárias Disponíveis
             </h3>
             <div className="flex justify-center items-center my-2">
-              <BookCheck className="w-10 h-10 text-teal-600" />
+              {/* TAREFA 2: Ícone alterado para ScanBarcode */}
+              <ScanBarcode className="w-10 h-10 text-teal-600" />
               <p className="text-4xl font-bold text-gray-800 ml-4">
                 {dailyCounts.total - dailyCounts.completed}/{dailyCounts.total}
               </p>
             </div>
           </div>
 
+          {/* TAREFA 1: Lógica de ativação do botão */}
           <div className="sm:hidden">
-            <Link href="/scanner" passHref>
-              <div className="w-full flex items-center justify-center bg-teal-600 text-white px-4 py-3 rounded-lg shadow-lg hover:bg-teal-700 transition-colors font-bold text-lg">
-                <Camera size={24} className="mr-3" />
-                INICIAR CONFERÊNCIA
+            {allDailyCountsCompleted ? (
+              <div className="w-full flex items-center justify-center bg-gray-200 text-gray-500 px-4 py-3 rounded-lg font-bold text-lg">
+                <CheckCircle size={24} className="mr-3" />
+                CONCLUÍDO
               </div>
-            </Link>
+            ) : (
+              <Link href="/scanner" passHref>
+                <div className="w-full flex items-center justify-center bg-teal-600 text-white px-4 py-3 rounded-lg shadow-lg hover:bg-teal-700 transition-colors font-bold text-lg">
+                  <Camera size={24} className="mr-3" />
+                  INICIAR CONFERÊNCIA
+                </div>
+              </Link>
+            )}
           </div>
         </div>
 

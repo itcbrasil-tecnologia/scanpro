@@ -10,4 +10,5 @@ export interface UserProfile {
   nome: string; // Conforme campo "Nome"
   whatsapp: string; // Conforme campo "Whatsapp"
   role: UserRole; // Conforme campo "Perfil"
+  dailyConferenceGoal?: number;
 }
