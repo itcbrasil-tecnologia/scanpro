@@ -20,8 +20,7 @@
     "react": "19.1.0",
     "react-color": "^2.19.3",
     "react-dom": "19.1.0",
-    "react-hot-toast": "^2.5.2",
-    "sonner": "^2.0.6"
+    "react-hot-toast": "^2.5.2"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
