@@ -1,15 +1,31 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase/config";
-import { collection, getDocs, doc, setDoc } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  doc,
+  setDoc,
+  query,
+  orderBy,
+  limit,
+  startAfter,
+  endBefore,
+  limitToLast,
+  DocumentData,
+  QueryDocumentSnapshot,
+} from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
+import { PaginationControls } from "@/components/ui/PaginationControls";
 import { Plus, Edit, Trash2, ChevronDown } from "lucide-react";
 import { UserProfile, UserRole } from "@/types";
 import toast from "react-hot-toast";
+
+const ITEMS_PER_PAGE = 15;
 
 function UserListItem({
   user,
@@ -129,30 +145,67 @@ export default function UsersPage() {
     role: "USER" as UserRole,
   });
 
-  const fetchUsers = async () => {
-    setIsLoading(true);
-    try {
-      const usersCollection = collection(db, "users");
-      const usersSnapshot = await getDocs(usersCollection);
-      const usersList = usersSnapshot.docs.map(
-        (doc) => ({ uid: doc.id, ...doc.data() } as UserProfile)
-      );
-      setUsers(usersList);
-    } catch (error) {
-      console.error("Erro ao buscar usuários:", error);
-      toast.error("Não foi possível carregar os usuários.", {
-        id: "global-toast",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [lastVisible, setLastVisible] =
+    useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [firstVisible, setFirstVisible] =
+    useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [page, setPage] = useState(1);
+  const [hasNextPage, setHasNextPage] = useState(true);
+
+  const fetchUsers = useCallback(
+    async (direction: "next" | "prev" | "initial" = "initial") => {
+      setIsLoading(true);
+      try {
+        let usersQuery;
+        const usersCollection = collection(db, "users");
+        const baseQuery = query(usersCollection, orderBy("nome"));
+
+        if (direction === "next" && lastVisible) {
+          usersQuery = query(
+            baseQuery,
+            startAfter(lastVisible),
+            limit(ITEMS_PER_PAGE)
+          );
+        } else if (direction === "prev" && firstVisible) {
+          usersQuery = query(
+            baseQuery,
+            endBefore(firstVisible),
+            limitToLast(ITEMS_PER_PAGE)
+          );
+        } else {
+          usersQuery = query(baseQuery, limit(ITEMS_PER_PAGE));
+        }
+
+        const usersSnapshot = await getDocs(usersQuery);
+        const usersList = usersSnapshot.docs.map(
+          (doc) => ({ uid: doc.id, ...doc.data() } as UserProfile)
+        );
+
+        setUsers(usersList);
+        if (!usersSnapshot.empty) {
+          setFirstVisible(usersSnapshot.docs[0]);
+          setLastVisible(usersSnapshot.docs[usersSnapshot.docs.length - 1]);
+          setHasNextPage(usersSnapshot.docs.length === ITEMS_PER_PAGE);
+        } else {
+          setHasNextPage(false);
+        }
+      } catch (error) {
+        console.error("Erro ao buscar usuários:", error);
+        toast.error("Não foi possível carregar os usuários.", {
+          id: "global-toast",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [lastVisible, firstVisible]
+  );
 
   useEffect(() => {
     if (userProfile && userProfile.role === "MASTER") {
-      fetchUsers();
+      fetchUsers("initial");
     }
-  }, [userProfile]);
+  }, [userProfile, fetchUsers]);
 
   if (userProfile && userProfile.role !== "MASTER") {
     router.replace("/dashboard");
@@ -206,7 +259,7 @@ export default function UsersPage() {
         toast.success(`Usuário "${formState.nome}" atualizado com sucesso!`, {
           id: "global-toast",
         });
-        fetchUsers();
+        fetchUsers("initial"); // Refresh the list from the first page
         setIsFormModalOpen(false);
       } catch (error) {
         console.error("Erro ao atualizar usuário:", error);
@@ -231,7 +284,7 @@ export default function UsersPage() {
         const result = await response.json();
         if (!response.ok) throw new Error(result.message);
         toast.success(result.message, { id: "global-toast" });
-        fetchUsers();
+        fetchUsers("initial"); // Refresh the list from the first page
         setIsFormModalOpen(false);
       } catch (error) {
         console.error("Erro ao criar usuário:", error);
@@ -254,7 +307,7 @@ export default function UsersPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.message);
       toast.success(result.message, { id: "global-toast" });
-      fetchUsers();
+      fetchUsers("initial"); // Refresh the list from the first page
       setIsDeleteModalOpen(false);
     } catch (error) {
       console.error("Erro ao deletar usuário:", error);
@@ -262,6 +315,20 @@ export default function UsersPage() {
         `Erro: ${error instanceof Error ? error.message : "Erro desconhecido"}`,
         { id: "global-toast" }
       );
+    }
+  };
+
+  const handleNextPage = () => {
+    if (hasNextPage) {
+      setPage((p) => p + 1);
+      fetchUsers("next");
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (page > 1) {
+      setPage((p) => p - 1);
+      fetchUsers("prev");
     }
   };
 
@@ -306,6 +373,13 @@ export default function UsersPage() {
             </div>
           </>
         )}
+        <PaginationControls
+          onNext={handleNextPage}
+          onPrev={handlePrevPage}
+          hasNextPage={hasNextPage}
+          hasPrevPage={page > 1}
+          isLoading={isLoading}
+        />
       </div>
       <Modal
         isOpen={isFormModalOpen}

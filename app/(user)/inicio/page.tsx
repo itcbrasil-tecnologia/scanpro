@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase/config";
@@ -12,10 +12,18 @@ import {
   orderBy,
   limit,
   Timestamp,
+  startAfter,
+  endBefore,
+  limitToLast,
+  DocumentData,
+  QueryDocumentSnapshot,
 } from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
+import { PaginationControls } from "@/components/ui/PaginationControls";
 import { ScanBarcode, Camera, CheckCircle } from "lucide-react";
 import toast from "react-hot-toast";
+
+const ITEMS_PER_PAGE = 10;
 
 interface Conference {
   id: string;
@@ -35,53 +43,47 @@ export default function InicioPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState<string[]>([]);
-
   const [dailyCounts, setDailyCounts] = useState({
     completed: 0,
     total: userProfile?.dailyConferenceGoal || 2,
   });
 
-  useEffect(() => {
-    if (!userProfile) {
-      return;
-    }
-    setDailyCounts((prev) => ({
-      ...prev,
-      total: userProfile.dailyConferenceGoal || 2,
-    }));
-    const fetchUserData = async () => {
+  const [lastVisible, setLastVisible] =
+    useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [firstVisible, setFirstVisible] =
+    useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [page, setPage] = useState(1);
+  const [hasNextPage, setHasNextPage] = useState(true);
+
+  const fetchConferences = useCallback(
+    async (direction: "next" | "prev" | "initial" = "initial") => {
+      if (!userProfile) return;
       setIsLoading(true);
       try {
-        const today = new Date();
-        const startOfDay = new Date(
-          today.getFullYear(),
-          today.getMonth(),
-          today.getDate()
-        );
-        const endOfDay = new Date(
-          today.getFullYear(),
-          today.getMonth(),
-          today.getDate() + 1
+        let historyQuery;
+        const conferencesCollection = collection(db, "conferences");
+        const baseQuery = query(
+          conferencesCollection,
+          where("userId", "==", userProfile.uid),
+          orderBy("endTime", "desc")
         );
 
-        const dailyCountQuery = query(
-          collection(db, "conferences"),
-          where("userId", "==", userProfile.uid),
-          where("endTime", ">=", Timestamp.fromDate(startOfDay)),
-          where("endTime", "<", Timestamp.fromDate(endOfDay))
-        );
-        const dailySnapshot = await getDocs(dailyCountQuery);
-        setDailyCounts((currentCounts) => ({
-          ...currentCounts,
-          completed: dailySnapshot.size,
-        }));
+        if (direction === "next" && lastVisible) {
+          historyQuery = query(
+            baseQuery,
+            startAfter(lastVisible),
+            limit(ITEMS_PER_PAGE)
+          );
+        } else if (direction === "prev" && firstVisible) {
+          historyQuery = query(
+            baseQuery,
+            endBefore(firstVisible),
+            limitToLast(ITEMS_PER_PAGE)
+          );
+        } else {
+          historyQuery = query(baseQuery, limit(ITEMS_PER_PAGE));
+        }
 
-        const historyQuery = query(
-          collection(db, "conferences"),
-          where("userId", "==", userProfile.uid),
-          orderBy("endTime", "desc"),
-          limit(20)
-        );
         const historySnapshot = await getDocs(historyQuery);
         const userConferences = historySnapshot.docs.map((document) => {
           const data = document.data();
@@ -107,18 +109,87 @@ export default function InicioPage() {
             missingHostnames: data.missingDevices || [],
           } as Conference;
         });
+
         setConferences(userConferences);
+        if (!historySnapshot.empty) {
+          setFirstVisible(historySnapshot.docs[0]);
+          setLastVisible(historySnapshot.docs[historySnapshot.docs.length - 1]);
+          setHasNextPage(historySnapshot.docs.length === ITEMS_PER_PAGE);
+        } else {
+          setHasNextPage(false);
+        }
       } catch (error) {
-        console.error("Erro ao buscar dados do usuário:", error);
-        toast.error("Não foi possível carregar os seus dados.", {
+        console.error("Erro ao buscar conferências:", error);
+        toast.error("Não foi possível carregar o histórico.", {
           id: "global-toast",
         });
       } finally {
         setIsLoading(false);
       }
+    },
+    [userProfile, lastVisible, firstVisible]
+  );
+
+  useEffect(() => {
+    const fetchPageData = async () => {
+      if (!userProfile) return;
+
+      setIsLoading(true);
+      setDailyCounts((prev) => ({
+        ...prev,
+        total: userProfile.dailyConferenceGoal || 2,
+      }));
+
+      try {
+        const today = new Date();
+        const startOfDay = new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          today.getDate()
+        );
+        const endOfDay = new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          today.getDate() + 1
+        );
+        const dailyCountQuery = query(
+          collection(db, "conferences"),
+          where("userId", "==", userProfile.uid),
+          where("endTime", ">=", Timestamp.fromDate(startOfDay)),
+          where("endTime", "<", Timestamp.fromDate(endOfDay))
+        );
+        const dailySnapshot = await getDocs(dailyCountQuery);
+        setDailyCounts((currentCounts) => ({
+          ...currentCounts,
+          completed: dailySnapshot.size,
+        }));
+      } catch (error) {
+        console.error("Erro ao buscar contagem diária:", error);
+        toast.error("Não foi possível carregar a contagem diária.", {
+          id: "global-toast",
+        });
+      }
+
+      await fetchConferences("initial");
+      setIsLoading(false);
     };
-    fetchUserData();
-  }, [userProfile]);
+
+    fetchPageData();
+  }, [userProfile, fetchConferences]);
+
+  const handleNextPage = () => {
+    if (hasNextPage) {
+      setPage((p) => p + 1);
+      fetchConferences("next");
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (page > 1) {
+      setPage((p) => p - 1);
+      fetchConferences("prev");
+    }
+  };
 
   const openDetailsModal = (hostnames: string[]) => {
     setModalContent(hostnames);
@@ -250,6 +321,13 @@ export default function InicioPage() {
               </tbody>
             </table>
           </div>
+          <PaginationControls
+            onNext={handleNextPage}
+            onPrev={handlePrevPage}
+            hasNextPage={hasNextPage}
+            hasPrevPage={page > 1}
+            isLoading={isLoading}
+          />
         </div>
       </div>
       <Modal
