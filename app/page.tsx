@@ -16,6 +16,8 @@ export default function LoginPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
 
+  // Este useEffect agora apenas lida com o caso de um usuário JÁ LOGADO
+  // que tenta acessar a página de login. O AuthGuard cuidará do resto.
   useEffect(() => {
     if (!authLoading && user) {
       router.replace("/inicio");
@@ -33,9 +35,10 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      toast.success("Login realizado com sucesso! Redirecionando...", {
-        id: "global-toast",
-      });
+      // Após o sucesso, não mostramos toast nem esperamos.
+      // Apenas redirecionamos. A página de destino e seu AuthGuard
+      // são agora responsáveis por exibir o estado de carregamento.
+      router.push("/inicio");
     } catch (error) {
       if (
         error instanceof FirebaseError &&
@@ -48,18 +51,21 @@ export default function LoginPage() {
         console.error("Erro no login (desconhecido):", error);
         toast.error("Ocorreu um erro inesperado.", { id: "global-toast" });
       }
-      setIsLoading(false);
+      setIsLoading(false); // Reativa o botão apenas em caso de erro.
     }
   };
 
+  // Se o usuário já estiver logado, mostramos um carregamento para
+  // aguardar o redirecionamento do useEffect.
   if (authLoading || user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-100">
-        <p>Carregando...</p>
+        <div className="text-slate-500">Redirecionando...</div>
       </div>
     );
   }
 
+  // Se não houver usuário, renderiza o formulário de login.
   return (
     <main className="flex items-center justify-center min-h-screen bg-slate-100">
       <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-xl">
@@ -119,7 +125,7 @@ export default function LoginPage() {
               disabled={isLoading}
               className="w-full px-4 py-2 font-semibold text-white bg-teal-600 rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:bg-teal-400 disabled:cursor-not-allowed"
             >
-              {isLoading ? "Redirecionando..." : "Entrar"}
+              {isLoading ? "Entrando..." : "Entrar"}
             </button>
           </div>
         </form>

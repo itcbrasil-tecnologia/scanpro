@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { db } from "@/lib/firebase/config";
 import {
   collection,
@@ -9,15 +9,10 @@ import {
   where,
   limit,
   orderBy,
-  startAfter,
-  endBefore,
-  limitToLast,
-  DocumentData,
-  QueryDocumentSnapshot,
 } from "firebase/firestore";
+import { useAuth } from "@/context/AuthContext";
 import { DashboardCard } from "@/components/ui/DashboardCard";
 import { Modal } from "@/components/ui/Modal";
-import { PaginationControls } from "@/components/ui/PaginationControls";
 import { Users, BriefcaseBusiness, Truck, Laptop } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -37,9 +32,8 @@ interface Conference {
   missingHostnames: string[];
 }
 
-const CONFERENCES_PER_PAGE = 10;
-
 export default function DashboardPage() {
+  const { userProfile } = useAuth();
   const [summaryData, setSummaryData] = useState({
     technicians: 0,
     projects: 0,
@@ -47,7 +41,7 @@ export default function DashboardPage() {
     notebooks: 0,
   });
   const [conferences, setConferences] = useState<Conference[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isDataLoading, setIsDataLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState<{
     title: string;
@@ -57,149 +51,82 @@ export default function DashboardPage() {
   const [techniciansList, setTechniciansList] = useState<ModalListItem[]>([]);
   const [projectsList, setProjectsList] = useState<ModalListItem[]>([]);
 
-  const [lastVisible, setLastVisible] =
-    useState<QueryDocumentSnapshot<DocumentData> | null>(null);
-  const [firstVisible, setFirstVisible] =
-    useState<QueryDocumentSnapshot<DocumentData> | null>(null);
-  const [page, setPage] = useState(1);
-  const [hasNextPage, setHasNextPage] = useState(true);
-
-  const fetchConferences = useCallback(
-    async (direction: "next" | "prev" | "initial" = "initial") => {
-      try {
-        let conferencesQuery;
-        const conferencesCollection = collection(db, "conferences");
-
-        if (direction === "next" && lastVisible) {
-          conferencesQuery = query(
-            conferencesCollection,
-            orderBy("endTime", "desc"),
-            startAfter(lastVisible),
-            limit(CONFERENCES_PER_PAGE)
-          );
-        } else if (direction === "prev" && firstVisible) {
-          conferencesQuery = query(
-            conferencesCollection,
-            orderBy("endTime", "desc"),
-            endBefore(firstVisible),
-            limitToLast(CONFERENCES_PER_PAGE)
-          );
-        } else {
-          conferencesQuery = query(
-            conferencesCollection,
-            orderBy("endTime", "desc"),
-            limit(CONFERENCES_PER_PAGE)
-          );
-        }
-
-        const conferencesSnapshot = await getDocs(conferencesQuery);
-        const conferencesList = conferencesSnapshot.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            date: data.endTime.toDate().toLocaleDateString("pt-BR"),
-            startTime: data.startTime
-              .toDate()
-              .toLocaleTimeString("pt-BR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-            endTime: data.endTime
-              .toDate()
-              .toLocaleTimeString("pt-BR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-            project: data.projectName,
-            um: data.umName,
-            technician: data.userName,
-            expected: data.expectedCount,
-            scanned: data.scannedCount,
-            missing: data.missingCount,
-            missingHostnames: data.missingDevices || [],
-          } as Conference;
-        });
-
-        setConferences(conferencesList);
-
-        if (!conferencesSnapshot.empty) {
-          setFirstVisible(conferencesSnapshot.docs[0]);
-          setLastVisible(
-            conferencesSnapshot.docs[conferencesSnapshot.docs.length - 1]
-          );
-          setHasNextPage(
-            conferencesSnapshot.docs.length === CONFERENCES_PER_PAGE
-          );
-        } else {
-          setHasNextPage(false);
-        }
-      } catch (error) {
-        console.error("Erro ao buscar conferências:", error);
-        toast.error("Não foi possível carregar as conferências.", {
-          id: "global-toast",
-        });
-      }
-    },
-    [lastVisible, firstVisible]
-  );
-
-  const fetchInitialData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const projectsSnapshot = await getDocs(collection(db, "projects"));
-      const umsSnapshot = await getDocs(collection(db, "ums"));
-      const notebooksSnapshot = await getDocs(collection(db, "notebooks"));
-      const techniciansQuery = query(
-        collection(db, "users"),
-        where("role", "==", "USER")
-      );
-      const techniciansSnapshot = await getDocs(techniciansQuery);
-
-      const projectsData = projectsSnapshot.docs.map((doc) => ({
-        name: doc.data().name,
-      }));
-      setProjectsList(projectsData);
-      const techniciansData = techniciansSnapshot.docs.map((doc) => ({
-        name: doc.data().nome,
-        whatsapp: doc.data().whatsapp,
-      }));
-      setTechniciansList(techniciansData);
-
-      setSummaryData({
-        technicians: techniciansSnapshot.size,
-        projects: projectsSnapshot.size,
-        ums: umsSnapshot.size,
-        notebooks: notebooksSnapshot.size,
-      });
-
-      await fetchConferences("initial");
-    } catch (error) {
-      console.error("Erro ao buscar dados do dashboard:", error);
-      toast.error("Não foi possível carregar os dados do dashboard.", {
-        id: "global-toast",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [fetchConferences]);
-
   useEffect(() => {
-    fetchInitialData();
-  }, [fetchInitialData]);
+    if (userProfile) {
+      const fetchData = async () => {
+        setIsDataLoading(true);
+        try {
+          const projectsSnapshot = await getDocs(collection(db, "projects"));
+          const umsSnapshot = await getDocs(collection(db, "ums"));
+          const notebooksSnapshot = await getDocs(collection(db, "notebooks"));
+          const techniciansQuery = query(
+            collection(db, "users"),
+            where("role", "==", "USER")
+          );
+          const techniciansSnapshot = await getDocs(techniciansQuery);
 
-  const handleNextPage = () => {
-    if (hasNextPage) {
-      setPage((p) => p + 1);
-      fetchConferences("next");
-    }
-  };
+          const projectsData = projectsSnapshot.docs.map((doc) => ({
+            name: doc.data().name,
+          }));
+          setProjectsList(projectsData);
+          const techniciansData = techniciansSnapshot.docs.map((doc) => ({
+            name: doc.data().nome,
+            whatsapp: doc.data().whatsapp,
+          }));
+          setTechniciansList(techniciansData);
 
-  const handlePrevPage = () => {
-    if (page > 1) {
-      setPage((p) => p - 1);
-      fetchConferences("prev");
+          setSummaryData({
+            technicians: techniciansSnapshot.size,
+            projects: projectsSnapshot.size,
+            ums: umsSnapshot.size,
+            notebooks: notebooksSnapshot.size,
+          });
+
+          const conferencesQuery = query(
+            collection(db, "conferences"),
+            orderBy("endTime", "desc"),
+            limit(10)
+          );
+          const conferencesSnapshot = await getDocs(conferencesQuery);
+          const conferencesList = conferencesSnapshot.docs.map((doc) => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              date: data.endTime.toDate().toLocaleDateString("pt-BR"),
+              startTime: data.startTime
+                .toDate()
+                .toLocaleTimeString("pt-BR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }),
+              endTime: data.endTime
+                .toDate()
+                .toLocaleTimeString("pt-BR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }),
+              project: data.projectName,
+              um: data.umName,
+              technician: data.userName,
+              expected: data.expectedCount,
+              scanned: data.scannedCount,
+              missing: data.missingCount,
+              missingHostnames: data.missingDevices || [],
+            } as Conference;
+          });
+          setConferences(conferencesList);
+        } catch (error) {
+          console.error("Erro ao buscar dados do dashboard:", error);
+          toast.error("Não foi possível carregar os dados do dashboard.", {
+            id: "global-toast",
+          });
+        } finally {
+          setIsDataLoading(false);
+        }
+      };
+      fetchData();
     }
-  };
+  }, [userProfile]);
 
   const openModal = (title: string, data: ModalListItem[] | string[]) => {
     setModalContent({ title, data });
@@ -230,7 +157,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <DashboardCard
           title="Técnicos Cadastrados"
-          value={isLoading ? "..." : summaryData.technicians}
+          value={isDataLoading ? "..." : summaryData.technicians}
           icon={Users}
           onDetailsClick={() =>
             openModal("Técnicos Cadastrados", techniciansList)
@@ -238,18 +165,18 @@ export default function DashboardPage() {
         />
         <DashboardCard
           title="Projetos"
-          value={isLoading ? "..." : summaryData.projects}
+          value={isDataLoading ? "..." : summaryData.projects}
           icon={BriefcaseBusiness}
           onDetailsClick={() => openModal("Projetos", projectsList)}
         />
         <DashboardCard
           title="UMs"
-          value={isLoading ? "..." : summaryData.ums}
+          value={isDataLoading ? "..." : summaryData.ums}
           icon={Truck}
         />
         <DashboardCard
           title="Notebooks Cadastrados"
-          value={isLoading ? "..." : summaryData.notebooks}
+          value={isDataLoading ? "..." : summaryData.notebooks}
           icon={Laptop}
         />
       </div>
@@ -285,7 +212,7 @@ export default function DashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {isLoading ? (
+              {isDataLoading ? (
                 <tr>
                   <td colSpan={7} className="text-center p-6 text-gray-500">
                     Carregando conferências...
@@ -338,13 +265,6 @@ export default function DashboardPage() {
             </tbody>
           </table>
         </div>
-        <PaginationControls
-          onNext={handleNextPage}
-          onPrev={handlePrevPage}
-          hasNextPage={hasNextPage}
-          hasPrevPage={page > 1}
-          isLoading={isLoading}
-        />
       </div>
       <Modal
         isOpen={isModalOpen}

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { db } from "@/lib/firebase/config";
+import { useAuth } from "@/context/AuthContext";
 import {
   collection,
   getDocs,
@@ -17,6 +18,7 @@ import {
   Query,
 } from "firebase/firestore";
 import { PaginationControls } from "@/components/ui/PaginationControls";
+import { SkeletonTableRow } from "@/components/ui/SkeletonTableRow"; // Importa o novo componente
 import { Download, Filter, XCircle } from "lucide-react";
 import Papa from "papaparse";
 import toast from "react-hot-toast";
@@ -52,11 +54,12 @@ interface User {
 const ITEMS_PER_PAGE = 15;
 
 export default function ReportsPage() {
+  const { userProfile } = useAuth();
   const [conferences, setConferences] = useState<Conference[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [ums, setUms] = useState<UM[]>([]);
   const [technicians, setTechnicians] = useState<User[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isDataLoading, setIsDataLoading] = useState(true);
   const [filters, setFilters] = useState({
     date: "",
     projectId: "",
@@ -105,7 +108,7 @@ export default function ReportsPage() {
 
   const fetchConferences = useCallback(
     async (direction: "next" | "prev" | "initial" = "initial") => {
-      setIsLoading(true);
+      setIsDataLoading(true);
       try {
         let conferencesQuery: Query<DocumentData> = collection(
           db,
@@ -203,7 +206,7 @@ export default function ReportsPage() {
           setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
           setHasNextPage(snapshot.docs.length === ITEMS_PER_PAGE);
         } else {
-          setHasNextPage(direction === "prev");
+          setHasNextPage(direction === "prev" && snapshot.docs.length > 0);
         }
       } catch (error) {
         console.error("Erro ao buscar relatórios:", error);
@@ -212,19 +215,18 @@ export default function ReportsPage() {
           { id: "global-toast" }
         );
       } finally {
-        setIsLoading(false);
+        setIsDataLoading(false);
       }
     },
     [filters, lastVisible, firstVisible, projects, ums, technicians]
   );
 
   useEffect(() => {
-    fetchDropdownData();
-  }, [fetchDropdownData]);
-
-  useEffect(() => {
-    fetchConferences("initial");
-  }, [filters, fetchConferences]);
+    if (userProfile) {
+      fetchDropdownData();
+      fetchConferences("initial");
+    }
+  }, [userProfile, filters, fetchConferences, fetchDropdownData]);
 
   const handleFilterChange = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -258,7 +260,6 @@ export default function ReportsPage() {
   };
 
   const handleExportCSV = async () => {
-    // For export, we fetch ALL filtered documents, not just the current page
     try {
       let fullQuery: Query<DocumentData> = collection(db, "conferences");
       if (filters.technicianId) {
@@ -266,13 +267,62 @@ export default function ReportsPage() {
         if (tech)
           fullQuery = query(fullQuery, where("userName", "==", tech.nome));
       }
-      // ... add other filters similarly ...
+      if (filters.projectId) {
+        const project = projects.find((p) => p.id === filters.projectId);
+        if (project)
+          fullQuery = query(
+            fullQuery,
+            where("projectName", "==", project.name)
+          );
+      }
+      if (filters.umId) {
+        const um = ums.find((u) => u.id === filters.umId);
+        if (um) fullQuery = query(fullQuery, where("umName", "==", um.name));
+      }
+      if (filters.date) {
+        const selectedDate = new Date(filters.date);
+        const startOfDay = new Date(
+          selectedDate.getUTCFullYear(),
+          selectedDate.getUTCMonth(),
+          selectedDate.getUTCDate()
+        );
+        const endOfDay = new Date(startOfDay);
+        endOfDay.setDate(endOfDay.getDate() + 1);
+        fullQuery = query(
+          fullQuery,
+          where("endTime", ">=", startOfDay),
+          where("endTime", "<", endOfDay)
+        );
+      }
+
       fullQuery = query(fullQuery, orderBy("endTime", "desc"));
 
       const snapshot = await getDocs(fullQuery);
-      const allFilteredConferences = snapshot.docs.map(
-        (doc) => doc.data() as Conference
-      );
+      const allFilteredConferences = snapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          date: data.endTime.toDate().toISOString().split("T")[0],
+          startTime: data.startTime
+            .toDate()
+            .toLocaleTimeString("pt-BR", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          endTime: data.endTime
+            .toDate()
+            .toLocaleTimeString("pt-BR", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          projectName: data.projectName,
+          umName: data.umName,
+          userName: data.userName,
+          expectedCount: data.expectedCount,
+          scannedCount: data.scannedCount,
+          missingCount: data.missingCount,
+        } as Conference;
+      });
 
       if (allFilteredConferences.length === 0) {
         toast.error("Nenhum dado para exportar com os filtros atuais.", {
@@ -416,12 +466,10 @@ export default function ReportsPage() {
               </tr>
             </thead>
             <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={7} className="text-center p-6 text-gray-500">
-                    Carregando relatórios...
-                  </td>
-                </tr>
+              {isDataLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <SkeletonTableRow key={i} columns={7} />
+                ))
               ) : conferences.length > 0 ? (
                 conferences.map((conference) => (
                   <tr
@@ -466,7 +514,7 @@ export default function ReportsPage() {
           onPrev={handlePrevPage}
           hasNextPage={hasNextPage}
           hasPrevPage={page > 1}
-          isLoading={isLoading}
+          isLoading={isDataLoading}
         />
       </div>
     </div>

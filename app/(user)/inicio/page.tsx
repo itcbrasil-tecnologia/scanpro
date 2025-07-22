@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase/config";
@@ -12,18 +12,10 @@ import {
   orderBy,
   limit,
   Timestamp,
-  startAfter,
-  endBefore,
-  limitToLast,
-  DocumentData,
-  QueryDocumentSnapshot,
 } from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
-import { PaginationControls } from "@/components/ui/PaginationControls";
-import { ScanBarcode, Camera, CheckCircle } from "lucide-react";
+import { BookCheck, Camera } from "lucide-react";
 import toast from "react-hot-toast";
-
-const ITEMS_PER_PAGE = 10;
 
 interface Conference {
   id: string;
@@ -40,156 +32,85 @@ interface Conference {
 export default function InicioPage() {
   const { userProfile } = useAuth();
   const [conferences, setConferences] = useState<Conference[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isDataLoading, setIsDataLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState<string[]>([]);
-  const [dailyCounts, setDailyCounts] = useState({
-    completed: 0,
-    total: userProfile?.dailyConferenceGoal || 2,
-  });
-
-  const [lastVisible, setLastVisible] =
-    useState<QueryDocumentSnapshot<DocumentData> | null>(null);
-  const [firstVisible, setFirstVisible] =
-    useState<QueryDocumentSnapshot<DocumentData> | null>(null);
-  const [page, setPage] = useState(1);
-  const [hasNextPage, setHasNextPage] = useState(true);
-
-  const fetchConferences = useCallback(
-    async (direction: "next" | "prev" | "initial" = "initial") => {
-      if (!userProfile) return;
-      setIsLoading(true);
-      try {
-        let historyQuery;
-        const conferencesCollection = collection(db, "conferences");
-        const baseQuery = query(
-          conferencesCollection,
-          where("userId", "==", userProfile.uid),
-          orderBy("endTime", "desc")
-        );
-
-        if (direction === "next" && lastVisible) {
-          historyQuery = query(
-            baseQuery,
-            startAfter(lastVisible),
-            limit(ITEMS_PER_PAGE)
-          );
-        } else if (direction === "prev" && firstVisible) {
-          historyQuery = query(
-            baseQuery,
-            endBefore(firstVisible),
-            limitToLast(ITEMS_PER_PAGE)
-          );
-        } else {
-          historyQuery = query(baseQuery, limit(ITEMS_PER_PAGE));
-        }
-
-        const historySnapshot = await getDocs(historyQuery);
-        const userConferences = historySnapshot.docs.map((document) => {
-          const data = document.data();
-          return {
-            id: document.id,
-            date: data.endTime.toDate().toLocaleDateString("pt-BR"),
-            startTime: data.startTime
-              .toDate()
-              .toLocaleTimeString("pt-BR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-            endTime: data.endTime
-              .toDate()
-              .toLocaleTimeString("pt-BR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-            um: data.umName,
-            expected: data.expectedCount,
-            scanned: data.scannedCount,
-            missing: data.missingCount,
-            missingHostnames: data.missingDevices || [],
-          } as Conference;
-        });
-
-        setConferences(userConferences);
-        if (!historySnapshot.empty) {
-          setFirstVisible(historySnapshot.docs[0]);
-          setLastVisible(historySnapshot.docs[historySnapshot.docs.length - 1]);
-          setHasNextPage(historySnapshot.docs.length === ITEMS_PER_PAGE);
-        } else {
-          setHasNextPage(false);
-        }
-      } catch (error) {
-        console.error("Erro ao buscar conferências:", error);
-        toast.error("Não foi possível carregar o histórico.", {
-          id: "global-toast",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [userProfile, lastVisible, firstVisible]
-  );
+  const [dailyCounts, setDailyCounts] = useState({ completed: 0, total: 2 });
 
   useEffect(() => {
-    const fetchPageData = async () => {
-      if (!userProfile) return;
+    if (userProfile) {
+      const fetchUserData = async () => {
+        setIsDataLoading(true);
+        try {
+          const today = new Date();
+          const startOfDay = new Date(
+            today.getFullYear(),
+            today.getMonth(),
+            today.getDate()
+          );
+          const endOfDay = new Date(
+            today.getFullYear(),
+            today.getMonth(),
+            today.getDate() + 1
+          );
 
-      setIsLoading(true);
-      setDailyCounts((prev) => ({
-        ...prev,
-        total: userProfile.dailyConferenceGoal || 2,
-      }));
+          const dailyCountQuery = query(
+            collection(db, "conferences"),
+            where("userId", "==", userProfile.uid),
+            where("endTime", ">=", Timestamp.fromDate(startOfDay)),
+            where("endTime", "<", Timestamp.fromDate(endOfDay))
+          );
+          const dailySnapshot = await getDocs(dailyCountQuery);
+          setDailyCounts({
+            total: userProfile.dailyConferenceGoal || 2,
+            completed: dailySnapshot.size,
+          });
 
-      try {
-        const today = new Date();
-        const startOfDay = new Date(
-          today.getFullYear(),
-          today.getMonth(),
-          today.getDate()
-        );
-        const endOfDay = new Date(
-          today.getFullYear(),
-          today.getMonth(),
-          today.getDate() + 1
-        );
-        const dailyCountQuery = query(
-          collection(db, "conferences"),
-          where("userId", "==", userProfile.uid),
-          where("endTime", ">=", Timestamp.fromDate(startOfDay)),
-          where("endTime", "<", Timestamp.fromDate(endOfDay))
-        );
-        const dailySnapshot = await getDocs(dailyCountQuery);
-        setDailyCounts((currentCounts) => ({
-          ...currentCounts,
-          completed: dailySnapshot.size,
-        }));
-      } catch (error) {
-        console.error("Erro ao buscar contagem diária:", error);
-        toast.error("Não foi possível carregar a contagem diária.", {
-          id: "global-toast",
-        });
-      }
+          const historyQuery = query(
+            collection(db, "conferences"),
+            where("userId", "==", userProfile.uid),
+            orderBy("endTime", "desc"),
+            limit(20)
+          );
 
-      await fetchConferences("initial");
-      setIsLoading(false);
-    };
-
-    fetchPageData();
-  }, [userProfile, fetchConferences]);
-
-  const handleNextPage = () => {
-    if (hasNextPage) {
-      setPage((p) => p + 1);
-      fetchConferences("next");
+          const historySnapshot = await getDocs(historyQuery);
+          const userConferences = historySnapshot.docs.map((document) => {
+            const data = document.data();
+            return {
+              id: document.id,
+              date: data.endTime.toDate().toLocaleDateString("pt-BR"),
+              startTime: data.startTime
+                .toDate()
+                .toLocaleTimeString("pt-BR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }),
+              endTime: data.endTime
+                .toDate()
+                .toLocaleTimeString("pt-BR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }),
+              um: data.umName,
+              expected: data.expectedCount,
+              scanned: data.scannedCount,
+              missing: data.missingCount,
+              missingHostnames: data.missingDevices || [],
+            } as Conference;
+          });
+          setConferences(userConferences);
+        } catch (error) {
+          console.error("Erro ao buscar dados do usuário:", error);
+          toast.error("Não foi possível carregar os seus dados.", {
+            id: "global-toast",
+          });
+        } finally {
+          setIsDataLoading(false);
+        }
+      };
+      fetchUserData();
     }
-  };
-
-  const handlePrevPage = () => {
-    if (page > 1) {
-      setPage((p) => p - 1);
-      fetchConferences("prev");
-    }
-  };
+  }, [userProfile]);
 
   const openDetailsModal = (hostnames: string[]) => {
     setModalContent(hostnames);
@@ -208,8 +129,6 @@ export default function InicioPage() {
     );
   };
 
-  const allDailyCountsCompleted = dailyCounts.completed >= dailyCounts.total;
-
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold text-gray-800">
@@ -222,26 +141,19 @@ export default function InicioPage() {
               Contagens Diárias Disponíveis
             </h3>
             <div className="flex justify-center items-center my-2">
-              <ScanBarcode className="w-10 h-10 text-teal-600" />
+              <BookCheck className="w-10 h-10 text-teal-600" />
               <p className="text-4xl font-bold text-gray-800 ml-4">
                 {dailyCounts.total - dailyCounts.completed}/{dailyCounts.total}
               </p>
             </div>
           </div>
           <div className="sm:hidden">
-            {allDailyCountsCompleted ? (
-              <div className="w-full flex items-center justify-center bg-gray-200 text-gray-500 px-4 py-3 rounded-lg font-bold text-lg">
-                <CheckCircle size={24} className="mr-3" />
-                CONCLUÍDO
+            <Link href="/scanner" passHref>
+              <div className="w-full flex items-center justify-center bg-teal-600 text-white px-4 py-3 rounded-lg shadow-lg hover:bg-teal-700 transition-colors font-bold text-lg">
+                <Camera size={24} className="mr-3" />
+                INICIAR CONFERÊNCIA
               </div>
-            ) : (
-              <Link href="/scanner" passHref>
-                <div className="w-full flex items-center justify-center bg-teal-600 text-white px-4 py-3 rounded-lg shadow-lg hover:bg-teal-700 transition-colors font-bold text-lg">
-                  <Camera size={24} className="mr-3" />
-                  INICIAR CONFERÊNCIA
-                </div>
-              </Link>
-            )}
+            </Link>
           </div>
         </div>
         <div className="lg:col-span-3 bg-white p-4 rounded-lg shadow-md overflow-hidden">
@@ -270,7 +182,7 @@ export default function InicioPage() {
                 </tr>
               </thead>
               <tbody>
-                {isLoading ? (
+                {isDataLoading ? (
                   <tr>
                     <td colSpan={5} className="text-center p-6 text-gray-500">
                       A carregar histórico...
@@ -321,13 +233,6 @@ export default function InicioPage() {
               </tbody>
             </table>
           </div>
-          <PaginationControls
-            onNext={handleNextPage}
-            onPrev={handlePrevPage}
-            hasNextPage={hasNextPage}
-            hasPrevPage={page > 1}
-            isLoading={isLoading}
-          />
         </div>
       </div>
       <Modal

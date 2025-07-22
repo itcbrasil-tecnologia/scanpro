@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase/config";
 import {
@@ -21,6 +20,7 @@ import {
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { PaginationControls } from "@/components/ui/PaginationControls";
+import { SkeletonTableRow } from "@/components/ui/SkeletonTableRow"; // Importa o novo componente
 import { Plus, Edit, Trash2, ChevronDown } from "lucide-react";
 import { UserProfile, UserRole } from "@/types";
 import toast from "react-hot-toast";
@@ -129,9 +129,8 @@ function UserListItem({
 
 export default function UsersPage() {
   const { userProfile } = useAuth();
-  const router = useRouter();
   const [users, setUsers] = useState<UserProfile[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isDataLoading, setIsDataLoading] = useState(true);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
@@ -154,7 +153,7 @@ export default function UsersPage() {
 
   const fetchUsers = useCallback(
     async (direction: "next" | "prev" | "initial" = "initial") => {
-      setIsLoading(true);
+      setIsDataLoading(true);
       try {
         let usersQuery;
         const usersCollection = collection(db, "users");
@@ -195,7 +194,7 @@ export default function UsersPage() {
           id: "global-toast",
         });
       } finally {
-        setIsLoading(false);
+        setIsDataLoading(false);
       }
     },
     [lastVisible, firstVisible]
@@ -206,11 +205,6 @@ export default function UsersPage() {
       fetchUsers("initial");
     }
   }, [userProfile, fetchUsers]);
-
-  if (userProfile && userProfile.role !== "MASTER") {
-    router.replace("/dashboard");
-    return null;
-  }
 
   const openAddModal = () => {
     setCurrentUser(null);
@@ -227,10 +221,7 @@ export default function UsersPage() {
 
   const openEditModal = (user: UserProfile) => {
     setCurrentUser(user);
-    setFormState({
-      ...user,
-      senha: "",
-    });
+    setFormState({ ...user, senha: "" });
     setIsFormModalOpen(true);
   };
 
@@ -243,23 +234,19 @@ export default function UsersPage() {
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = event.target;
-    setFormState((previousState) => ({
-      ...previousState,
-      [name]: value,
-    }));
+    setFormState((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSave = async () => {
     if (currentUser) {
       try {
         const userRef = doc(db, "users", currentUser.uid);
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { senha, uid, ...profileData } = formState;
         await setDoc(userRef, profileData, { merge: true });
         toast.success(`Usuário "${formState.nome}" atualizado com sucesso!`, {
           id: "global-toast",
         });
-        fetchUsers("initial"); // Refresh the list from the first page
+        fetchUsers("initial");
         setIsFormModalOpen(false);
       } catch (error) {
         console.error("Erro ao atualizar usuário:", error);
@@ -284,7 +271,7 @@ export default function UsersPage() {
         const result = await response.json();
         if (!response.ok) throw new Error(result.message);
         toast.success(result.message, { id: "global-toast" });
-        fetchUsers("initial"); // Refresh the list from the first page
+        fetchUsers("initial");
         setIsFormModalOpen(false);
       } catch (error) {
         console.error("Erro ao criar usuário:", error);
@@ -307,7 +294,7 @@ export default function UsersPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.message);
       toast.success(result.message, { id: "global-toast" });
-      fetchUsers("initial"); // Refresh the list from the first page
+      fetchUsers("initial");
       setIsDeleteModalOpen(false);
     } catch (error) {
       console.error("Erro ao deletar usuário:", error);
@@ -348,37 +335,42 @@ export default function UsersPage() {
         </button>
       </div>
       <div className="bg-white p-4 rounded-lg shadow-md">
-        {isLoading ? (
-          <p className="text-center text-gray-500 py-8">
-            Carregando usuários...
-          </p>
-        ) : (
-          <>
-            <div className="hidden sm:grid grid-cols-12 gap-4 p-3 text-sm font-bold text-slate-500 border-b">
-              <div className="col-span-3">Nome</div>
-              <div className="col-span-4">Email</div>
-              <div className="col-span-2">Whatsapp</div>
-              <div className="col-span-2">Perfil</div>
-              <div className="col-span-1 text-right">Ações</div>
-            </div>
-            <div className="space-y-2 mt-2">
-              {users.map((user) => (
-                <UserListItem
-                  key={user.uid}
-                  user={user}
-                  onEdit={() => openEditModal(user)}
-                  onDelete={() => openDeleteModal(user)}
-                />
-              ))}
-            </div>
-          </>
-        )}
+        <div className="hidden sm:grid grid-cols-12 gap-4 p-3 text-sm font-bold text-slate-500 border-b">
+          <div className="col-span-3">Nome</div>
+          <div className="col-span-4">Email</div>
+          <div className="col-span-2">Whatsapp</div>
+          <div className="col-span-2">Perfil</div>
+          <div className="col-span-1 text-right">Ações</div>
+        </div>
+        <div className="space-y-2 mt-2">
+          {isDataLoading ? (
+            Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-[52px] bg-slate-50 rounded-lg animate-pulse"
+              />
+            ))
+          ) : users.length > 0 ? (
+            users.map((user) => (
+              <UserListItem
+                key={user.uid}
+                user={user}
+                onEdit={() => openEditModal(user)}
+                onDelete={() => openDeleteModal(user)}
+              />
+            ))
+          ) : (
+            <p className="text-center text-gray-500 py-8">
+              Nenhum usuário encontrado.
+            </p>
+          )}
+        </div>
         <PaginationControls
           onNext={handleNextPage}
           onPrev={handlePrevPage}
           hasNextPage={hasNextPage}
           hasPrevPage={page > 1}
-          isLoading={isLoading}
+          isLoading={isDataLoading}
         />
       </div>
       <Modal

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react"; // 'useMemo' foi removido
 import { db } from "@/lib/firebase/config";
 import {
   collection,
