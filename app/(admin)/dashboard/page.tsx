@@ -10,10 +10,16 @@ import {
   limit,
   orderBy,
 } from "firebase/firestore";
-import { useAuth } from "@/context/AuthContext";
 import { DashboardCard } from "@/components/ui/DashboardCard";
 import { Modal } from "@/components/ui/Modal";
-import { Users, BriefcaseBusiness, Truck, Laptop } from "lucide-react";
+import {
+  Users,
+  BriefcaseBusiness,
+  Truck,
+  Laptop,
+  TriangleAlert,
+  Info,
+} from "lucide-react";
 import toast from "react-hot-toast";
 
 type ModalListItem = { name: string; whatsapp?: string };
@@ -33,7 +39,6 @@ interface Conference {
 }
 
 export default function DashboardPage() {
-  const { userProfile } = useAuth();
   const [summaryData, setSummaryData] = useState({
     technicians: 0,
     projects: 0,
@@ -41,7 +46,7 @@ export default function DashboardPage() {
     notebooks: 0,
   });
   const [conferences, setConferences] = useState<Conference[]>([]);
-  const [isDataLoading, setIsDataLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState<{
     title: string;
@@ -52,81 +57,86 @@ export default function DashboardPage() {
   const [projectsList, setProjectsList] = useState<ModalListItem[]>([]);
 
   useEffect(() => {
-    if (userProfile) {
-      const fetchData = async () => {
-        setIsDataLoading(true);
-        try {
-          const projectsSnapshot = await getDocs(collection(db, "projects"));
-          const umsSnapshot = await getDocs(collection(db, "ums"));
-          const notebooksSnapshot = await getDocs(collection(db, "notebooks"));
-          const techniciansQuery = query(
-            collection(db, "users"),
-            where("role", "==", "USER")
-          );
-          const techniciansSnapshot = await getDocs(techniciansQuery);
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        // Otimização: Busca todos os dados necessários em paralelo
+        const [
+          projectsSnapshot,
+          umsSnapshot,
+          notebooksSnapshot,
+          techniciansSnapshot,
+          conferencesSnapshot,
+        ] = await Promise.all([
+          getDocs(collection(db, "projects")),
+          getDocs(collection(db, "ums")),
+          getDocs(collection(db, "notebooks")),
+          getDocs(query(collection(db, "users"), where("role", "==", "USER"))),
+          getDocs(
+            query(
+              collection(db, "conferences"),
+              orderBy("endTime", "desc"),
+              limit(10)
+            )
+          ),
+        ]);
 
-          const projectsData = projectsSnapshot.docs.map((doc) => ({
-            name: doc.data().name,
-          }));
-          setProjectsList(projectsData);
-          const techniciansData = techniciansSnapshot.docs.map((doc) => ({
-            name: doc.data().nome,
-            whatsapp: doc.data().whatsapp,
-          }));
-          setTechniciansList(techniciansData);
+        // Processa os dados dos cards
+        const projectsData = projectsSnapshot.docs.map((doc) => ({
+          name: doc.data().name,
+        }));
+        setProjectsList(projectsData);
+        const techniciansData = techniciansSnapshot.docs.map((doc) => ({
+          name: doc.data().nome,
+          whatsapp: doc.data().whatsapp,
+        }));
+        setTechniciansList(techniciansData);
+        setSummaryData({
+          technicians: techniciansSnapshot.size,
+          projects: projectsSnapshot.size,
+          ums: umsSnapshot.size,
+          notebooks: notebooksSnapshot.size,
+        });
 
-          setSummaryData({
-            technicians: techniciansSnapshot.size,
-            projects: projectsSnapshot.size,
-            ums: umsSnapshot.size,
-            notebooks: notebooksSnapshot.size,
-          });
-
-          const conferencesQuery = query(
-            collection(db, "conferences"),
-            orderBy("endTime", "desc"),
-            limit(10)
-          );
-          const conferencesSnapshot = await getDocs(conferencesQuery);
-          const conferencesList = conferencesSnapshot.docs.map((doc) => {
-            const data = doc.data();
-            return {
-              id: doc.id,
-              date: data.endTime.toDate().toLocaleDateString("pt-BR"),
-              startTime: data.startTime
-                .toDate()
-                .toLocaleTimeString("pt-BR", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                }),
-              endTime: data.endTime
-                .toDate()
-                .toLocaleTimeString("pt-BR", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                }),
-              project: data.projectName,
-              um: data.umName,
-              technician: data.userName,
-              expected: data.expectedCount,
-              scanned: data.scannedCount,
-              missing: data.missingCount,
-              missingHostnames: data.missingDevices || [],
-            } as Conference;
-          });
-          setConferences(conferencesList);
-        } catch (error) {
-          console.error("Erro ao buscar dados do dashboard:", error);
-          toast.error("Não foi possível carregar os dados do dashboard.", {
-            id: "global-toast",
-          });
-        } finally {
-          setIsDataLoading(false);
-        }
-      };
-      fetchData();
-    }
-  }, [userProfile]);
+        // Processa os dados da tabela
+        const conferencesList = conferencesSnapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            date: data.endTime.toDate().toLocaleDateString("pt-BR"),
+            startTime: data.startTime
+              .toDate()
+              .toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            endTime: data.endTime
+              .toDate()
+              .toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            project: data.projectName,
+            um: data.umName,
+            technician: data.userName,
+            expected: data.expectedCount,
+            scanned: data.scannedCount,
+            missing: data.missingCount,
+            missingHostnames: data.missingDevices || [],
+          } as Conference;
+        });
+        setConferences(conferencesList);
+      } catch (error) {
+        console.error("Erro ao buscar dados do dashboard:", error);
+        toast.error("Não foi possível carregar os dados do dashboard.", {
+          id: "global-toast",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []); // Roda apenas uma vez na montagem do componente
 
   const openModal = (title: string, data: ModalListItem[] | string[]) => {
     setModalContent({ title, data });
@@ -157,7 +167,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <DashboardCard
           title="Técnicos Cadastrados"
-          value={isDataLoading ? "..." : summaryData.technicians}
+          value={isLoading ? "..." : summaryData.technicians}
           icon={Users}
           onDetailsClick={() =>
             openModal("Técnicos Cadastrados", techniciansList)
@@ -165,18 +175,18 @@ export default function DashboardPage() {
         />
         <DashboardCard
           title="Projetos"
-          value={isDataLoading ? "..." : summaryData.projects}
+          value={isLoading ? "..." : summaryData.projects}
           icon={BriefcaseBusiness}
           onDetailsClick={() => openModal("Projetos", projectsList)}
         />
         <DashboardCard
           title="UMs"
-          value={isDataLoading ? "..." : summaryData.ums}
+          value={isLoading ? "..." : summaryData.ums}
           icon={Truck}
         />
         <DashboardCard
           title="Notebooks Cadastrados"
-          value={isDataLoading ? "..." : summaryData.notebooks}
+          value={isLoading ? "..." : summaryData.notebooks}
           icon={Laptop}
         />
       </div>
@@ -212,7 +222,7 @@ export default function DashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {isDataLoading ? (
+              {isLoading ? (
                 <tr>
                   <td colSpan={7} className="text-center p-6 text-gray-500">
                     Carregando conferências...
@@ -241,7 +251,7 @@ export default function DashboardPage() {
                     <td className="p-3 text-center">
                       {conference.missing > 0 && (
                         <button
-                          className="text-scanpro-teal hover:underline text-sm font-medium"
+                          className="flex items-center justify-center mx-auto text-xs font-semibold text-amber-800 bg-amber-100 hover:bg-amber-200 px-3 py-1 rounded-full transition-colors"
                           onClick={() =>
                             openModal(
                               "Dispositivos Não Escaneados",
@@ -249,6 +259,7 @@ export default function DashboardPage() {
                             )
                           }
                         >
+                          <TriangleAlert size={14} className="mr-1.5" />
                           Ver Faltantes
                         </button>
                       )}
@@ -264,6 +275,17 @@ export default function DashboardPage() {
               )}
             </tbody>
           </table>
+        </div>
+        <div className="flex justify-end items-center mt-4 text-sm">
+          <span>Itens por página: 10</span>
+          <div className="ml-4">
+            <button className="px-3 py-1 border rounded-md hover:bg-slate-100">
+              Anterior
+            </button>
+            <button className="px-3 py-1 border rounded-md hover:bg-slate-100 ml-2">
+              Próximo
+            </button>
+          </div>
         </div>
       </div>
       <Modal

@@ -8,16 +8,16 @@ import { FirebaseError } from "firebase/app";
 import { auth } from "@/lib/firebase/config";
 import { useAuth } from "@/context/AuthContext";
 import toast from "react-hot-toast";
+import { Eye, EyeOff } from "lucide-react"; // Importa os ícones
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false); // Novo estado
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
 
-  // Este useEffect agora apenas lida com o caso de um usuário JÁ LOGADO
-  // que tenta acessar a página de login. O AuthGuard cuidará do resto.
   useEffect(() => {
     if (!authLoading && user) {
       router.replace("/inicio");
@@ -35,9 +35,6 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // Após o sucesso, não mostramos toast nem esperamos.
-      // Apenas redirecionamos. A página de destino e seu AuthGuard
-      // são agora responsáveis por exibir o estado de carregamento.
       router.push("/inicio");
     } catch (error) {
       if (
@@ -51,12 +48,10 @@ export default function LoginPage() {
         console.error("Erro no login (desconhecido):", error);
         toast.error("Ocorreu um erro inesperado.", { id: "global-toast" });
       }
-      setIsLoading(false); // Reativa o botão apenas em caso de erro.
+      setIsLoading(false);
     }
   };
 
-  // Se o usuário já estiver logado, mostramos um carregamento para
-  // aguardar o redirecionamento do useEffect.
   if (authLoading || user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-100">
@@ -65,7 +60,6 @@ export default function LoginPage() {
     );
   }
 
-  // Se não houver usuário, renderiza o formulário de login.
   return (
     <main className="flex items-center justify-center min-h-screen bg-slate-100">
       <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-xl">
@@ -108,16 +102,26 @@ export default function LoginPage() {
             >
               Senha
             </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
-            />
+            <div className="relative mt-1">
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"} // Muda o tipo dinamicamente
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600"
+                aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
           </div>
           <div>
             <button

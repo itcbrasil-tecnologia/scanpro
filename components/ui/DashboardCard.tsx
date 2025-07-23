@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { LucideIcon } from "lucide-react";
+import { LucideIcon, Info } from "lucide-react"; // Importa o ícone Info
 
 interface DashboardCardProps {
   title: string;
@@ -21,7 +21,6 @@ export function DashboardCard({
       <div>
         <div className="flex justify-between items-start">
           <h3 className="text-lg font-semibold text-gray-600">{title}</h3>
-          {/* Usando a cor 'teal' padrão do Tailwind para o ícone */}
           <div className="bg-teal-100 p-2 rounded-lg">
             <Icon className="h-6 w-6 text-teal-600" />
           </div>
@@ -32,9 +31,9 @@ export function DashboardCard({
         <div className="flex justify-end mt-4">
           <button
             onClick={onDetailsClick}
-            // MUDANÇA: Usando 'teal-600' e padding ajustado para um botão menor
-            className="text-sm font-semibold text-white bg-teal-600 hover:bg-teal-700 px-3 py-1 rounded-md transition-colors"
+            className="flex items-center text-sm font-semibold text-white bg-teal-600 hover:bg-teal-700 px-3 py-1 rounded-md transition-colors"
           >
+            <Info size={16} className="mr-1.5" />
             Detalhes
           </button>
         </div>
