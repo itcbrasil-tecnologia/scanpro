@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { db } from "@/lib/firebase/config";
 import {
   collection,
@@ -9,6 +9,9 @@ import {
   doc,
   setDoc,
   deleteDoc,
+  query,
+  where,
+  limit,
 } from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
@@ -128,7 +131,7 @@ export default function UMsPage() {
     expectedNotebooks: 0,
   });
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
       const projectsCollection = collection(db, "projects");
@@ -152,11 +155,11 @@ export default function UMsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const groupedUms = useMemo(() => {
     return projects
@@ -241,6 +244,24 @@ export default function UMsPage() {
   const handleDelete = async () => {
     if (!umToDelete) return;
     try {
+      // VERIFICAÇÃO DE DEPENDÊNCIA
+      const notebooksQuery = query(
+        collection(db, "notebooks"),
+        where("umId", "==", umToDelete.id),
+        limit(1)
+      );
+      const notebooksSnapshot = await getDocs(notebooksQuery);
+
+      if (!notebooksSnapshot.empty) {
+        toast.error(
+          "Não é possível excluir. Existem notebooks associados a esta UM.",
+          { id: "global-toast" }
+        );
+        closeModals();
+        return;
+      }
+
+      // EXCLUSÃO
       const umRef = doc(db, "ums", umToDelete.id);
       await deleteDoc(umRef);
       toast.success(`UM "${umToDelete.name}" excluída com sucesso!`, {

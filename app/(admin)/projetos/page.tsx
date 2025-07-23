@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react"; // 'useMemo' foi removido
+import React, { useState, useEffect, useCallback } from "react";
 import { db } from "@/lib/firebase/config";
 import {
   collection,
@@ -9,6 +9,9 @@ import {
   doc,
   setDoc,
   deleteDoc,
+  query,
+  where,
+  limit,
 } from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
@@ -32,7 +35,7 @@ export default function ProjectsPage() {
   const [projectColor, setProjectColor] = useState("#FFFFFF");
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
 
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async () => {
     setIsLoading(true);
     try {
       const projectsCollection = collection(db, "projects");
@@ -54,11 +57,11 @@ export default function ProjectsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchProjects();
-  }, []);
+  }, [fetchProjects]);
 
   const handleColorChange = (color: ColorResult) => {
     setProjectColor(color.hex);
@@ -122,7 +125,26 @@ export default function ProjectsPage() {
 
   const handleDelete = async () => {
     if (!projectToDelete) return;
+
     try {
+      // VERIFICAÇÃO DE DEPENDÊNCIA
+      const umsQuery = query(
+        collection(db, "ums"),
+        where("projectId", "==", projectToDelete.id),
+        limit(1)
+      );
+      const umsSnapshot = await getDocs(umsQuery);
+
+      if (!umsSnapshot.empty) {
+        toast.error(
+          "Não é possível excluir. Existem UMs associadas a este projeto.",
+          { id: "global-toast" }
+        );
+        closeModals();
+        return;
+      }
+
+      // EXCLUSÃO
       const projectRef = doc(db, "projects", projectToDelete.id);
       await deleteDoc(projectRef);
       toast.success(`Projeto "${projectToDelete.name}" excluído com sucesso!`, {

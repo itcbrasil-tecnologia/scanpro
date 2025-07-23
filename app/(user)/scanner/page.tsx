@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Scanner, IDetectedBarcode } from "@yudiel/react-qr-scanner"; // CORREÇÃO AQUI
+import { Scanner, IDetectedBarcode } from "@yudiel/react-qr-scanner";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase/config";
 import {
@@ -173,18 +173,23 @@ export default function ScannerPage() {
 
   const handleConcludeAndSend = async () => {
     if (!summaryData) return;
+
     try {
+      // Salva a conferência no Firestore
       await addDoc(collection(db, "conferences"), {
         ...summaryData,
         startTime: Timestamp.fromDate(conferenceStartTime!),
         endTime: Timestamp.now(),
         userId: userProfile?.uid,
       });
+
+      // Envia os dados para a nossa API Route para notificar o Telegram
       await fetch("/api/notify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(summaryData),
       });
+
       toast.success("CONFERÊNCIA ENVIADA COM SUCESSO", { id: "global-toast" });
       router.push("/inicio");
     } catch (error) {
@@ -230,7 +235,7 @@ export default function ScannerPage() {
               2. Escaneie os QR Codes
             </h3>
             <div className="w-full max-w-sm mx-auto rounded-lg overflow-hidden border-2 border-dashed">
-              <Scanner // CORREÇÃO AQUI
+              <Scanner
                 onScan={handleScan}
                 allowMultiple={false}
                 components={{ finder: false }}
