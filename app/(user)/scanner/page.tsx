@@ -142,6 +142,26 @@ export default function ScannerPage() {
     }
   };
 
+  const handleRestart = () => {
+    if (scannedDevices.length === 0) {
+      toast.error("Nenhum dispositivo foi escaneado para reiniciar.", {
+        id: "global-toast",
+      });
+      return;
+    }
+    // Combina os dispositivos escaneados de volta na lista de "a escanear" e ordena
+    const allDevicesForUm = [...devicesToScan, ...scannedDevices].sort();
+    setDevicesToScan(allDevicesForUm);
+
+    // Limpa a lista de dispositivos escaneados
+    setScannedDevices([]);
+
+    // Reinicia o tempo de início da conferência
+    setConferenceStartTime(new Date());
+
+    toast.success("Contagem reiniciada!", { id: "global-toast" });
+  };
+
   const handleFinalizeConference = () => {
     setIsScanning(false);
     const endTime = new Date();
@@ -175,7 +195,6 @@ export default function ScannerPage() {
     if (!summaryData) return;
 
     try {
-      // Salva a conferência no Firestore
       await addDoc(collection(db, "conferences"), {
         ...summaryData,
         startTime: Timestamp.fromDate(conferenceStartTime!),
@@ -183,7 +202,6 @@ export default function ScannerPage() {
         userId: userProfile?.uid,
       });
 
-      // Envia os dados para a nossa API Route para notificar o Telegram
       await fetch("/api/notify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -215,8 +233,8 @@ export default function ScannerPage() {
           id="um-select"
           value={selectedUmId}
           onChange={(event) => setSelectedUmId(event.target.value)}
-          disabled={isLoading}
-          className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm rounded-md bg-white"
+          disabled={isLoading || isScanning} // Desabilita enquanto escaneia
+          className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm rounded-md bg-white disabled:bg-slate-50"
         >
           <option value="">
             {isLoading ? "Carregando..." : "-- Selecione para iniciar"}
@@ -279,7 +297,7 @@ export default function ScannerPage() {
           </div>
           <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-md">
             <button
-              onClick={() => setSelectedUmId("")}
+              onClick={handleRestart} // Lógica de reinício corrigida
               className="flex items-center bg-orange-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-orange-600 transition-colors"
             >
               <RefreshCcw size={20} className="mr-2" /> REINICIAR
