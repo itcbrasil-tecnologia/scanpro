@@ -1,30 +1,15 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase/config";
-import {
-  collection,
-  getDocs,
-  doc,
-  setDoc,
-  query,
-  orderBy,
-  limit,
-  startAfter,
-  endBefore,
-  limitToLast,
-  DocumentData,
-  QueryDocumentSnapshot,
-} from "firebase/firestore";
+import { collection, getDocs, doc, setDoc } from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
-import { PaginationControls } from "@/components/ui/PaginationControls";
 import { Plus, Edit, Trash2, ChevronDown } from "lucide-react";
 import { UserProfile, UserRole } from "@/types";
 import toast from "react-hot-toast";
-
-const ITEMS_PER_PAGE = 15;
 
 function UserListItem({
   user,
@@ -128,8 +113,9 @@ function UserListItem({
 
 export default function UsersPage() {
   const { userProfile } = useAuth();
+  const router = useRouter();
   const [users, setUsers] = useState<UserProfile[]>([]);
-  const [isDataLoading, setIsDataLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
@@ -141,70 +127,37 @@ export default function UsersPage() {
     whatsapp: "",
     senha: "",
     role: "USER" as UserRole,
-    dailyConferenceGoal: 2,
   });
 
-  const [lastVisible, setLastVisible] =
-    useState<QueryDocumentSnapshot<DocumentData> | null>(null);
-  const [firstVisible, setFirstVisible] =
-    useState<QueryDocumentSnapshot<DocumentData> | null>(null);
-  const [page, setPage] = useState(1);
-  const [hasNextPage, setHasNextPage] = useState(true);
-
-  const fetchUsers = useCallback(
-    async (direction: "next" | "prev" | "initial" = "initial") => {
-      setIsDataLoading(true);
-      try {
-        let usersQuery;
-        const usersCollection = collection(db, "users");
-        const baseQuery = query(usersCollection, orderBy("nome"));
-
-        if (direction === "next" && lastVisible) {
-          usersQuery = query(
-            baseQuery,
-            startAfter(lastVisible),
-            limit(ITEMS_PER_PAGE)
-          );
-        } else if (direction === "prev" && firstVisible) {
-          usersQuery = query(
-            baseQuery,
-            endBefore(firstVisible),
-            limitToLast(ITEMS_PER_PAGE)
-          );
-        } else {
-          usersQuery = query(baseQuery, limit(ITEMS_PER_PAGE));
-        }
-
-        const usersSnapshot = await getDocs(usersQuery);
-        const usersList = usersSnapshot.docs.map(
-          (doc) => ({ uid: doc.id, ...doc.data() } as UserProfile)
-        );
-
-        setUsers(usersList);
-        if (!usersSnapshot.empty) {
-          setFirstVisible(usersSnapshot.docs[0]);
-          setLastVisible(usersSnapshot.docs[usersSnapshot.docs.length - 1]);
-          setHasNextPage(usersSnapshot.docs.length === ITEMS_PER_PAGE);
-        } else {
-          setHasNextPage(false);
-        }
-      } catch (error) {
-        console.error("Erro ao buscar usuários:", error);
-        toast.error("Não foi possível carregar os usuários.", {
-          id: "global-toast",
-        });
-      } finally {
-        setIsDataLoading(false);
-      }
-    },
-    [lastVisible, firstVisible]
-  );
+  const fetchUsers = async () => {
+    setIsLoading(true);
+    try {
+      const usersCollection = collection(db, "users");
+      const usersSnapshot = await getDocs(usersCollection);
+      const usersList = usersSnapshot.docs.map(
+        (doc) => ({ uid: doc.id, ...doc.data() } as UserProfile)
+      );
+      setUsers(usersList);
+    } catch (error) {
+      console.error("Erro ao buscar usuários:", error);
+      toast.error("Não foi possível carregar os usuários.", {
+        id: "global-toast",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (userProfile && userProfile.role === "MASTER") {
-      fetchUsers("initial");
+      fetchUsers();
     }
-  }, [userProfile, fetchUsers]);
+  }, [userProfile]);
+
+  if (userProfile && userProfile.role !== "MASTER") {
+    router.replace("/dashboard");
+    return null;
+  }
 
   const openAddModal = () => {
     setCurrentUser(null);
@@ -215,18 +168,13 @@ export default function UsersPage() {
       whatsapp: "",
       senha: "",
       role: "USER",
-      dailyConferenceGoal: 2,
     });
     setIsFormModalOpen(true);
   };
 
   const openEditModal = (user: UserProfile) => {
     setCurrentUser(user);
-    setFormState({
-      ...user,
-      senha: "",
-      dailyConferenceGoal: user.dailyConferenceGoal || 2,
-    });
+    setFormState({ ...user, senha: "" });
     setIsFormModalOpen(true);
   };
 
@@ -238,11 +186,8 @@ export default function UsersPage() {
   const handleFormChange = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    const { name, value, type } = event.target;
-    setFormState((prev) => ({
-      ...prev,
-      [name]: type === "number" ? Number(value) : value,
-    }));
+    const { name, value } = event.target;
+    setFormState((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSave = async () => {
@@ -255,7 +200,7 @@ export default function UsersPage() {
         toast.success(`Usuário "${formState.nome}" atualizado com sucesso!`, {
           id: "global-toast",
         });
-        fetchUsers("initial");
+        fetchUsers();
         setIsFormModalOpen(false);
       } catch (error) {
         console.error("Erro ao atualizar usuário:", error);
@@ -280,7 +225,7 @@ export default function UsersPage() {
         const result = await response.json();
         if (!response.ok) throw new Error(result.message);
         toast.success(result.message, { id: "global-toast" });
-        fetchUsers("initial");
+        fetchUsers();
         setIsFormModalOpen(false);
       } catch (error) {
         console.error("Erro ao criar usuário:", error);
@@ -303,7 +248,7 @@ export default function UsersPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.message);
       toast.success(result.message, { id: "global-toast" });
-      fetchUsers("initial");
+      fetchUsers();
       setIsDeleteModalOpen(false);
     } catch (error) {
       console.error("Erro ao deletar usuário:", error);
@@ -311,20 +256,6 @@ export default function UsersPage() {
         `Erro: ${error instanceof Error ? error.message : "Erro desconhecido"}`,
         { id: "global-toast" }
       );
-    }
-  };
-
-  const handleNextPage = () => {
-    if (hasNextPage) {
-      setPage((p) => p + 1);
-      fetchUsers("next");
-    }
-  };
-
-  const handlePrevPage = () => {
-    if (page > 1) {
-      setPage((p) => p - 1);
-      fetchUsers("prev");
     }
   };
 
@@ -344,7 +275,7 @@ export default function UsersPage() {
         </button>
       </div>
       <div className="bg-white p-4 rounded-lg shadow-md">
-        {isDataLoading ? (
+        {isLoading ? (
           <p className="text-center text-gray-500 py-8">
             Carregando usuários...
           </p>
@@ -369,13 +300,6 @@ export default function UsersPage() {
             </div>
           </>
         )}
-        <PaginationControls
-          onNext={handleNextPage}
-          onPrev={handlePrevPage}
-          hasNextPage={hasNextPage}
-          hasPrevPage={page > 1}
-          isLoading={isDataLoading}
-        />
       </div>
       <Modal
         isOpen={isFormModalOpen}
@@ -449,21 +373,6 @@ export default function UsersPage() {
               <option value="MASTER">Master (MASTER)</option>
             </select>
           </div>
-          {formState.role === "USER" && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Meta de Conferências Diárias
-              </label>
-              <input
-                type="number"
-                name="dailyConferenceGoal"
-                value={formState.dailyConferenceGoal}
-                onChange={handleFormChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                min="0"
-              />
-            </div>
-          )}
           <div className="flex justify-end pt-4">
             <button
               onClick={handleSave}

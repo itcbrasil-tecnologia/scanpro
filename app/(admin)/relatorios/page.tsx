@@ -1,24 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { db } from "@/lib/firebase/config";
-import { useAuth } from "@/context/AuthContext";
-import {
-  collection,
-  getDocs,
-  query,
-  where,
-  orderBy,
-  limit,
-  startAfter,
-  endBefore,
-  limitToLast,
-  DocumentData,
-  QueryDocumentSnapshot,
-  Query,
-} from "firebase/firestore";
-import { PaginationControls } from "@/components/ui/PaginationControls";
-import { SkeletonTableRow } from "@/components/ui/SkeletonTableRow"; // Importa o novo componente
+import { collection, getDocs, query, where, orderBy } from "firebase/firestore"; // 'limit' removido
 import { Download, Filter, XCircle } from "lucide-react";
 import Papa from "papaparse";
 import toast from "react-hot-toast";
@@ -51,15 +35,12 @@ interface User {
   nome: string;
 }
 
-const ITEMS_PER_PAGE = 15;
-
 export default function ReportsPage() {
-  const { userProfile } = useAuth();
-  const [conferences, setConferences] = useState<Conference[]>([]);
+  const [allConferences, setAllConferences] = useState<Conference[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [ums, setUms] = useState<UM[]>([]);
   const [technicians, setTechnicians] = useState<User[]>([]);
-  const [isDataLoading, setIsDataLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [filters, setFilters] = useState({
     date: "",
     projectId: "",
@@ -67,114 +48,49 @@ export default function ReportsPage() {
     technicianId: "",
   });
 
-  const [lastVisible, setLastVisible] =
-    useState<QueryDocumentSnapshot<DocumentData> | null>(null);
-  const [firstVisible, setFirstVisible] =
-    useState<QueryDocumentSnapshot<DocumentData> | null>(null);
-  const [page, setPage] = useState(1);
-  const [hasNextPage, setHasNextPage] = useState(true);
-
-  const fetchDropdownData = useCallback(async () => {
-    try {
-      const projectsSnapshot = await getDocs(collection(db, "projects"));
-      setProjects(
-        projectsSnapshot.docs.map(
-          (doc) => ({ id: doc.id, name: doc.data().name } as Project)
-        )
-      );
-      const umsSnapshot = await getDocs(collection(db, "ums"));
-      setUms(
-        umsSnapshot.docs.map(
-          (doc) => ({ id: doc.id, name: doc.data().name } as UM)
-        )
-      );
-      const techQuery = query(
-        collection(db, "users"),
-        where("role", "==", "USER")
-      );
-      const techSnapshot = await getDocs(techQuery);
-      setTechnicians(
-        techSnapshot.docs.map(
-          (doc) => ({ uid: doc.id, nome: doc.data().nome } as User)
-        )
-      );
-    } catch (error) {
-      console.error("Erro ao buscar dados para filtros:", error);
-      toast.error("Não foi possível carregar os filtros.", {
-        id: "global-toast",
-      });
-    }
-  }, []);
-
-  const fetchConferences = useCallback(
-    async (direction: "next" | "prev" | "initial" = "initial") => {
-      setIsDataLoading(true);
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
       try {
-        let conferencesQuery: Query<DocumentData> = collection(
-          db,
-          "conferences"
+        const [projectsSnapshot, umsSnapshot, techSnapshot, confSnapshot] =
+          await Promise.all([
+            getDocs(collection(db, "projects")),
+            getDocs(collection(db, "ums")),
+            getDocs(
+              query(collection(db, "users"), where("role", "==", "USER"))
+            ),
+            getDocs(
+              query(collection(db, "conferences"), orderBy("endTime", "desc"))
+            ),
+          ]);
+
+        setProjects(
+          projectsSnapshot.docs.map(
+            (doc) =>
+              ({
+                id: doc.id,
+                name: doc.data().name,
+              } as Project)
+          )
         );
 
-        if (filters.technicianId) {
-          const tech = technicians.find((t) => t.uid === filters.technicianId);
-          if (tech)
-            conferencesQuery = query(
-              conferencesQuery,
-              where("userName", "==", tech.nome)
-            );
-        }
-        if (filters.projectId) {
-          const project = projects.find((p) => p.id === filters.projectId);
-          if (project)
-            conferencesQuery = query(
-              conferencesQuery,
-              where("projectName", "==", project.name)
-            );
-        }
-        if (filters.umId) {
-          const um = ums.find((u) => u.id === filters.umId);
-          if (um)
-            conferencesQuery = query(
-              conferencesQuery,
-              where("umName", "==", um.name)
-            );
-        }
-        if (filters.date) {
-          const selectedDate = new Date(filters.date);
-          const startOfDay = new Date(
-            selectedDate.getUTCFullYear(),
-            selectedDate.getUTCMonth(),
-            selectedDate.getUTCDate()
-          );
-          const endOfDay = new Date(startOfDay);
-          endOfDay.setDate(endOfDay.getDate() + 1);
-          conferencesQuery = query(
-            conferencesQuery,
-            where("endTime", ">=", startOfDay),
-            where("endTime", "<", endOfDay)
-          );
-        }
+        setUms(
+          umsSnapshot.docs.map(
+            (doc) => ({ id: doc.id, name: doc.data().name } as UM)
+          )
+        );
 
-        conferencesQuery = query(conferencesQuery, orderBy("endTime", "desc"));
+        setTechnicians(
+          techSnapshot.docs.map(
+            (doc) =>
+              ({
+                uid: doc.id,
+                nome: doc.data().nome,
+              } as User)
+          )
+        );
 
-        if (direction === "next" && lastVisible) {
-          conferencesQuery = query(
-            conferencesQuery,
-            startAfter(lastVisible),
-            limit(ITEMS_PER_PAGE)
-          );
-        } else if (direction === "prev" && firstVisible) {
-          conferencesQuery = query(
-            conferencesQuery,
-            endBefore(firstVisible),
-            limitToLast(ITEMS_PER_PAGE)
-          );
-        } else {
-          conferencesQuery = query(conferencesQuery, limit(ITEMS_PER_PAGE));
-        }
-
-        const snapshot = await getDocs(conferencesQuery);
-        const conferencesList = snapshot.docs.map((doc) => {
+        const conferencesList = confSnapshot.docs.map((doc) => {
           const data = doc.data();
           return {
             id: doc.id,
@@ -199,169 +115,76 @@ export default function ReportsPage() {
             missingCount: data.missingCount,
           } as Conference;
         });
-
-        setConferences(conferencesList);
-        if (!snapshot.empty) {
-          setFirstVisible(snapshot.docs[0]);
-          setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
-          setHasNextPage(snapshot.docs.length === ITEMS_PER_PAGE);
-        } else {
-          setHasNextPage(direction === "prev" && snapshot.docs.length > 0);
-        }
+        setAllConferences(conferencesList);
       } catch (error) {
-        console.error("Erro ao buscar relatórios:", error);
-        toast.error(
-          "Não foi possível carregar os relatórios. Verifique os índices do Firestore.",
-          { id: "global-toast" }
-        );
+        console.error("Erro ao buscar dados para relatórios:", error);
+        toast.error("Não foi possível carregar os dados.", {
+          id: "global-toast",
+        });
       } finally {
-        setIsDataLoading(false);
+        setIsLoading(false);
       }
-    },
-    [filters, lastVisible, firstVisible, projects, ums, technicians]
-  );
+    };
+    fetchData();
+  }, []);
 
-  useEffect(() => {
-    if (userProfile) {
-      fetchDropdownData();
-      fetchConferences("initial");
-    }
-  }, [userProfile, filters, fetchConferences, fetchDropdownData]);
+  const filteredConferences = useMemo(() => {
+    return allConferences.filter((conference) => {
+      const projectMatch = filters.projectId
+        ? projects.find((p) => p.id === filters.projectId)?.name ===
+          conference.projectName
+        : true;
+      const umMatch = filters.umId
+        ? ums.find((u) => u.id === filters.umId)?.name === conference.umName
+        : true;
+      const techMatch = filters.technicianId
+        ? technicians.find((t) => t.uid === filters.technicianId)?.nome ===
+          conference.userName
+        : true;
+      const dateMatch = filters.date ? conference.date === filters.date : true;
+      return projectMatch && umMatch && techMatch && dateMatch;
+    });
+  }, [filters, allConferences, projects, ums, technicians]);
 
   const handleFilterChange = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = event.target;
-    setPage(1);
-    setLastVisible(null);
-    setFirstVisible(null);
-    setFilters((prev) => ({ ...prev, [name]: value }));
+    setFilters((previousState) => ({ ...previousState, [name]: value }));
   };
 
   const clearFilters = () => {
-    setPage(1);
-    setLastVisible(null);
-    setFirstVisible(null);
     setFilters({ date: "", projectId: "", umId: "", technicianId: "" });
   };
 
-  const handleNextPage = () => {
-    if (hasNextPage) {
-      setPage((p) => p + 1);
-      fetchConferences("next");
+  const handleExportCSV = () => {
+    if (filteredConferences.length === 0) {
+      toast.error("Nenhum dado para exportar.", { id: "global-toast" });
+      return;
     }
-  };
-
-  const handlePrevPage = () => {
-    if (page > 1) {
-      setPage((p) => p - 1);
-      fetchConferences("prev");
-    }
-  };
-
-  const handleExportCSV = async () => {
-    try {
-      let fullQuery: Query<DocumentData> = collection(db, "conferences");
-      if (filters.technicianId) {
-        const tech = technicians.find((t) => t.uid === filters.technicianId);
-        if (tech)
-          fullQuery = query(fullQuery, where("userName", "==", tech.nome));
-      }
-      if (filters.projectId) {
-        const project = projects.find((p) => p.id === filters.projectId);
-        if (project)
-          fullQuery = query(
-            fullQuery,
-            where("projectName", "==", project.name)
-          );
-      }
-      if (filters.umId) {
-        const um = ums.find((u) => u.id === filters.umId);
-        if (um) fullQuery = query(fullQuery, where("umName", "==", um.name));
-      }
-      if (filters.date) {
-        const selectedDate = new Date(filters.date);
-        const startOfDay = new Date(
-          selectedDate.getUTCFullYear(),
-          selectedDate.getUTCMonth(),
-          selectedDate.getUTCDate()
-        );
-        const endOfDay = new Date(startOfDay);
-        endOfDay.setDate(endOfDay.getDate() + 1);
-        fullQuery = query(
-          fullQuery,
-          where("endTime", ">=", startOfDay),
-          where("endTime", "<", endOfDay)
-        );
-      }
-
-      fullQuery = query(fullQuery, orderBy("endTime", "desc"));
-
-      const snapshot = await getDocs(fullQuery);
-      const allFilteredConferences = snapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          date: data.endTime.toDate().toISOString().split("T")[0],
-          startTime: data.startTime
-            .toDate()
-            .toLocaleTimeString("pt-BR", {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-          endTime: data.endTime
-            .toDate()
-            .toLocaleTimeString("pt-BR", {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-          projectName: data.projectName,
-          umName: data.umName,
-          userName: data.userName,
-          expectedCount: data.expectedCount,
-          scannedCount: data.scannedCount,
-          missingCount: data.missingCount,
-        } as Conference;
-      });
-
-      if (allFilteredConferences.length === 0) {
-        toast.error("Nenhum dado para exportar com os filtros atuais.", {
-          id: "global-toast",
-        });
-        return;
-      }
-
-      const csvData = Papa.unparse(
-        allFilteredConferences.map((c) => ({
-          Data: new Date(c.date).toLocaleDateString("pt-BR", {
-            timeZone: "UTC",
-          }),
-          Inicio: c.startTime,
-          Fim: c.endTime,
-          Projeto: c.projectName,
-          UM: c.umName,
-          Tecnico: c.userName,
-          Esperados: c.expectedCount,
-          Escaneados: c.scannedCount,
-          Faltantes: c.missingCount,
-        })),
-        { header: true }
-      );
-      const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" });
-      const link = document.createElement("a");
-      const url = URL.createObjectURL(blob);
-      link.setAttribute("href", url);
-      link.setAttribute("download", "relatorio_conferencias.csv");
-      link.style.visibility = "hidden";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (error) {
-      console.error("Erro ao exportar CSV:", error);
-      toast.error("Ocorreu um erro ao gerar o arquivo CSV.", {
-        id: "global-toast",
-      });
-    }
+    const csvData = Papa.unparse(
+      filteredConferences.map((c) => ({
+        Data: new Date(c.date).toLocaleDateString("pt-BR", { timeZone: "UTC" }),
+        Inicio: c.startTime,
+        Fim: c.endTime,
+        Projeto: c.projectName,
+        UM: c.umName,
+        Tecnico: c.userName,
+        Esperados: c.expectedCount,
+        Escaneados: c.scannedCount,
+        Faltantes: c.missingCount,
+      })),
+      { header: true }
+    );
+    const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "relatorio_conferencias.csv");
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -466,12 +289,14 @@ export default function ReportsPage() {
               </tr>
             </thead>
             <tbody>
-              {isDataLoading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <SkeletonTableRow key={i} columns={7} />
-                ))
-              ) : conferences.length > 0 ? (
-                conferences.map((conference) => (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={7} className="text-center p-6 text-gray-500">
+                    Carregando relatórios...
+                  </td>
+                </tr>
+              ) : filteredConferences.length > 0 ? (
+                filteredConferences.map((conference) => (
                   <tr
                     key={conference.id}
                     className="border-b hover:bg-slate-50"
@@ -509,13 +334,6 @@ export default function ReportsPage() {
             </tbody>
           </table>
         </div>
-        <PaginationControls
-          onNext={handleNextPage}
-          onPrev={handlePrevPage}
-          hasNextPage={hasNextPage}
-          hasPrevPage={page > 1}
-          isLoading={isDataLoading}
-        />
       </div>
     </div>
   );
