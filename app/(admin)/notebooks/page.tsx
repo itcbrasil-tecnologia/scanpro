@@ -15,8 +15,16 @@ import {
 } from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
-import { DeviceHistoryModal } from "@/components/ui/DeviceHistoryModal";
-import { Layers, Sheet, Trash2, ChevronDown, Edit } from "lucide-react";
+import { QrCodePrintModal } from "@/components/ui/QrCodePrintModal";
+import {
+  Layers,
+  Sheet,
+  Trash2,
+  ChevronDown,
+  Edit,
+  QrCode,
+  Printer,
+} from "lucide-react";
 import toast from "react-hot-toast";
 
 interface Project {
@@ -41,26 +49,38 @@ function NotebookListItem({
   notebook,
   onEdit,
   onDelete,
-  onViewHistory,
+  onViewQrCode,
 }: {
   notebook: Notebook;
   onEdit: () => void;
   onDelete: () => void;
-  onViewHistory: () => void;
+  onViewQrCode: () => void;
 }) {
   return (
     <li className="flex items-center justify-between py-2 px-3 hover:bg-slate-50 rounded-md">
-      <button
-        onClick={onViewHistory}
-        className="text-gray-600 font-mono text-sm hover:text-teal-600 hover:underline"
-      >
+      <span className="text-gray-600 font-mono text-sm">
         {notebook.hostname}
-      </button>
+      </span>
       <div className="flex items-center space-x-3">
-        <button onClick={onEdit} className="text-gray-400 hover:text-teal-600">
+        <button
+          onClick={onViewQrCode}
+          className="text-gray-400 hover:text-teal-600"
+          title="Gerar QR Code"
+        >
+          <QrCode size={16} />
+        </button>
+        <button
+          onClick={onEdit}
+          className="text-gray-400 hover:text-teal-600"
+          title="Editar"
+        >
           <Edit size={16} />
         </button>
-        <button onClick={onDelete} className="text-gray-400 hover:text-red-600">
+        <button
+          onClick={onDelete}
+          className="text-gray-400 hover:text-red-600"
+          title="Excluir"
+        >
           <Trash2 size={16} />
         </button>
       </div>
@@ -77,6 +97,7 @@ export default function NotebooksPage() {
   const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
   const [isDeleteBatchModalOpen, setIsDeleteBatchModalOpen] = useState(false);
   const [isDeleteSingleModalOpen, setIsDeleteSingleModalOpen] = useState(false);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [openItems, setOpenItems] = useState<Record<string, boolean>>({});
   const [currentNotebook, setCurrentNotebook] = useState<Notebook | null>(null);
   const [hostname, setHostname] = useState("");
@@ -86,12 +107,11 @@ export default function NotebooksPage() {
   const [endNumber, setEndNumber] = useState(1);
   const [batchSelectedUmId, setBatchSelectedUmId] = useState("");
   const [generatedNames, setGeneratedNames] = useState<string[]>([]);
+  const [hostnamesForQrModal, setHostnamesForQrModal] = useState<string[]>([]);
   const [umToDeleteFrom, setUmToDeleteFrom] = useState<UM | null>(null);
   const [notebookToDelete, setNotebookToDelete] = useState<Notebook | null>(
     null
   );
-  const [selectedHostname, setSelectedHostname] = useState<string | null>(null);
-  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -132,9 +152,15 @@ export default function NotebooksPage() {
     fetchData();
   }, [fetchData]);
 
-  const handleViewHistory = (hostname: string) => {
-    setSelectedHostname(hostname);
-    setIsHistoryModalOpen(true);
+  const handleViewSingleQrCode = (hostname: string) => {
+    setHostnamesForQrModal([hostname]);
+    setIsQrModalOpen(true);
+  };
+
+  const handleViewBatchQrCodes = (umNotebooks: Notebook[]) => {
+    const names = umNotebooks.map((n) => n.hostname).sort();
+    setHostnamesForQrModal(names);
+    setIsQrModalOpen(true);
   };
 
   const toggleDropdown = (id: string) => {
@@ -241,10 +267,12 @@ export default function NotebooksPage() {
         batch.set(newNotebookRef, { hostname: name, umId: batchSelectedUmId });
       });
       await batch.commit();
+
       toast.success(
-        `${generatedNames.length} notebooks adicionados com sucesso!`,
-        { id: "global-toast" }
+        `${generatedNames.length} notebooks adicionados com sucesso! Agora você pode gerar os QR Codes na lista abaixo.`,
+        { id: "global-toast", duration: 5000 }
       );
+
       fetchData();
       setIsBatchModalOpen(false);
       setGeneratedNames([]);
@@ -367,16 +395,27 @@ export default function NotebooksPage() {
                             <div className="pl-6 py-2">
                               {umNotebooks.length > 0 ? (
                                 <>
-                                  <button
-                                    onClick={() => {
-                                      setUmToDeleteFrom(um);
-                                      setIsDeleteBatchModalOpen(true);
-                                    }}
-                                    className="flex items-center text-sm text-red-600 hover:text-red-800 mb-3 ml-2"
-                                  >
-                                    <Trash2 size={16} className="mr-1" />
-                                    Excluir Todos da UM
-                                  </button>
+                                  <div className="flex items-center space-x-4 mb-3 ml-2">
+                                    <button
+                                      onClick={() =>
+                                        handleViewBatchQrCodes(umNotebooks)
+                                      }
+                                      className="flex items-center text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 px-3 py-1 rounded-md"
+                                    >
+                                      <Printer size={16} className="mr-1.5" />
+                                      Gerar QR Codes
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setUmToDeleteFrom(um);
+                                        setIsDeleteBatchModalOpen(true);
+                                      }}
+                                      className="flex items-center text-sm font-semibold text-white bg-red-500 hover:bg-red-600 px-3 py-1 rounded-md"
+                                    >
+                                      <Trash2 size={16} className="mr-1.5" />
+                                      Excluir Todos
+                                    </button>
+                                  </div>
                                   <ul className="space-y-1 bg-white p-3 rounded-md">
                                     {umNotebooks
                                       .sort((a, b) =>
@@ -390,8 +429,10 @@ export default function NotebooksPage() {
                                           onDelete={() =>
                                             openDeleteSingleModal(notebook)
                                           }
-                                          onViewHistory={() =>
-                                            handleViewHistory(notebook.hostname)
+                                          onViewQrCode={() =>
+                                            handleViewSingleQrCode(
+                                              notebook.hostname
+                                            )
                                           }
                                         />
                                       ))}
@@ -582,10 +623,10 @@ export default function NotebooksPage() {
         title="Confirmar Exclusão"
         message={`Tem certeza que deseja excluir o notebook "${notebookToDelete?.hostname}"?`}
       />
-      <DeviceHistoryModal
-        isOpen={isHistoryModalOpen}
-        onClose={() => setIsHistoryModalOpen(false)}
-        hostname={selectedHostname}
+      <QrCodePrintModal
+        isOpen={isQrModalOpen}
+        onClose={() => setIsQrModalOpen(false)}
+        hostnames={hostnamesForQrModal}
       />
     </div>
   );

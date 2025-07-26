@@ -1,419 +1,288 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase/config";
-import { collection, getDocs, doc, setDoc } from "firebase/firestore";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  orderBy,
+  limit,
+  Timestamp,
+} from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
-import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
-import { Plus, Edit, Trash2, ChevronDown } from "lucide-react";
-import { UserProfile, UserRole } from "@/types";
+import { ScanBarcode, Camera, CheckCircle } from "lucide-react";
 import toast from "react-hot-toast";
 
-function UserListItem({
-  user,
-  onEdit,
-  onDelete,
-}: {
-  user: UserProfile;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const roleColor = {
-    MASTER: "bg-purple-200 text-purple-800",
-    ADMIN: "bg-blue-200 text-blue-800",
-    USER: "bg-green-200 text-green-800",
-  };
-  return (
-    <div className="bg-slate-50 rounded-lg">
-      <div className="hidden sm:grid grid-cols-12 gap-4 items-center p-3">
-        <div className="col-span-3 font-semibold text-gray-800">
-          {user.nome}
-        </div>
-        <div className="col-span-4 text-gray-600">{user.email}</div>
-        <div className="col-span-2 text-gray-600">{user.whatsapp}</div>
-        <div className="col-span-2">
-          <span
-            className={`px-2 py-1 text-xs font-bold rounded-full ${
-              roleColor[user.role]
-            }`}
-          >
-            {user.role}
-          </span>
-        </div>
-        <div className="col-span-1 flex items-center justify-end space-x-3">
-          <button
-            onClick={onEdit}
-            className="text-gray-500 hover:text-teal-600"
-          >
-            <Edit size={20} />
-          </button>
-          <button
-            onClick={onDelete}
-            className="text-gray-500 hover:text-red-600"
-          >
-            <Trash2 size={20} />
-          </button>
-        </div>
-      </div>
-      <div className="sm:hidden">
-        <button
-          onClick={() => setIsMobileOpen(!isMobileOpen)}
-          className="w-full flex items-center justify-between p-3 text-left"
-        >
-          <div>
-            <span className="font-semibold text-gray-800">{user.nome}</span>
-            <p
-              className={`text-sm font-medium ${
-                roleColor[user.role]
-              } bg-opacity-40 rounded-full inline-block px-2 mt-1`}
-            >
-              {user.role}
-            </p>
-          </div>
-          <ChevronDown
-            size={20}
-            className={`transition-transform ${
-              isMobileOpen ? "rotate-180" : ""
-            }`}
-          />
-        </button>
-        {isMobileOpen && (
-          <div className="p-4 border-t border-slate-200 space-y-3">
-            <div>
-              <p className="text-xs text-gray-500">Email</p>
-              <p>{user.email}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Whatsapp</p>
-              <p>{user.whatsapp}</p>
-            </div>
-            <div className="flex justify-end space-x-4 pt-2">
-              <button
-                onClick={onEdit}
-                className="flex items-center text-sm p-2 rounded-md bg-slate-200 hover:bg-slate-300"
-              >
-                <Edit size={16} className="mr-1" /> Editar
-              </button>
-              <button
-                onClick={onDelete}
-                className="flex items-center text-sm p-2 rounded-md bg-red-100 text-red-700 hover:bg-red-200"
-              >
-                <Trash2 size={16} className="mr-1" /> Excluir
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+interface Conference {
+  id: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  um: string;
+  expected: number;
+  scanned: number;
+  missing: number;
+  missingHostnames: string[];
 }
 
-export default function UsersPage() {
+export default function InicioPage() {
   const { userProfile } = useAuth();
   const router = useRouter();
-  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [conferences, setConferences] = useState<Conference[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
-  const [formState, setFormState] = useState({
-    uid: "",
-    nome: "",
-    email: "",
-    whatsapp: "",
-    senha: "",
-    role: "USER" as UserRole,
-    dailyConferenceGoal: 2,
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalContent, setModalContent] = useState<string[]>([]);
+  const [dailyCounts, setDailyCounts] = useState({
+    completed: 0,
+    total: 2,
   });
 
-  const fetchUsers = async () => {
-    setIsLoading(true);
-    try {
-      const usersCollection = collection(db, "users");
-      const usersSnapshot = await getDocs(usersCollection);
-      const usersList = usersSnapshot.docs.map(
-        (doc) => ({ uid: doc.id, ...doc.data() } as UserProfile)
-      );
-      setUsers(usersList);
-    } catch (error) {
-      console.error("Erro ao buscar usuários:", error);
-      toast.error("Não foi possível carregar os usuários.", {
-        id: "global-toast",
-      });
-    } finally {
-      setIsLoading(false);
+  useEffect(() => {
+    if (
+      userProfile &&
+      (userProfile.role === "MASTER" || userProfile.role === "ADMIN")
+    ) {
+      router.replace("/dashboard");
     }
-  };
+  }, [userProfile, router]);
 
   useEffect(() => {
-    if (userProfile && userProfile.role === "MASTER") {
-      fetchUsers();
-    }
+    const fetchPageData = async () => {
+      if (!userProfile || userProfile.role !== "USER") {
+        // Se o perfil ainda não carregou ou não é de um técnico, não faz nada.
+        // O useEffect acima cuidará do redirecionamento se necessário.
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        // Busca a contagem diária
+        const today = new Date();
+        const startOfDay = new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          today.getDate()
+        );
+        const endOfDay = new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          today.getDate() + 1
+        );
+        const dailyCountQuery = query(
+          collection(db, "conferences"),
+          where("userId", "==", userProfile.uid),
+          where("endTime", ">=", Timestamp.fromDate(startOfDay)),
+          where("endTime", "<", Timestamp.fromDate(endOfDay))
+        );
+        const dailySnapshot = await getDocs(dailyCountQuery);
+        setDailyCounts({
+          completed: dailySnapshot.size,
+          total: userProfile.dailyConferenceGoal || 2,
+        });
+
+        // Busca o histórico das últimas 20 conferências
+        const historyQuery = query(
+          collection(db, "conferences"),
+          where("userId", "==", userProfile.uid),
+          orderBy("endTime", "desc"),
+          limit(20)
+        );
+        const historySnapshot = await getDocs(historyQuery);
+        const userConferences = historySnapshot.docs.map((document) => {
+          const data = document.data();
+          return {
+            id: document.id,
+            date: data.endTime.toDate().toLocaleDateString("pt-BR"),
+            startTime: data.startTime
+              .toDate()
+              .toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            endTime: data.endTime
+              .toDate()
+              .toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            um: data.umName,
+            expected: data.expectedCount,
+            scanned: data.scannedCount,
+            missing: data.missingCount,
+            missingHostnames: data.missingDevices || [],
+          } as Conference;
+        });
+        setConferences(userConferences);
+      } catch (error) {
+        console.error("Erro ao buscar dados da página:", error);
+        toast.error("Não foi possível carregar os seus dados.", {
+          id: "global-toast",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPageData();
   }, [userProfile]);
 
-  if (userProfile && userProfile.role !== "MASTER") {
-    router.replace("/dashboard");
+  const openDetailsModal = (hostnames: string[]) => {
+    setModalContent(hostnames);
+    setIsModalOpen(true);
+  };
+
+  const renderStatus = (conference: Conference) => {
+    const isComplete = conference.scanned === conference.expected;
+    const style = isComplete
+      ? "bg-green-100 text-green-800"
+      : "bg-red-100 text-red-800";
+    return (
+      <span className={`px-3 py-1 text-xs font-bold rounded-full ${style}`}>
+        CONCLUÍDO
+      </span>
+    );
+  };
+
+  if (!userProfile || userProfile.role !== "USER") {
     return null;
   }
 
-  const openAddModal = () => {
-    setCurrentUser(null);
-    setFormState({
-      uid: "",
-      nome: "",
-      email: "",
-      whatsapp: "",
-      senha: "",
-      role: "USER",
-      dailyConferenceGoal: 2,
-    });
-    setIsFormModalOpen(true);
-  };
-
-  const openEditModal = (user: UserProfile) => {
-    setCurrentUser(user);
-    setFormState({
-      ...user,
-      senha: "",
-      dailyConferenceGoal: user.dailyConferenceGoal || 2,
-    });
-    setIsFormModalOpen(true);
-  };
-
-  const openDeleteModal = (user: UserProfile) => {
-    setUserToDelete(user);
-    setIsDeleteModalOpen(true);
-  };
-
-  const handleFormChange = (
-    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value, type } = event.target;
-    setFormState((prev) => ({
-      ...prev,
-      [name]: type === "number" ? Number(value) : value,
-    }));
-  };
-
-  const handleSave = async () => {
-    if (currentUser) {
-      try {
-        const userRef = doc(db, "users", currentUser.uid);
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { senha, uid, ...profileData } = formState;
-        await setDoc(userRef, profileData, { merge: true });
-        toast.success(`Usuário "${formState.nome}" atualizado com sucesso!`, {
-          id: "global-toast",
-        });
-        fetchUsers();
-        setIsFormModalOpen(false);
-      } catch (error) {
-        console.error("Erro ao atualizar usuário:", error);
-        toast.error("Não foi possível atualizar o usuário.", {
-          id: "global-toast",
-        });
-      }
-    } else {
-      if (!formState.email || !formState.senha) {
-        toast.error(
-          "Email e Senha são obrigatórios para criar um novo usuário.",
-          { id: "global-toast" }
-        );
-        return;
-      }
-      try {
-        const response = await fetch("/api/users", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formState),
-        });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.message);
-        toast.success(result.message, { id: "global-toast" });
-        fetchUsers();
-        setIsFormModalOpen(false);
-      } catch (error) {
-        console.error("Erro ao criar usuário:", error);
-        toast.error(
-          `Erro: ${
-            error instanceof Error ? error.message : "Erro desconhecido"
-          }`,
-          { id: "global-toast" }
-        );
-      }
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!userToDelete) return;
-    try {
-      const response = await fetch(`/api/users?uid=${userToDelete.uid}`, {
-        method: "DELETE",
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.message);
-      toast.success(result.message, { id: "global-toast" });
-      fetchUsers();
-      setIsDeleteModalOpen(false);
-    } catch (error) {
-      console.error("Erro ao deletar usuário:", error);
-      toast.error(
-        `Erro: ${error instanceof Error ? error.message : "Erro desconhecido"}`,
-        { id: "global-toast" }
-      );
-    }
-  };
-
-  const modalTitle = currentUser ? "Editar Usuário" : "Adicionar Novo Usuário";
+  const allDailyCountsCompleted = dailyCounts.completed >= dailyCounts.total;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-        <h1 className="text-3xl font-bold text-gray-800">Gerenciar Usuários</h1>
-        <button
-          onClick={openAddModal}
-          className="mt-4 sm:mt-0 flex items-center justify-center bg-teal-600 text-white px-4 py-2 rounded-lg shadow hover:bg-teal-700 transition-colors"
-        >
-          <Plus size={20} className="mr-2" />
-          <span className="hidden sm:inline">Adicionar Usuários</span>
-          <span className="sm:hidden">Usuários</span>
-        </button>
-      </div>
-      <div className="bg-white p-4 rounded-lg shadow-md">
-        {isLoading ? (
-          <p className="text-center text-gray-500 py-8">
-            Carregando usuários...
-          </p>
-        ) : (
-          <>
-            <div className="hidden sm:grid grid-cols-12 gap-4 p-3 text-sm font-bold text-slate-500 border-b">
-              <div className="col-span-3">Nome</div>
-              <div className="col-span-4">Email</div>
-              <div className="col-span-2">Whatsapp</div>
-              <div className="col-span-2">Perfil</div>
-              <div className="col-span-1 text-right">Ações</div>
+      <h1 className="text-3xl font-bold text-gray-800">
+        Bem-vindo, {userProfile?.nome?.split(" ")[0]}!
+      </h1>
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+        <div className="lg:col-span-1 space-y-4">
+          <div className="bg-white p-4 rounded-lg shadow-md text-center">
+            <h3 className="font-bold text-gray-700">
+              Contagens Diárias Disponíveis
+            </h3>
+            <div className="flex justify-center items-center my-2">
+              <ScanBarcode className="w-10 h-10 text-teal-600" />
+              <p className="text-4xl font-bold text-gray-800 ml-4">
+                {dailyCounts.total - dailyCounts.completed}/{dailyCounts.total}
+              </p>
             </div>
-            <div className="space-y-2 mt-2">
-              {users.map((user) => (
-                <UserListItem
-                  key={user.uid}
-                  user={user}
-                  onEdit={() => openEditModal(user)}
-                  onDelete={() => openDeleteModal(user)}
-                />
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-      <Modal
-        isOpen={isFormModalOpen}
-        onClose={() => setIsFormModalOpen(false)}
-        title={modalTitle}
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Nome
-            </label>
-            <input
-              type="text"
-              name="nome"
-              value={formState.nome}
-              onChange={handleFormChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Email
-            </label>
-            <input
-              type="email"
-              name="email"
-              value={formState.email}
-              onChange={handleFormChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Whatsapp
-            </label>
-            <input
-              type="tel"
-              name="whatsapp"
-              value={formState.whatsapp}
-              onChange={handleFormChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Senha
-            </label>
-            <input
-              type="password"
-              name="senha"
-              value={formState.senha}
-              onChange={handleFormChange}
-              placeholder={
-                currentUser ? "Deixe em branco para não alterar" : ""
-              }
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Perfil
-            </label>
-            <select
-              name="role"
-              value={formState.role}
-              onChange={handleFormChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
-            >
-              <option value="USER">Técnico (USER)</option>
-              <option value="ADMIN">Administrador (ADMIN)</option>
-              <option value="MASTER">Master (MASTER)</option>
-            </select>
-          </div>
-          {formState.role === "USER" && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Meta de Conferências Diárias
-              </label>
-              <input
-                type="number"
-                name="dailyConferenceGoal"
-                value={formState.dailyConferenceGoal}
-                onChange={handleFormChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                min="0"
-              />
-            </div>
-          )}
-          <div className="flex justify-end pt-4">
-            <button
-              onClick={handleSave}
-              className="bg-teal-600 text-white px-6 py-2 rounded-lg hover:bg-teal-700"
-            >
-              Salvar
-            </button>
+          <div className="sm:hidden">
+            {allDailyCountsCompleted ? (
+              <div className="w-full flex items-center justify-center bg-gray-200 text-gray-500 px-4 py-3 rounded-lg font-bold text-lg">
+                <CheckCircle size={24} className="mr-3" />
+                CONCLUÍDO
+              </div>
+            ) : (
+              <Link href="/scanner" passHref>
+                <div className="w-full flex items-center justify-center bg-teal-600 text-white px-4 py-3 rounded-lg shadow-lg hover:bg-teal-700 transition-colors font-bold text-lg">
+                  <Camera size={24} className="mr-3" />
+                  INICIAR CONFERÊNCIA
+                </div>
+              </Link>
+            )}
           </div>
         </div>
+        <div className="lg:col-span-3 bg-white p-4 rounded-lg shadow-md overflow-hidden">
+          <h2 className="text-xl font-bold text-gray-800 mb-4">
+            As suas Últimas Conferências
+          </h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="bg-slate-200 border-b-2 border-slate-300">
+                <tr>
+                  <th className="p-3 text-sm font-semibold text-slate-600">
+                    Data
+                  </th>
+                  <th className="p-3 text-sm font-semibold text-slate-600">
+                    UM
+                  </th>
+                  <th className="p-3 text-sm font-semibold text-slate-600 text-center">
+                    Contagem
+                  </th>
+                  <th className="p-3 text-sm font-semibold text-slate-600 text-center">
+                    Status
+                  </th>
+                  <th className="p-3 text-sm font-semibold text-slate-600 text-center">
+                    Detalhes
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={5} className="text-center p-6 text-gray-500">
+                      A carregar histórico...
+                    </td>
+                  </tr>
+                ) : conferences.length > 0 ? (
+                  conferences.map((conference) => (
+                    <tr
+                      key={conference.id}
+                      className="border-b hover:bg-slate-50"
+                    >
+                      <td className="p-3 text-sm">
+                        <p>{conference.date}</p>
+                        <p className="text-xs text-gray-500">
+                          {conference.startTime} - {conference.endTime}
+                        </p>
+                      </td>
+                      <td className="p-3 text-sm font-medium">
+                        {conference.um}
+                      </td>
+                      <td className="p-3 text-sm text-center">
+                        {conference.scanned} / {conference.expected}
+                      </td>
+                      <td className="p-3 text-center">
+                        {renderStatus(conference)}
+                      </td>
+                      <td className="p-3 text-center">
+                        {conference.missing > 0 && (
+                          <button
+                            onClick={() =>
+                              openDetailsModal(conference.missingHostnames)
+                            }
+                            className="text-scanpro-teal hover:underline text-sm font-medium"
+                          >
+                            Ver
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="text-center p-6 text-gray-500">
+                      Nenhuma conferência encontrada.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="Dispositivos Não Escaneados"
+      >
+        <ul className="space-y-2">
+          {modalContent.map((hostname, index) => (
+            <li
+              key={index}
+              className="bg-gray-100 p-2 rounded-md text-gray-700 font-mono"
+            >
+              {hostname}
+            </li>
+          ))}
+        </ul>
       </Modal>
-      <ConfirmationModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={handleDelete}
-        title="Confirmar Exclusão"
-        message={`Tem certeza que deseja excluir o usuário "${userToDelete?.nome}"? Esta ação é irreversível.`}
-      />
     </div>
   );
 }
