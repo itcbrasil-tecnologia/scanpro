@@ -18,7 +18,6 @@ import {
   Truck,
   Laptop,
   TriangleAlert,
-  Info,
 } from "lucide-react";
 import toast from "react-hot-toast";
 

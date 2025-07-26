@@ -15,6 +15,7 @@ import {
 } from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
+import { DeviceHistoryModal } from "@/components/ui/DeviceHistoryModal";
 import { Layers, Sheet, Trash2, ChevronDown, Edit } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -40,16 +41,21 @@ function NotebookListItem({
   notebook,
   onEdit,
   onDelete,
+  onViewHistory,
 }: {
   notebook: Notebook;
   onEdit: () => void;
   onDelete: () => void;
+  onViewHistory: () => void;
 }) {
   return (
     <li className="flex items-center justify-between py-2 px-3 hover:bg-slate-50 rounded-md">
-      <span className="text-gray-600 font-mono text-sm">
+      <button
+        onClick={onViewHistory}
+        className="text-gray-600 font-mono text-sm hover:text-teal-600 hover:underline"
+      >
         {notebook.hostname}
-      </span>
+      </button>
       <div className="flex items-center space-x-3">
         <button onClick={onEdit} className="text-gray-400 hover:text-teal-600">
           <Edit size={16} />
@@ -84,6 +90,8 @@ export default function NotebooksPage() {
   const [notebookToDelete, setNotebookToDelete] = useState<Notebook | null>(
     null
   );
+  const [selectedHostname, setSelectedHostname] = useState<string | null>(null);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -123,6 +131,11 @@ export default function NotebooksPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const handleViewHistory = (hostname: string) => {
+    setSelectedHostname(hostname);
+    setIsHistoryModalOpen(true);
+  };
 
   const toggleDropdown = (id: string) => {
     setOpenItems((previousState) => ({
@@ -377,6 +390,9 @@ export default function NotebooksPage() {
                                           onDelete={() =>
                                             openDeleteSingleModal(notebook)
                                           }
+                                          onViewHistory={() =>
+                                            handleViewHistory(notebook.hostname)
+                                          }
                                         />
                                       ))}
                                   </ul>
@@ -565,6 +581,11 @@ export default function NotebooksPage() {
         onConfirm={handleDeleteSingle}
         title="Confirmar Exclusão"
         message={`Tem certeza que deseja excluir o notebook "${notebookToDelete?.hostname}"?`}
+      />
+      <DeviceHistoryModal
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        hostname={selectedHostname}
       />
     </div>
   );

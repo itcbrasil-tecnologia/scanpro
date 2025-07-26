@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { LucideIcon, Info } from "lucide-react"; // Importa o ícone Info
+import { LucideIcon, Info } from "lucide-react";
 
 interface DashboardCardProps {
   title: string;

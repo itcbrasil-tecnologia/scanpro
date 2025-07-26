@@ -149,16 +149,10 @@ export default function ScannerPage() {
       });
       return;
     }
-    // Combina os dispositivos escaneados de volta na lista de "a escanear" e ordena
     const allDevicesForUm = [...devicesToScan, ...scannedDevices].sort();
     setDevicesToScan(allDevicesForUm);
-
-    // Limpa a lista de dispositivos escaneados
     setScannedDevices([]);
-
-    // Reinicia o tempo de início da conferência
     setConferenceStartTime(new Date());
-
     toast.success("Contagem reiniciada!", { id: "global-toast" });
   };
 
@@ -233,7 +227,7 @@ export default function ScannerPage() {
           id="um-select"
           value={selectedUmId}
           onChange={(event) => setSelectedUmId(event.target.value)}
-          disabled={isLoading || isScanning} // Desabilita enquanto escaneia
+          disabled={isLoading || isScanning}
           className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm rounded-md bg-white disabled:bg-slate-50"
         >
           <option value="">
@@ -297,7 +291,7 @@ export default function ScannerPage() {
           </div>
           <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-md">
             <button
-              onClick={handleRestart} // Lógica de reinício corrigida
+              onClick={handleRestart}
               className="flex items-center bg-orange-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-orange-600 transition-colors"
             >
               <RefreshCcw size={20} className="mr-2" /> REINICIAR
