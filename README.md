@@ -4,7 +4,7 @@
   <img src="public/Logo.svg" alt="ScanPRO Logo" width="250"/>
 </p>
 
-<p>
+<p align="center">
   <img src="https://img.shields.io/badge/framework-Next.js-black?logo=next.js" alt="Next.js">
   <img src="https://img.shields.io/badge/linguagem-Typescript-blue?logo=typescript&logoColor=white" alt="TypeScript">
   <img src="https://img.shields.io/badge/backend-Firebase-orange?logo=firebase" alt="Firebase">
