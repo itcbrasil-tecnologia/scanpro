@@ -4,11 +4,11 @@
   <img src="public/Logo.svg" alt="ScanPRO Logo" width="250"/>
 </p>
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" alt="Next.js">
-  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript">
-  <img src="https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black" alt="Firebase">
-  <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white" alt="Tailwind CSS">
+<p>
+  <img src="https://img.shields.io/badge/framework-Next.js-black?logo=next.js" alt="Next.js">
+  <img src="https://img.shields.io/badge/linguagem-Typescript-blue?logo=typescript&logoColor=white" alt="TypeScript">
+  <img src="https://img.shields.io/badge/backend-Firebase-orange?logo=firebase" alt="Firebase">
+  <img src="https://img.shields.io/badge/estilo-Tailwind%20CSS-blue?logo=tailwind-css" alt="Tailwind CSS">
 </p>
 
 **ScanPRO** é uma aplicação web full-stack robusta e escalável, projetada para a gestão e conferência de ativos (notebooks) através da leitura de QR Codes. Construído com as mais recentes tecnologias, o sistema oferece uma interface de usuário simples e intuitiva, com diferentes níveis de acesso e funcionalidades para otimizar o fluxo de trabalho de equipes de TI e logística.
