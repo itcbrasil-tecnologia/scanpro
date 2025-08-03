@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { db } from "@/lib/firebase/config";
-import { collection, getDocs, query, where, orderBy } from "firebase/firestore"; // 'limit' removido
-import { Download, Filter, XCircle } from "lucide-react";
+import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
+import { Download, Filter, XCircle, Eye } from "lucide-react"; // Importado Eye
 import Papa from "papaparse";
 import toast from "react-hot-toast";
+import { PeripheralsModal } from "@/components/ui/PeripheralsModal"; // Importado
 
 interface Conference {
   id: string;
@@ -18,6 +19,10 @@ interface Conference {
   expectedCount: number;
   scannedCount: number;
   missingCount: number;
+  // Novos campos
+  miceCount?: number;
+  chargersCount?: number;
+  headsetsCount?: number;
 }
 
 interface Project {
@@ -35,6 +40,12 @@ interface User {
   nome: string;
 }
 
+interface PeripheralsData {
+  miceCount?: number;
+  chargersCount?: number;
+  headsetsCount?: number;
+}
+
 export default function ReportsPage() {
   const [allConferences, setAllConferences] = useState<Conference[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -47,6 +58,11 @@ export default function ReportsPage() {
     umId: "",
     technicianId: "",
   });
+
+  // State para o novo modal de periféricos
+  const [isPeripheralsModalOpen, setIsPeripheralsModalOpen] = useState(false);
+  const [selectedPeripherals, setSelectedPeripherals] =
+    useState<PeripheralsData | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -66,27 +82,17 @@ export default function ReportsPage() {
 
         setProjects(
           projectsSnapshot.docs.map(
-            (doc) =>
-              ({
-                id: doc.id,
-                name: doc.data().name,
-              } as Project)
+            (doc) => ({ id: doc.id, name: doc.data().name } as Project)
           )
         );
-
         setUms(
           umsSnapshot.docs.map(
             (doc) => ({ id: doc.id, name: doc.data().name } as UM)
           )
         );
-
         setTechnicians(
           techSnapshot.docs.map(
-            (doc) =>
-              ({
-                uid: doc.id,
-                nome: doc.data().nome,
-              } as User)
+            (doc) => ({ uid: doc.id, nome: doc.data().nome } as User)
           )
         );
 
@@ -95,24 +101,23 @@ export default function ReportsPage() {
           return {
             id: doc.id,
             date: data.endTime.toDate().toISOString().split("T")[0],
-            startTime: data.startTime
-              .toDate()
-              .toLocaleTimeString("pt-BR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-            endTime: data.endTime
-              .toDate()
-              .toLocaleTimeString("pt-BR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
+            startTime: data.startTime.toDate().toLocaleTimeString("pt-BR", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            endTime: data.endTime.toDate().toLocaleTimeString("pt-BR", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
             projectName: data.projectName,
             umName: data.umName,
             userName: data.userName,
             expectedCount: data.expectedCount,
             scannedCount: data.scannedCount,
             missingCount: data.missingCount,
+            miceCount: data.miceCount,
+            chargersCount: data.chargersCount,
+            headsetsCount: data.headsetsCount,
           } as Conference;
         });
         setAllConferences(conferencesList);
@@ -142,6 +147,7 @@ export default function ReportsPage() {
           conference.userName
         : true;
       const dateMatch = filters.date ? conference.date === filters.date : true;
+
       return projectMatch && umMatch && techMatch && dateMatch;
     });
   }, [filters, allConferences, projects, ums, technicians]);
@@ -157,14 +163,22 @@ export default function ReportsPage() {
     setFilters({ date: "", projectId: "", umId: "", technicianId: "" });
   };
 
+  const openPeripheralsModal = (data: PeripheralsData) => {
+    setSelectedPeripherals(data);
+    setIsPeripheralsModalOpen(true);
+  };
+
   const handleExportCSV = () => {
     if (filteredConferences.length === 0) {
       toast.error("Nenhum dado para exportar.", { id: "global-toast" });
       return;
     }
+
     const csvData = Papa.unparse(
       filteredConferences.map((c) => ({
-        Data: new Date(c.date).toLocaleDateString("pt-BR", { timeZone: "UTC" }),
+        Data: new Date(c.date).toLocaleDateString("pt-BR", {
+          timeZone: "UTC",
+        }),
         Inicio: c.startTime,
         Fim: c.endTime,
         Projeto: c.projectName,
@@ -173,9 +187,13 @@ export default function ReportsPage() {
         Esperados: c.expectedCount,
         Escaneados: c.scannedCount,
         Faltantes: c.missingCount,
+        Mouses: c.miceCount ?? 0,
+        Carregadores: c.chargersCount ?? 0,
+        "Fones de Ouvido": c.headsetsCount ?? 0,
       })),
       { header: true }
     );
+
     const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
@@ -192,6 +210,7 @@ export default function ReportsPage() {
       <h1 className="text-3xl font-bold text-gray-800">
         Relatórios de Conferências
       </h1>
+
       <div className="bg-white p-4 rounded-lg shadow-md">
         <div className="flex items-center mb-4">
           <Filter size={20} className="mr-2 text-gray-600" />
@@ -260,6 +279,7 @@ export default function ReportsPage() {
           </button>
         </div>
       </div>
+
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
@@ -284,6 +304,9 @@ export default function ReportsPage() {
                   Faltantes
                 </th>
                 <th className="p-3 text-sm font-semibold text-slate-600 text-center">
+                  Periféricos
+                </th>
+                <th className="p-3 text-sm font-semibold text-slate-600 text-center">
                   Total
                 </th>
               </tr>
@@ -291,7 +314,7 @@ export default function ReportsPage() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="text-center p-6 text-gray-500">
+                  <td colSpan={8} className="text-center p-6 text-gray-500">
                     Carregando relatórios...
                   </td>
                 </tr>
@@ -319,6 +342,17 @@ export default function ReportsPage() {
                     <td className="p-3 text-center text-red-600 font-semibold">
                       {conference.missingCount}
                     </td>
+                    <td className="p-3 text-center">
+                      {conference.miceCount !== undefined && (
+                        <button
+                          className="flex items-center justify-center mx-auto text-xs font-semibold text-teal-800 bg-teal-100 hover:bg-teal-200 px-3 py-1 rounded-full transition-colors"
+                          onClick={() => openPeripheralsModal(conference)}
+                        >
+                          <Eye size={14} className="mr-1.5" />
+                          Visualizar
+                        </button>
+                      )}
+                    </td>
                     <td className="p-3 text-center font-bold">
                       {conference.expectedCount}
                     </td>
@@ -326,7 +360,7 @@ export default function ReportsPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="text-center p-6 text-gray-500">
+                  <td colSpan={8} className="text-center p-6 text-gray-500">
                     Nenhum resultado encontrado.
                   </td>
                 </tr>
@@ -335,6 +369,12 @@ export default function ReportsPage() {
           </table>
         </div>
       </div>
+
+      <PeripheralsModal
+        isOpen={isPeripheralsModalOpen}
+        onClose={() => setIsPeripheralsModalOpen(false)}
+        data={selectedPeripherals}
+      />
     </div>
   );
 }

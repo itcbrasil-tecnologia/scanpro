@@ -15,7 +15,14 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
-import { ScanBarcode, Camera, CheckCircle } from "lucide-react";
+import { PeripheralsModal } from "@/components/ui/PeripheralsModal"; // Importado
+import {
+  ScanBarcode,
+  Camera,
+  CheckCircle,
+  Eye,
+  TriangleAlert,
+} from "lucide-react"; // Importado Eye
 import toast from "react-hot-toast";
 
 interface Conference {
@@ -28,6 +35,16 @@ interface Conference {
   scanned: number;
   missing: number;
   missingHostnames: string[];
+  // Novos campos
+  miceCount?: number;
+  chargersCount?: number;
+  headsetsCount?: number;
+}
+
+interface PeripheralsData {
+  miceCount?: number;
+  chargersCount?: number;
+  headsetsCount?: number;
 }
 
 export default function InicioPage() {
@@ -35,8 +52,16 @@ export default function InicioPage() {
   const router = useRouter();
   const [conferences, setConferences] = useState<Conference[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // State para o modal de faltantes
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState<string[]>([]);
+
+  // State para o novo modal de periféricos
+  const [isPeripheralsModalOpen, setIsPeripheralsModalOpen] = useState(false);
+  const [selectedPeripherals, setSelectedPeripherals] =
+    useState<PeripheralsData | null>(null);
+
   const [dailyCounts, setDailyCounts] = useState({
     completed: 0,
     total: 2,
@@ -54,14 +79,10 @@ export default function InicioPage() {
   useEffect(() => {
     const fetchPageData = async () => {
       if (!userProfile || userProfile.role !== "USER") {
-        // Se o perfil ainda não carregou ou não é de um técnico, não faz nada.
-        // O useEffect acima cuidará do redirecionamento se necessário.
         return;
       }
-
       setIsLoading(true);
       try {
-        // Busca a contagem diária
         const today = new Date();
         const startOfDay = new Date(
           today.getFullYear(),
@@ -85,7 +106,6 @@ export default function InicioPage() {
           total: userProfile.dailyConferenceGoal || 2,
         });
 
-        // Busca o histórico das últimas 20 conferências
         const historyQuery = query(
           collection(db, "conferences"),
           where("userId", "==", userProfile.uid),
@@ -98,23 +118,22 @@ export default function InicioPage() {
           return {
             id: document.id,
             date: data.endTime.toDate().toLocaleDateString("pt-BR"),
-            startTime: data.startTime
-              .toDate()
-              .toLocaleTimeString("pt-BR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-            endTime: data.endTime
-              .toDate()
-              .toLocaleTimeString("pt-BR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
+            startTime: data.startTime.toDate().toLocaleTimeString("pt-BR", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            endTime: data.endTime.toDate().toLocaleTimeString("pt-BR", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
             um: data.umName,
             expected: data.expectedCount,
             scanned: data.scannedCount,
             missing: data.missingCount,
             missingHostnames: data.missingDevices || [],
+            miceCount: data.miceCount,
+            chargersCount: data.chargersCount,
+            headsetsCount: data.headsetsCount,
           } as Conference;
         });
         setConferences(userConferences);
@@ -127,13 +146,17 @@ export default function InicioPage() {
         setIsLoading(false);
       }
     };
-
     fetchPageData();
   }, [userProfile]);
 
   const openDetailsModal = (hostnames: string[]) => {
     setModalContent(hostnames);
-    setIsModalOpen(true);
+    setIsDetailsModalOpen(true);
+  };
+
+  const openPeripheralsModal = (data: PeripheralsData) => {
+    setSelectedPeripherals(data);
+    setIsPeripheralsModalOpen(true);
   };
 
   const renderStatus = (conference: Conference) => {
@@ -143,7 +166,7 @@ export default function InicioPage() {
       : "bg-red-100 text-red-800";
     return (
       <span className={`px-3 py-1 text-xs font-bold rounded-full ${style}`}>
-        CONCLUÍDO
+        {isComplete ? "CONCLUÍDO" : "INCOMPLETO"}
       </span>
     );
   };
@@ -206,6 +229,9 @@ export default function InicioPage() {
                     Contagem
                   </th>
                   <th className="p-3 text-sm font-semibold text-slate-600 text-center">
+                    Periféricos
+                  </th>
+                  <th className="p-3 text-sm font-semibold text-slate-600 text-center">
                     Status
                   </th>
                   <th className="p-3 text-sm font-semibold text-slate-600 text-center">
@@ -216,7 +242,7 @@ export default function InicioPage() {
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan={5} className="text-center p-6 text-gray-500">
+                    <td colSpan={6} className="text-center p-6 text-gray-500">
                       A carregar histórico...
                     </td>
                   </tr>
@@ -239,6 +265,16 @@ export default function InicioPage() {
                         {conference.scanned} / {conference.expected}
                       </td>
                       <td className="p-3 text-center">
+                        {conference.miceCount !== undefined && (
+                          <button
+                            className="text-teal-600 hover:underline text-sm font-medium"
+                            onClick={() => openPeripheralsModal(conference)}
+                          >
+                            Ver
+                          </button>
+                        )}
+                      </td>
+                      <td className="p-3 text-center">
                         {renderStatus(conference)}
                       </td>
                       <td className="p-3 text-center">
@@ -249,7 +285,7 @@ export default function InicioPage() {
                             }
                             className="text-scanpro-teal hover:underline text-sm font-medium"
                           >
-                            Ver
+                            Ver Faltantes
                           </button>
                         )}
                       </td>
@@ -257,7 +293,7 @@ export default function InicioPage() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={5} className="text-center p-6 text-gray-500">
+                    <td colSpan={6} className="text-center p-6 text-gray-500">
                       Nenhuma conferência encontrada.
                     </td>
                   </tr>
@@ -268,8 +304,8 @@ export default function InicioPage() {
         </div>
       </div>
       <Modal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
         title="Dispositivos Não Escaneados"
       >
         <ul className="space-y-2">
@@ -283,6 +319,12 @@ export default function InicioPage() {
           ))}
         </ul>
       </Modal>
+
+      <PeripheralsModal
+        isOpen={isPeripheralsModalOpen}
+        onClose={() => setIsPeripheralsModalOpen(false)}
+        data={selectedPeripherals}
+      />
     </div>
   );
 }

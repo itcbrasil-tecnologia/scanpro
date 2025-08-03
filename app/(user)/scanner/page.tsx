@@ -21,17 +21,22 @@ import {
   List,
   ListChecks,
   ArrowRight,
+  Mouse,
+  Power,
+  Headphones,
 } from "lucide-react";
 
 interface Project {
   id: string;
   name: string;
 }
+
 interface UM {
   id: string;
   name: string;
   projectId: string;
 }
+
 interface SummaryData {
   userName?: string;
   projectName: string;
@@ -43,21 +48,39 @@ interface SummaryData {
   scannedCount: number;
   missingCount: number;
   missingDevices: string[];
+  miceCount: number;
+  chargersCount: number;
+  headsetsCount: number;
 }
 
 export default function ScannerPage() {
   const { userProfile } = useAuth();
   const router = useRouter();
+
+  // State for initial data loading
   const [ums, setUms] = useState<UM[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // State for the scanning process
   const [selectedUmId, setSelectedUmId] = useState<string>("");
   const [devicesToScan, setDevicesToScan] = useState<string[]>([]);
   const [scannedDevices, setScannedDevices] = useState<string[]>([]);
-  const [isScanning, setIsScanning] = useState(false);
   const [conferenceStartTime, setConferenceStartTime] = useState<Date | null>(
     null
   );
+
+  // New state for multi-step flow
+  const [step, setStep] = useState<"selection" | "scanning" | "peripherals">(
+    "selection"
+  );
+
+  // New state for peripherals
+  const [miceCount, setMiceCount] = useState(0);
+  const [chargersCount, setChargersCount] = useState(0);
+  const [headsetsCount, setHeadsetsCount] = useState(0);
+
+  // State for the summary modal
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
   const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
 
@@ -77,7 +100,9 @@ export default function ScannerPage() {
         );
         setProjects(projectsList);
       } catch (error) {
-        toast.error("Erro ao carregar UMs e Projetos.", { id: "global-toast" });
+        toast.error("Erro ao carregar UMs e Projetos.", {
+          id: "global-toast",
+        });
         console.error("Erro ao buscar dados iniciais:", error);
       } finally {
         setIsLoading(false);
@@ -89,7 +114,7 @@ export default function ScannerPage() {
   useEffect(() => {
     const fetchNotebooksForUM = async () => {
       if (!selectedUmId) {
-        setIsScanning(false);
+        setStep("selection");
         setDevicesToScan([]);
         setScannedDevices([]);
         setConferenceStartTime(null);
@@ -106,7 +131,7 @@ export default function ScannerPage() {
           .sort();
         setDevicesToScan(notebooksList);
         setScannedDevices([]);
-        setIsScanning(true);
+        setStep("scanning"); // Move to scanning step
         setConferenceStartTime(new Date());
       } catch (error) {
         toast.error("Erro ao carregar notebooks para esta UM.", {
@@ -121,10 +146,12 @@ export default function ScannerPage() {
   const handleScan = (result: IDetectedBarcode[]) => {
     const scannedText = result[0]?.rawValue;
     if (!scannedText) return;
+
     if (scannedDevices.includes(scannedText)) {
       toast.error(`"${scannedText}" já escaneado.`, { id: "global-toast" });
       return;
     }
+
     if (devicesToScan.includes(scannedText)) {
       setDevicesToScan((previousState) =>
         previousState.filter((device) => device !== scannedText)
@@ -156,13 +183,17 @@ export default function ScannerPage() {
     toast.success("Contagem reiniciada!", { id: "global-toast" });
   };
 
+  const handleProceedToPeripherals = () => {
+    setStep("peripherals");
+  };
+
   const handleFinalizeConference = () => {
-    setIsScanning(false);
     const endTime = new Date();
     const selectedUM = ums.find((um) => um.id === selectedUmId);
     const selectedProject = projects.find(
       (project) => project.id === selectedUM?.projectId
     );
+
     const data: SummaryData = {
       userName: userProfile?.nome,
       projectName: selectedProject?.name || "N/A",
@@ -180,14 +211,17 @@ export default function ScannerPage() {
       scannedCount: scannedDevices.length,
       missingCount: devicesToScan.length,
       missingDevices: devicesToScan,
+      miceCount: Number(miceCount),
+      chargersCount: Number(chargersCount),
+      headsetsCount: Number(headsetsCount),
     };
+
     setSummaryData(data);
     setIsSummaryModalOpen(true);
   };
 
   const handleConcludeAndSend = async () => {
     if (!summaryData) return;
-
     try {
       await addDoc(collection(db, "conferences"), {
         ...summaryData,
@@ -202,7 +236,9 @@ export default function ScannerPage() {
         body: JSON.stringify(summaryData),
       });
 
-      toast.success("CONFERÊNCIA ENVIADA COM SUCESSO", { id: "global-toast" });
+      toast.success("CONFERÊNCIA ENVIADA COM SUCESSO", {
+        id: "global-toast",
+      });
       router.push("/inicio");
     } catch (error) {
       console.error("Erro ao concluir conferência:", error);
@@ -213,6 +249,16 @@ export default function ScannerPage() {
       setIsSummaryModalOpen(false);
     }
   };
+
+  const handleNumericInputChange =
+    (setter: React.Dispatch<React.SetStateAction<number>>) =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      // Permite apenas números inteiros não negativos
+      if (/^\d*$/.test(value)) {
+        setter(Number(value));
+      }
+    };
 
   return (
     <div className="space-y-4">
@@ -227,7 +273,7 @@ export default function ScannerPage() {
           id="um-select"
           value={selectedUmId}
           onChange={(event) => setSelectedUmId(event.target.value)}
-          disabled={isLoading || isScanning}
+          disabled={isLoading || step !== "selection"}
           className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm rounded-md bg-white disabled:bg-slate-50"
         >
           <option value="">
@@ -240,7 +286,8 @@ export default function ScannerPage() {
           ))}
         </select>
       </div>
-      {isScanning && (
+
+      {step === "scanning" && (
         <>
           <div className="bg-white p-4 rounded-lg shadow-md">
             <h3 className="font-bold text-center mb-2">
@@ -297,14 +344,90 @@ export default function ScannerPage() {
               <RefreshCcw size={20} className="mr-2" /> REINICIAR
             </button>
             <button
-              onClick={handleFinalizeConference}
+              onClick={handleProceedToPeripherals}
               className="flex items-center bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
             >
-              FINALIZAR CONFERÊNCIA <CheckCircle size={20} className="ml-2" />
+              PRÓXIMO <ArrowRight size={20} className="ml-2" />
             </button>
           </div>
         </>
       )}
+
+      {step === "peripherals" && (
+        <div className="bg-white p-6 rounded-lg shadow-md space-y-6">
+          <h3 className="font-bold text-lg text-gray-800 text-center">
+            3. Informe a Quantidade de Periféricos
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div className="relative">
+              <label
+                htmlFor="mice"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Mouses
+              </label>
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none pt-6">
+                <Mouse className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="number"
+                id="mice"
+                value={miceCount}
+                onChange={handleNumericInputChange(setMiceCount)}
+                min="0"
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md"
+              />
+            </div>
+            <div className="relative">
+              <label
+                htmlFor="chargers"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Carregadores
+              </label>
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none pt-6">
+                <Power className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="number"
+                id="chargers"
+                value={chargersCount}
+                onChange={handleNumericInputChange(setChargersCount)}
+                min="0"
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md"
+              />
+            </div>
+            <div className="relative">
+              <label
+                htmlFor="headsets"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Fones de Ouvido
+              </label>
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none pt-6">
+                <Headphones className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="number"
+                id="headsets"
+                value={headsetsCount}
+                onChange={handleNumericInputChange(setHeadsetsCount)}
+                min="0"
+                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end pt-4">
+            <button
+              onClick={handleFinalizeConference}
+              className="flex items-center bg-teal-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-teal-700 transition-colors"
+            >
+              FINALIZAR CONFERÊNCIA <CheckCircle size={20} className="ml-2" />
+            </button>
+          </div>
+        </div>
+      )}
+
       <Modal
         isOpen={isSummaryModalOpen}
         onClose={() => setIsSummaryModalOpen(false)}
@@ -330,6 +453,21 @@ export default function ScannerPage() {
               <span className="font-semibold">Horário:</span>{" "}
               {summaryData.startTime} às {summaryData.endTime}
             </p>
+            <hr />
+            <div className="grid grid-cols-2 gap-x-4">
+              <p>
+                <span className="font-semibold">Mouses:</span>{" "}
+                {summaryData.miceCount}
+              </p>
+              <p>
+                <span className="font-semibold">Carregadores:</span>{" "}
+                {summaryData.chargersCount}
+              </p>
+              <p>
+                <span className="font-semibold">Fones:</span>{" "}
+                {summaryData.headsetsCount}
+              </p>
+            </div>
             <hr />
             <p>
               <span className="font-semibold">Total de Dispositivos:</span>{" "}

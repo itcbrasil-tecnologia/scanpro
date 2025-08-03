@@ -12,12 +12,14 @@ import {
 } from "firebase/firestore";
 import { DashboardCard } from "@/components/ui/DashboardCard";
 import { Modal } from "@/components/ui/Modal";
+import { PeripheralsModal } from "@/components/ui/PeripheralsModal"; // Importado
 import {
   Users,
   BriefcaseBusiness,
   Truck,
   Laptop,
   TriangleAlert,
+  Eye, // Importado
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -35,6 +37,16 @@ interface Conference {
   scanned: number;
   missing: number;
   missingHostnames: string[];
+  // Novos campos
+  miceCount?: number;
+  chargersCount?: number;
+  headsetsCount?: number;
+}
+
+interface PeripheralsData {
+  miceCount?: number;
+  chargersCount?: number;
+  headsetsCount?: number;
 }
 
 export default function DashboardPage() {
@@ -46,11 +58,18 @@ export default function DashboardPage() {
   });
   const [conferences, setConferences] = useState<Conference[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // State para o modal original
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState<{
     title: string;
     data: ModalListItem[] | string[];
   }>({ title: "", data: [] });
+
+  // State para o novo modal de periféricos
+  const [isPeripheralsModalOpen, setIsPeripheralsModalOpen] = useState(false);
+  const [selectedPeripherals, setSelectedPeripherals] =
+    useState<PeripheralsData | null>(null);
 
   const [techniciansList, setTechniciansList] = useState<ModalListItem[]>([]);
   const [projectsList, setProjectsList] = useState<ModalListItem[]>([]);
@@ -59,7 +78,6 @@ export default function DashboardPage() {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        // Otimização: Busca todos os dados necessários em paralelo
         const [
           projectsSnapshot,
           umsSnapshot,
@@ -80,16 +98,17 @@ export default function DashboardPage() {
           ),
         ]);
 
-        // Processa os dados dos cards
         const projectsData = projectsSnapshot.docs.map((doc) => ({
           name: doc.data().name,
         }));
         setProjectsList(projectsData);
+
         const techniciansData = techniciansSnapshot.docs.map((doc) => ({
           name: doc.data().nome,
           whatsapp: doc.data().whatsapp,
         }));
         setTechniciansList(techniciansData);
+
         setSummaryData({
           technicians: techniciansSnapshot.size,
           projects: projectsSnapshot.size,
@@ -97,24 +116,19 @@ export default function DashboardPage() {
           notebooks: notebooksSnapshot.size,
         });
 
-        // Processa os dados da tabela
         const conferencesList = conferencesSnapshot.docs.map((doc) => {
           const data = doc.data();
           return {
             id: doc.id,
             date: data.endTime.toDate().toLocaleDateString("pt-BR"),
-            startTime: data.startTime
-              .toDate()
-              .toLocaleTimeString("pt-BR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-            endTime: data.endTime
-              .toDate()
-              .toLocaleTimeString("pt-BR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
+            startTime: data.startTime.toDate().toLocaleTimeString("pt-BR", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            endTime: data.endTime.toDate().toLocaleTimeString("pt-BR", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
             project: data.projectName,
             um: data.umName,
             technician: data.userName,
@@ -122,6 +136,9 @@ export default function DashboardPage() {
             scanned: data.scannedCount,
             missing: data.missingCount,
             missingHostnames: data.missingDevices || [],
+            miceCount: data.miceCount,
+            chargersCount: data.chargersCount,
+            headsetsCount: data.headsetsCount,
           } as Conference;
         });
         setConferences(conferencesList);
@@ -135,7 +152,7 @@ export default function DashboardPage() {
       }
     };
     fetchData();
-  }, []); // Roda apenas uma vez na montagem do componente
+  }, []);
 
   const openModal = (title: string, data: ModalListItem[] | string[]) => {
     setModalContent({ title, data });
@@ -144,6 +161,11 @@ export default function DashboardPage() {
 
   const closeModal = () => {
     setIsModalOpen(false);
+  };
+
+  const openPeripheralsModal = (data: PeripheralsData) => {
+    setSelectedPeripherals(data);
+    setIsPeripheralsModalOpen(true);
   };
 
   const renderStatus = (scanned: number, expected: number) => {
@@ -155,7 +177,7 @@ export default function DashboardPage() {
       <span
         className={`px-3 py-1 text-sm font-semibold rounded-full ${bgColor}`}
       >
-        Concluído
+        {isCompleted ? "Concluído" : "Incompleto"}
       </span>
     );
   };
@@ -189,6 +211,7 @@ export default function DashboardPage() {
           icon={Laptop}
         />
       </div>
+
       <div className="bg-white p-6 rounded-lg shadow-md overflow-hidden">
         <h2 className="text-xl font-bold text-gray-800 mb-4">
           Últimas Conferências
@@ -204,13 +227,16 @@ export default function DashboardPage() {
                   Horários
                 </th>
                 <th className="p-3 text-sm font-semibold text-slate-600">
-                  Projeto
+                  Projeto / UM
                 </th>
                 <th className="p-3 text-sm font-semibold text-slate-600">
                   Técnico
                 </th>
                 <th className="p-3 text-sm font-semibold text-slate-600 text-center">
                   Contagem
+                </th>
+                <th className="p-3 text-sm font-semibold text-slate-600 text-center">
+                  Periféricos
                 </th>
                 <th className="p-3 text-sm font-semibold text-slate-600 text-center">
                   Status
@@ -223,7 +249,7 @@ export default function DashboardPage() {
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={7} className="text-center p-6 text-gray-500">
+                  <td colSpan={8} className="text-center p-6 text-gray-500">
                     Carregando conferências...
                   </td>
                 </tr>
@@ -243,6 +269,17 @@ export default function DashboardPage() {
                     <td className="p-3">{conference.technician}</td>
                     <td className="p-3 text-center">
                       {conference.scanned} / {conference.expected}
+                    </td>
+                    <td className="p-3 text-center">
+                      {conference.miceCount !== undefined && (
+                        <button
+                          className="flex items-center justify-center mx-auto text-xs font-semibold text-teal-800 bg-teal-100 hover:bg-teal-200 px-3 py-1 rounded-full transition-colors"
+                          onClick={() => openPeripheralsModal(conference)}
+                        >
+                          <Eye size={14} className="mr-1.5" />
+                          Visualizar
+                        </button>
+                      )}
                     </td>
                     <td className="p-3 text-center">
                       {renderStatus(conference.scanned, conference.expected)}
@@ -267,7 +304,7 @@ export default function DashboardPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="text-center p-6 text-gray-500">
+                  <td colSpan={8} className="text-center p-6 text-gray-500">
                     Nenhuma conferência registrada ainda.
                   </td>
                 </tr>
@@ -278,15 +315,22 @@ export default function DashboardPage() {
         <div className="flex justify-end items-center mt-4 text-sm">
           <span>Itens por página: 10</span>
           <div className="ml-4">
-            <button className="px-3 py-1 border rounded-md hover:bg-slate-100">
+            <button
+              className="px-3 py-1 border rounded-md hover:bg-slate-100"
+              disabled
+            >
               Anterior
             </button>
-            <button className="px-3 py-1 border rounded-md hover:bg-slate-100 ml-2">
+            <button
+              className="px-3 py-1 border rounded-md hover:bg-slate-100 ml-2"
+              disabled
+            >
               Próximo
             </button>
           </div>
         </div>
       </div>
+
       <Modal
         isOpen={isModalOpen}
         onClose={closeModal}
@@ -305,6 +349,12 @@ export default function DashboardPage() {
           ))}
         </ul>
       </Modal>
+
+      <PeripheralsModal
+        isOpen={isPeripheralsModalOpen}
+        onClose={() => setIsPeripheralsModalOpen(false)}
+        data={selectedPeripherals}
+      />
     </div>
   );
 }

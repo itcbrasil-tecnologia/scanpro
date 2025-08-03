@@ -12,6 +12,10 @@ interface SummaryData {
   scannedCount: number;
   missingCount: number;
   missingDevices: string[];
+  // Novos campos para periféricos
+  miceCount?: number;
+  chargersCount?: number;
+  headsetsCount?: number;
 }
 
 export async function POST(request: Request) {
@@ -48,6 +52,20 @@ export async function POST(request: Request) {
     message += `*Data:* ${summary.date}\n`;
     message += `*Horário:* ${summary.startTime} às ${summary.endTime}\n\n`;
     message += `------------------------------------\n\n`;
+
+    // Seção de Periféricos (adicionada)
+    if (
+      summary.miceCount !== undefined &&
+      summary.chargersCount !== undefined &&
+      summary.headsetsCount !== undefined
+    ) {
+      message += `*Periféricos:*\n`;
+      message += `- Mouses: *${summary.miceCount}*\n`;
+      message += `- Carregadores: *${summary.chargersCount}*\n`;
+      message += `- Fones: *${summary.headsetsCount}*\n\n`;
+      message += `------------------------------------\n\n`;
+    }
+
     message += `*Dispositivos Esperados:* ${summary.expectedCount}\n`;
     message += `*Dispositivos Escaneados:* ${summary.scannedCount}\n`;
     message += `*Dispositivos Faltantes:* ${summary.missingCount}\n\n`;
