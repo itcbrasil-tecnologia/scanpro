@@ -38,7 +38,6 @@ export function QrCodePrintModal({
 
     try {
       const zip = new JSZip();
-
       for (const name of hostnames) {
         const svgElement = document.getElementById(
           `qr-${name}`
@@ -47,9 +46,9 @@ export function QrCodePrintModal({
 
         const svgXml = new XMLSerializer().serializeToString(svgElement);
         const dataUrl = `data:image/svg+xml;base64,${btoa(svgXml)}`;
-
         const img = new Image();
         img.src = dataUrl;
+
         await new Promise((resolve) => {
           img.onload = resolve;
         });
@@ -111,11 +110,11 @@ export function QrCodePrintModal({
         const blob = await new Promise<Blob | null>((resolve) =>
           canvas.toBlob(resolve, "image/png")
         );
+
         if (blob) {
           zip.file(`${name}.png`, blob);
         }
       }
-
       const content = await zip.generateAsync({ type: "blob" });
       saveAs(content, "QR_Codes_ScanPRO.zip");
       toast.success("Download iniciado!", { id: "global-toast" });
@@ -239,7 +238,7 @@ export function QrCodePrintModal({
         </div>
         <div
           id="printable-area"
-          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 p-4 max-h-[50vh] overflow-y-auto border rounded-lg"
+          className="flex flex-row flex-wrap justify-start items-start gap-4 p-4 max-h-[50vh] overflow-y-auto border rounded-lg"
         >
           {hostnames.map((name) => (
             <div
@@ -255,7 +254,7 @@ export function QrCodePrintModal({
                   id={`qr-${name}`}
                   value={name}
                   size={qrSize}
-                  bgColor={transparentBg ? "transparent" : "#FFFFFF"} // CORREÇÃO AQUI
+                  bgColor={transparentBg ? "transparent" : "#FFFFFF"}
                 />
               </div>
               {showHostname && (
@@ -263,10 +262,6 @@ export function QrCodePrintModal({
                   className="font-mono text-center"
                   style={{
                     fontSize: "10px",
-                    writingMode:
-                      hostnamePosition === "right"
-                        ? "vertical-rl"
-                        : "horizontal-tb",
                   }}
                 >
                   {name}
