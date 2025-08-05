@@ -15,14 +15,8 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
-import { PeripheralsModal } from "@/components/ui/PeripheralsModal"; // Importado
-import {
-  ScanBarcode,
-  Camera,
-  CheckCircle,
-  Eye,
-  TriangleAlert,
-} from "lucide-react"; // Importado Eye
+import { PeripheralsModal } from "@/components/ui/PeripheralsModal";
+import { ScanBarcode, Camera, CheckCircle } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface Conference {
@@ -35,7 +29,6 @@ interface Conference {
   scanned: number;
   missing: number;
   missingHostnames: string[];
-  // Novos campos
   miceCount?: number;
   chargersCount?: number;
   headsetsCount?: number;
@@ -53,11 +46,9 @@ export default function InicioPage() {
   const [conferences, setConferences] = useState<Conference[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // State para o modal de faltantes
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState<string[]>([]);
 
-  // State para o novo modal de periféricos
   const [isPeripheralsModalOpen, setIsPeripheralsModalOpen] = useState(false);
   const [selectedPeripherals, setSelectedPeripherals] =
     useState<PeripheralsData | null>(null);
@@ -146,7 +137,9 @@ export default function InicioPage() {
         setIsLoading(false);
       }
     };
-    fetchPageData();
+    if (userProfile) {
+      fetchPageData();
+    }
   }, [userProfile]);
 
   const openDetailsModal = (hostnames: string[]) => {
@@ -172,7 +165,11 @@ export default function InicioPage() {
   };
 
   if (!userProfile || userProfile.role !== "USER") {
-    return null;
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-100">
+        <div className="text-slate-500">Carregando...</div>
+      </div>
+    );
   }
 
   const allDailyCountsCompleted = dailyCounts.completed >= dailyCounts.total;
@@ -283,7 +280,7 @@ export default function InicioPage() {
                             onClick={() =>
                               openDetailsModal(conference.missingHostnames)
                             }
-                            className="text-scanpro-teal hover:underline text-sm font-medium"
+                            className="text-teal-600 hover:underline text-sm font-medium"
                           >
                             Ver Faltantes
                           </button>

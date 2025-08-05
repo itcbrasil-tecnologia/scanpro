@@ -1,4 +1,5 @@
-// components/ui/ConfirmationModal.tsx
+"use client";
+
 import React from "react";
 
 interface ConfirmationModalProps {
@@ -7,6 +8,8 @@ interface ConfirmationModalProps {
   onConfirm: () => void;
   title: string;
   message: string;
+  confirmButtonText?: string; // Prop opcional para o texto
+  confirmButtonVariant?: "danger" | "primary"; // Prop opcional para a cor
 }
 
 export function ConfirmationModal({
@@ -15,11 +18,17 @@ export function ConfirmationModal({
   onConfirm,
   title,
   message,
+  confirmButtonText = "Confirmar", // Valor padrão
+  confirmButtonVariant = "danger", // Valor padrão
 }: ConfirmationModalProps) {
   if (!isOpen) return null;
 
+  const buttonClass =
+    confirmButtonVariant === "danger"
+      ? "bg-red-600 hover:bg-red-700"
+      : "bg-teal-600 hover:bg-teal-700";
+
   return (
-    // MUDANÇA AQUI: Trocamos 'bg-opacity-60' por 'bg-black/60'
     <div className="fixed inset-0 bg-black/60 z-50 flex justify-center items-center p-4 backdrop-blur-sm">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
         <div className="p-6">
@@ -35,9 +44,9 @@ export function ConfirmationModal({
           </button>
           <button
             onClick={onConfirm}
-            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+            className={`px-4 py-2 text-white rounded-md transition-colors ${buttonClass}`}
           >
-            Confirmar Exclusão
+            {confirmButtonText}
           </button>
         </div>
       </div>

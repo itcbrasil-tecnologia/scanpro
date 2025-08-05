@@ -9,17 +9,21 @@ import {
   where,
   limit,
   orderBy,
+  Timestamp,
 } from "firebase/firestore";
 import { DashboardCard } from "@/components/ui/DashboardCard";
 import { Modal } from "@/components/ui/Modal";
-import { PeripheralsModal } from "@/components/ui/PeripheralsModal"; // Importado
+import { PeripheralsModal } from "@/components/ui/PeripheralsModal";
+import { AssetLifecycleModal } from "@/components/ui/AssetLifecycleModal";
 import {
   Users,
   BriefcaseBusiness,
   Truck,
   Laptop,
   TriangleAlert,
-  Eye, // Importado
+  Eye,
+  Wrench,
+  History, // Ícone de Histórico
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -37,7 +41,6 @@ interface Conference {
   scanned: number;
   missing: number;
   missingHostnames: string[];
-  // Novos campos
   miceCount?: number;
   chargersCount?: number;
   headsetsCount?: number;
@@ -49,27 +52,44 @@ interface PeripheralsData {
   headsetsCount?: number;
 }
 
+interface MaintenanceNotebook {
+  id: string;
+  hostname: string;
+  serialNumber?: string;
+  assetTag?: string;
+  maintenanceStartDate?: Timestamp;
+}
+
 export default function DashboardPage() {
   const [summaryData, setSummaryData] = useState({
     technicians: 0,
     projects: 0,
     ums: 0,
     notebooks: 0,
+    maintenance: 0,
   });
+
   const [conferences, setConferences] = useState<Conference[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // State para o modal original
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalContent, setModalContent] = useState<{
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [detailsModalContent, setDetailsModalContent] = useState<{
     title: string;
     data: ModalListItem[] | string[];
   }>({ title: "", data: [] });
 
-  // State para o novo modal de periféricos
   const [isPeripheralsModalOpen, setIsPeripheralsModalOpen] = useState(false);
   const [selectedPeripherals, setSelectedPeripherals] =
     useState<PeripheralsData | null>(null);
+
+  const [isMaintenanceModalOpen, setIsMaintenanceModalOpen] = useState(false);
+  const [maintenanceNotebooks, setMaintenanceNotebooks] = useState<
+    MaintenanceNotebook[]
+  >([]);
+
+  const [isLifecycleModalOpen, setIsLifecycleModalOpen] = useState(false);
+  const [selectedNotebookForHistory, setSelectedNotebookForHistory] =
+    useState<MaintenanceNotebook | null>(null);
 
   const [techniciansList, setTechniciansList] = useState<ModalListItem[]>([]);
   const [projectsList, setProjectsList] = useState<ModalListItem[]>([]);
@@ -78,12 +98,18 @@ export default function DashboardPage() {
     const fetchData = async () => {
       setIsLoading(true);
       try {
+        const maintenanceQuery = query(
+          collection(db, "notebooks"),
+          where("status", "==", "Em Manutenção")
+        );
+
         const [
           projectsSnapshot,
           umsSnapshot,
           notebooksSnapshot,
           techniciansSnapshot,
           conferencesSnapshot,
+          maintenanceSnapshot,
         ] = await Promise.all([
           getDocs(collection(db, "projects")),
           getDocs(collection(db, "ums")),
@@ -96,6 +122,7 @@ export default function DashboardPage() {
               limit(10)
             )
           ),
+          getDocs(maintenanceQuery),
         ]);
 
         const projectsData = projectsSnapshot.docs.map((doc) => ({
@@ -109,11 +136,17 @@ export default function DashboardPage() {
         }));
         setTechniciansList(techniciansData);
 
+        const maintenanceData = maintenanceSnapshot.docs.map(
+          (doc) => ({ id: doc.id, ...doc.data() } as MaintenanceNotebook)
+        );
+        setMaintenanceNotebooks(maintenanceData);
+
         setSummaryData({
           technicians: techniciansSnapshot.size,
           projects: projectsSnapshot.size,
           ums: umsSnapshot.size,
           notebooks: notebooksSnapshot.size,
+          maintenance: maintenanceSnapshot.size,
         });
 
         const conferencesList = conferencesSnapshot.docs.map((doc) => {
@@ -121,14 +154,18 @@ export default function DashboardPage() {
           return {
             id: doc.id,
             date: data.endTime.toDate().toLocaleDateString("pt-BR"),
-            startTime: data.startTime.toDate().toLocaleTimeString("pt-BR", {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-            endTime: data.endTime.toDate().toLocaleTimeString("pt-BR", {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
+            startTime: data.startTime
+              .toDate()
+              .toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            endTime: data.endTime
+              .toDate()
+              .toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
             project: data.projectName,
             um: data.umName,
             technician: data.userName,
@@ -154,18 +191,22 @@ export default function DashboardPage() {
     fetchData();
   }, []);
 
-  const openModal = (title: string, data: ModalListItem[] | string[]) => {
-    setModalContent({ title, data });
-    setIsModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
+  const openDetailsModal = (
+    title: string,
+    data: ModalListItem[] | string[]
+  ) => {
+    setDetailsModalContent({ title, data });
+    setIsDetailsModalOpen(true);
   };
 
   const openPeripheralsModal = (data: PeripheralsData) => {
     setSelectedPeripherals(data);
     setIsPeripheralsModalOpen(true);
+  };
+
+  const openHistoryModal = (notebook: MaintenanceNotebook) => {
+    setSelectedNotebookForHistory(notebook);
+    setIsLifecycleModalOpen(true);
   };
 
   const renderStatus = (scanned: number, expected: number) => {
@@ -185,20 +226,20 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
         <DashboardCard
           title="Técnicos Cadastrados"
           value={isLoading ? "..." : summaryData.technicians}
           icon={Users}
           onDetailsClick={() =>
-            openModal("Técnicos Cadastrados", techniciansList)
+            openDetailsModal("Técnicos Cadastrados", techniciansList)
           }
         />
         <DashboardCard
           title="Projetos"
           value={isLoading ? "..." : summaryData.projects}
           icon={BriefcaseBusiness}
-          onDetailsClick={() => openModal("Projetos", projectsList)}
+          onDetailsClick={() => openDetailsModal("Projetos", projectsList)}
         />
         <DashboardCard
           title="UMs"
@@ -209,6 +250,12 @@ export default function DashboardPage() {
           title="Notebooks Cadastrados"
           value={isLoading ? "..." : summaryData.notebooks}
           icon={Laptop}
+        />
+        <DashboardCard
+          title="Em Manutenção"
+          value={isLoading ? "..." : summaryData.maintenance}
+          icon={Wrench}
+          onDetailsClick={() => setIsMaintenanceModalOpen(true)}
         />
       </div>
 
@@ -276,8 +323,7 @@ export default function DashboardPage() {
                           className="flex items-center justify-center mx-auto text-xs font-semibold text-teal-800 bg-teal-100 hover:bg-teal-200 px-3 py-1 rounded-full transition-colors"
                           onClick={() => openPeripheralsModal(conference)}
                         >
-                          <Eye size={14} className="mr-1.5" />
-                          Visualizar
+                          <Eye size={14} className="mr-1.5" /> Visualizar
                         </button>
                       )}
                     </td>
@@ -289,14 +335,14 @@ export default function DashboardPage() {
                         <button
                           className="flex items-center justify-center mx-auto text-xs font-semibold text-amber-800 bg-amber-100 hover:bg-amber-200 px-3 py-1 rounded-full transition-colors"
                           onClick={() =>
-                            openModal(
+                            openDetailsModal(
                               "Dispositivos Não Escaneados",
                               conference.missingHostnames
                             )
                           }
                         >
-                          <TriangleAlert size={14} className="mr-1.5" />
-                          Ver Faltantes
+                          <TriangleAlert size={14} className="mr-1.5" /> Ver
+                          Faltantes
                         </button>
                       )}
                     </td>
@@ -332,12 +378,12 @@ export default function DashboardPage() {
       </div>
 
       <Modal
-        isOpen={isModalOpen}
-        onClose={closeModal}
-        title={modalContent.title}
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        title={detailsModalContent.title}
       >
         <ul className="space-y-2">
-          {modalContent.data.map((item, index) => (
+          {detailsModalContent.data.map((item, index) => (
             <li
               key={index}
               className="bg-gray-100 p-2 rounded-md text-gray-700"
@@ -354,6 +400,67 @@ export default function DashboardPage() {
         isOpen={isPeripheralsModalOpen}
         onClose={() => setIsPeripheralsModalOpen(false)}
         data={selectedPeripherals}
+      />
+
+      <Modal
+        isOpen={isMaintenanceModalOpen}
+        onClose={() => setIsMaintenanceModalOpen(false)}
+        title="Notebooks em Manutenção"
+      >
+        <div className="max-h-[60vh] overflow-y-auto">
+          {maintenanceNotebooks.length > 0 ? (
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-100">
+                <tr>
+                  <th className="p-2 font-semibold text-slate-600">Hostname</th>
+                  <th className="p-2 font-semibold text-slate-600">S/N</th>
+                  <th className="p-2 font-semibold text-slate-600">
+                    Patrimônio
+                  </th>
+                  <th className="p-2 font-semibold text-slate-600">
+                    Data de Envio
+                  </th>
+                  <th className="p-2 font-semibold text-slate-600 text-center">
+                    Ações
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {maintenanceNotebooks.map((nb) => (
+                  <tr key={nb.id} className="border-b">
+                    <td className="p-2 font-mono">{nb.hostname}</td>
+                    <td className="p-2">{nb.serialNumber || "-"}</td>
+                    <td className="p-2">{nb.assetTag || "-"}</td>
+                    <td className="p-2">
+                      {nb.maintenanceStartDate
+                        ?.toDate()
+                        .toLocaleDateString("pt-BR") || "-"}
+                    </td>
+                    <td className="p-2 text-center">
+                      <button
+                        onClick={() => openHistoryModal(nb)}
+                        className="text-gray-500 hover:text-blue-600"
+                        title="Ver Histórico do Ativo"
+                      >
+                        <History size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="text-center text-gray-500 py-4">
+              Não há notebooks em manutenção no momento.
+            </p>
+          )}
+        </div>
+      </Modal>
+
+      <AssetLifecycleModal
+        isOpen={isLifecycleModalOpen}
+        onClose={() => setIsLifecycleModalOpen(false)}
+        notebook={selectedNotebookForHistory}
       />
     </div>
   );

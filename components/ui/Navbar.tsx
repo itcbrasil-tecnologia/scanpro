@@ -152,7 +152,7 @@ export function Navbar({ userProfile }: NavbarProps) {
               <Home size={16} className="mr-2 text-slate-500" /> Início
             </Link>
           )}
-          <div className="border-t my-1"></div>
+          {/* O <div> com a borda foi removido daqui */}
           <Link
             href="/alterar-senha"
             className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"

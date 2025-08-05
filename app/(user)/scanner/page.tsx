@@ -12,6 +12,10 @@ import {
   where,
   addDoc,
   Timestamp,
+  writeBatch,
+  doc,
+  DocumentData,
+  QuerySnapshot,
 } from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
 import toast from "react-hot-toast";
@@ -47,6 +51,7 @@ interface SummaryData {
   expectedCount: number;
   scannedCount: number;
   missingCount: number;
+  scannedDevices: string[]; // CORREÇÃO: Propriedade adicionada
   missingDevices: string[];
   miceCount: number;
   chargersCount: number;
@@ -57,12 +62,10 @@ export default function ScannerPage() {
   const { userProfile } = useAuth();
   const router = useRouter();
 
-  // State for initial data loading
   const [ums, setUms] = useState<UM[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // State for the scanning process
   const [selectedUmId, setSelectedUmId] = useState<string>("");
   const [devicesToScan, setDevicesToScan] = useState<string[]>([]);
   const [scannedDevices, setScannedDevices] = useState<string[]>([]);
@@ -70,17 +73,14 @@ export default function ScannerPage() {
     null
   );
 
-  // New state for multi-step flow
   const [step, setStep] = useState<"selection" | "scanning" | "peripherals">(
     "selection"
   );
 
-  // New state for peripherals
   const [miceCount, setMiceCount] = useState(0);
   const [chargersCount, setChargersCount] = useState(0);
   const [headsetsCount, setHeadsetsCount] = useState(0);
 
-  // State for the summary modal
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
   const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
 
@@ -131,7 +131,7 @@ export default function ScannerPage() {
           .sort();
         setDevicesToScan(notebooksList);
         setScannedDevices([]);
-        setStep("scanning"); // Move to scanning step
+        setStep("scanning");
         setConferenceStartTime(new Date());
       } catch (error) {
         toast.error("Erro ao carregar notebooks para esta UM.", {
@@ -210,6 +210,7 @@ export default function ScannerPage() {
       expectedCount: devicesToScan.length + scannedDevices.length,
       scannedCount: scannedDevices.length,
       missingCount: devicesToScan.length,
+      scannedDevices: scannedDevices,
       missingDevices: devicesToScan,
       miceCount: Number(miceCount),
       chargersCount: Number(chargersCount),
@@ -222,6 +223,7 @@ export default function ScannerPage() {
 
   const handleConcludeAndSend = async () => {
     if (!summaryData) return;
+
     try {
       await addDoc(collection(db, "conferences"), {
         ...summaryData,
@@ -230,11 +232,13 @@ export default function ScannerPage() {
         userId: userProfile?.uid,
       });
 
-      await fetch("/api/notify", {
+      fetch("/api/notify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(summaryData),
       });
+
+      logConferenceLifecycleEvents(summaryData);
 
       toast.success("CONFERÊNCIA ENVIADA COM SUCESSO", {
         id: "global-toast",
@@ -242,7 +246,7 @@ export default function ScannerPage() {
       router.push("/inicio");
     } catch (error) {
       console.error("Erro ao concluir conferência:", error);
-      toast.error("Não foi possível salvar ou notificar a conferência.", {
+      toast.error("Não foi possível salvar a conferência.", {
         id: "global-toast",
       });
     } finally {
@@ -250,11 +254,89 @@ export default function ScannerPage() {
     }
   };
 
+  const logConferenceLifecycleEvents = async (data: SummaryData) => {
+    try {
+      const allHostnames = [...data.scannedDevices, ...data.missingDevices];
+      if (allHostnames.length === 0) return;
+
+      // CORREÇÃO: Lógica de "chunking" para lidar com mais de 30 notebooks
+      const chunks: string[][] = [];
+      for (let i = 0; i < allHostnames.length; i += 30) {
+        chunks.push(allHostnames.slice(i, i + 30));
+      }
+
+      const queryPromises: Promise<QuerySnapshot<DocumentData>>[] = chunks.map(
+        (chunk) => {
+          const notebooksQuery = query(
+            collection(db, "notebooks"),
+            where("hostname", "in", chunk)
+          );
+          return getDocs(notebooksQuery);
+        }
+      );
+
+      const querySnapshots = await Promise.all(queryPromises);
+
+      const hostnameToIdMap = new Map<string, string>();
+      querySnapshots.forEach((snapshot) => {
+        snapshot.forEach((doc) => {
+          hostnameToIdMap.set(doc.data().hostname, doc.id);
+        });
+      });
+
+      const batch = writeBatch(db);
+      const timestamp = Timestamp.now();
+      const user = userProfile?.nome || "Sistema";
+      const details = `Na conferência da UM: ${data.umName}`;
+
+      data.scannedDevices.forEach((hostname: string) => {
+        // CORREÇÃO: Tipo explícito
+        const notebookId = hostnameToIdMap.get(hostname);
+        if (notebookId) {
+          const eventRef = doc(
+            collection(db, "notebooks", notebookId, "lifecycleEvents")
+          );
+          batch.set(eventRef, {
+            timestamp,
+            user,
+            details,
+            eventType: "Conferência - Sucesso",
+          });
+        }
+      });
+
+      data.missingDevices.forEach((hostname: string) => {
+        // CORREÇÃO: Tipo explícito
+        const notebookId = hostnameToIdMap.get(hostname);
+        if (notebookId) {
+          const eventRef = doc(
+            collection(db, "notebooks", notebookId, "lifecycleEvents")
+          );
+          batch.set(eventRef, {
+            timestamp,
+            user,
+            details,
+            eventType: "Conferência - Faltante",
+          });
+        }
+      });
+
+      await batch.commit();
+      console.log(
+        "Eventos de ciclo de vida da conferência registrados com sucesso."
+      );
+    } catch (error) {
+      console.error(
+        "Falha ao registrar eventos de ciclo de vida da conferência:",
+        error
+      );
+    }
+  };
+
   const handleNumericInputChange =
     (setter: React.Dispatch<React.SetStateAction<number>>) =>
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const value = e.target.value;
-      // Permite apenas números inteiros não negativos
       if (/^\d*$/.test(value)) {
         setter(Number(value));
       }
