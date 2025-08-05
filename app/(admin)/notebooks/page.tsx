@@ -253,7 +253,6 @@ export default function NotebooksPage() {
     }
   };
 
-  // CORREÇÃO: Handlers de formulário separados para garantir segurança de tipo.
   const handleFormChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
@@ -280,7 +279,10 @@ export default function NotebooksPage() {
   };
 
   const handleDownloadTemplate = () => {
-    const csvContent = "hostname,serialNumber,assetTag\n";
+    const headers = ["hostname", "serialNumber", "assetTag"];
+    // CORREÇÃO: Usa ponto e vírgula como delimitador para compatibilidade com Excel (Brasil/Europa)
+    const delimiter = ";";
+    const csvContent = `${headers.join(delimiter)}\n`;
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
@@ -308,6 +310,7 @@ export default function NotebooksPage() {
     Papa.parse(selectedFile, {
       header: true,
       skipEmptyLines: true,
+      delimiter: ";", // Informa ao parser para também usar o ponto e vírgula
       complete: (results) => {
         const requiredHeaders = ["hostname", "serialNumber", "assetTag"];
         const actualHeaders = results.meta.fields || [];
@@ -316,7 +319,7 @@ export default function NotebooksPage() {
         );
         if (!hasAllHeaders) {
           toast.error(
-            "O arquivo CSV não contém os cabeçalhos esperados: hostname, serialNumber, assetTag.",
+            "O arquivo CSV não contém os cabeçalhos esperados: hostname;serialNumber;assetTag.",
             { id: "global-toast", duration: 5000 }
           );
           return;
