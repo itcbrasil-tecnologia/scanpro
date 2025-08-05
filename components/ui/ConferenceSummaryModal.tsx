@@ -4,7 +4,6 @@ import React from "react";
 import { Modal } from "./Modal";
 import { X } from "lucide-react";
 
-// Interface para os dados que o modal espera receber
 interface ConferenceData {
   userName?: string;
   projectName?: string;
@@ -15,7 +14,6 @@ interface ConferenceData {
   expectedCount?: number;
   scannedCount?: number;
   missingCount?: number;
-  scannedDevices?: string[];
   missingDevices?: string[];
   maintenanceDevices?: string[];
   maintenanceCount?: number;
@@ -36,6 +34,12 @@ export function ConferenceSummaryModal({
   conferenceData,
 }: ConferenceSummaryModalProps) {
   if (!isOpen || !conferenceData) return null;
+
+  // Variável para verificar se existe pelo menos um periférico com contagem.
+  const hasPeripherals =
+    conferenceData.miceCount !== undefined ||
+    conferenceData.chargersCount !== undefined ||
+    conferenceData.headsetsCount !== undefined;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Resumo da Conferência">
@@ -59,22 +63,30 @@ export function ConferenceSummaryModal({
           {conferenceData.startTime} às {conferenceData.endTime}
         </p>
 
-        {conferenceData.miceCount !== undefined && (
+        {/* CORREÇÃO: A seção inteira agora é condicional */}
+        {hasPeripherals && (
           <>
             <hr />
             <div className="grid grid-cols-2 gap-x-4">
-              <p>
-                <span className="font-semibold">Mouses:</span>{" "}
-                {conferenceData.miceCount}
-              </p>
-              <p>
-                <span className="font-semibold">Carregadores:</span>{" "}
-                {conferenceData.chargersCount}
-              </p>
-              <p>
-                <span className="font-semibold">Fones:</span>{" "}
-                {conferenceData.headsetsCount}
-              </p>
+              {/* CORREÇÃO: Cada item é renderizado individualmente */}
+              {conferenceData.miceCount !== undefined && (
+                <p>
+                  <span className="font-semibold">Mouses:</span>{" "}
+                  {conferenceData.miceCount}
+                </p>
+              )}
+              {conferenceData.chargersCount !== undefined && (
+                <p>
+                  <span className="font-semibold">Carregadores:</span>{" "}
+                  {conferenceData.chargersCount}
+                </p>
+              )}
+              {conferenceData.headsetsCount !== undefined && (
+                <p>
+                  <span className="font-semibold">Fones:</span>{" "}
+                  {conferenceData.headsetsCount}
+                </p>
+              )}
             </div>
           </>
         )}
