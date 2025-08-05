@@ -28,6 +28,7 @@ import {
   Mouse,
   Power,
   Headphones,
+  Wrench,
 } from "lucide-react";
 
 interface Project {
@@ -41,6 +42,11 @@ interface UM {
   projectId: string;
 }
 
+interface Notebook {
+  hostname: string;
+  status?: "Ativo" | "Em Manutenção";
+}
+
 interface SummaryData {
   userName?: string;
   projectName: string;
@@ -51,8 +57,10 @@ interface SummaryData {
   expectedCount: number;
   scannedCount: number;
   missingCount: number;
-  scannedDevices: string[]; // CORREÇÃO: Propriedade adicionada
+  scannedDevices: string[];
   missingDevices: string[];
+  maintenanceDevices?: string[];
+  maintenanceCount?: number;
   miceCount: number;
   chargersCount: number;
   headsetsCount: number;
@@ -61,26 +69,24 @@ interface SummaryData {
 export default function ScannerPage() {
   const { userProfile } = useAuth();
   const router = useRouter();
-
   const [ums, setUms] = useState<UM[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
   const [selectedUmId, setSelectedUmId] = useState<string>("");
+
   const [devicesToScan, setDevicesToScan] = useState<string[]>([]);
+  const [maintenanceDevices, setMaintenanceDevices] = useState<string[]>([]);
   const [scannedDevices, setScannedDevices] = useState<string[]>([]);
+
   const [conferenceStartTime, setConferenceStartTime] = useState<Date | null>(
     null
   );
-
   const [step, setStep] = useState<"selection" | "scanning" | "peripherals">(
     "selection"
   );
-
   const [miceCount, setMiceCount] = useState(0);
   const [chargersCount, setChargersCount] = useState(0);
   const [headsetsCount, setHeadsetsCount] = useState(0);
-
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
   const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
 
@@ -93,16 +99,13 @@ export default function ScannerPage() {
           (doc) => ({ id: doc.id, ...doc.data() } as UM)
         );
         setUms(umsList);
-
         const projectsSnapshot = await getDocs(collection(db, "projects"));
         const projectsList = projectsSnapshot.docs.map(
           (doc) => ({ id: doc.id, ...doc.data() } as Project)
         );
         setProjects(projectsList);
       } catch (error) {
-        toast.error("Erro ao carregar UMs e Projetos.", {
-          id: "global-toast",
-        });
+        toast.error("Erro ao carregar UMs e Projetos.", { id: "global-toast" });
         console.error("Erro ao buscar dados iniciais:", error);
       } finally {
         setIsLoading(false);
@@ -116,6 +119,7 @@ export default function ScannerPage() {
       if (!selectedUmId) {
         setStep("selection");
         setDevicesToScan([]);
+        setMaintenanceDevices([]);
         setScannedDevices([]);
         setConferenceStartTime(null);
         return;
@@ -126,10 +130,21 @@ export default function ScannerPage() {
           where("umId", "==", selectedUmId)
         );
         const notebooksSnapshot = await getDocs(notebooksQuery);
-        const notebooksList = notebooksSnapshot.docs
-          .map((doc) => doc.data().hostname as string)
+        const notebooksList: Notebook[] = notebooksSnapshot.docs.map(
+          (doc) => doc.data() as Notebook
+        );
+
+        const active = notebooksList
+          .filter((n) => n.status !== "Em Manutenção")
+          .map((n) => n.hostname)
           .sort();
-        setDevicesToScan(notebooksList);
+        const maintenance = notebooksList
+          .filter((n) => n.status === "Em Manutenção")
+          .map((n) => n.hostname)
+          .sort();
+
+        setDevicesToScan(active);
+        setMaintenanceDevices(maintenance);
         setScannedDevices([]);
         setStep("scanning");
         setConferenceStartTime(new Date());
@@ -137,7 +152,7 @@ export default function ScannerPage() {
         toast.error("Erro ao carregar notebooks para esta UM.", {
           id: "global-toast",
         });
-        console.error("Erro ao buscar notebooks:", error);
+        console.error("Erro ao carregar notebooks:", error);
       }
     };
     fetchNotebooksForUM();
@@ -163,9 +178,10 @@ export default function ScannerPage() {
         id: "global-toast",
       });
     } else {
-      toast.error(`"${scannedText}" não pertence a esta UM.`, {
-        id: "global-toast",
-      });
+      toast.error(
+        `"${scannedText}" não pertence a esta UM ou está em manutenção.`,
+        { id: "global-toast" }
+      );
     }
   };
 
@@ -176,8 +192,8 @@ export default function ScannerPage() {
       });
       return;
     }
-    const allDevicesForUm = [...devicesToScan, ...scannedDevices].sort();
-    setDevicesToScan(allDevicesForUm);
+    const allActiveDevices = [...devicesToScan, ...scannedDevices].sort();
+    setDevicesToScan(allActiveDevices);
     setScannedDevices([]);
     setConferenceStartTime(new Date());
     toast.success("Contagem reiniciada!", { id: "global-toast" });
@@ -212,46 +228,14 @@ export default function ScannerPage() {
       missingCount: devicesToScan.length,
       scannedDevices: scannedDevices,
       missingDevices: devicesToScan,
+      maintenanceDevices: maintenanceDevices,
+      maintenanceCount: maintenanceDevices.length,
       miceCount: Number(miceCount),
       chargersCount: Number(chargersCount),
       headsetsCount: Number(headsetsCount),
     };
-
     setSummaryData(data);
     setIsSummaryModalOpen(true);
-  };
-
-  const handleConcludeAndSend = async () => {
-    if (!summaryData) return;
-
-    try {
-      await addDoc(collection(db, "conferences"), {
-        ...summaryData,
-        startTime: Timestamp.fromDate(conferenceStartTime!),
-        endTime: Timestamp.now(),
-        userId: userProfile?.uid,
-      });
-
-      fetch("/api/notify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(summaryData),
-      });
-
-      logConferenceLifecycleEvents(summaryData);
-
-      toast.success("CONFERÊNCIA ENVIADA COM SUCESSO", {
-        id: "global-toast",
-      });
-      router.push("/inicio");
-    } catch (error) {
-      console.error("Erro ao concluir conferência:", error);
-      toast.error("Não foi possível salvar a conferência.", {
-        id: "global-toast",
-      });
-    } finally {
-      setIsSummaryModalOpen(false);
-    }
   };
 
   const logConferenceLifecycleEvents = async (data: SummaryData) => {
@@ -259,7 +243,6 @@ export default function ScannerPage() {
       const allHostnames = [...data.scannedDevices, ...data.missingDevices];
       if (allHostnames.length === 0) return;
 
-      // CORREÇÃO: Lógica de "chunking" para lidar com mais de 30 notebooks
       const chunks: string[][] = [];
       for (let i = 0; i < allHostnames.length; i += 30) {
         chunks.push(allHostnames.slice(i, i + 30));
@@ -290,7 +273,6 @@ export default function ScannerPage() {
       const details = `Na conferência da UM: ${data.umName}`;
 
       data.scannedDevices.forEach((hostname: string) => {
-        // CORREÇÃO: Tipo explícito
         const notebookId = hostnameToIdMap.get(hostname);
         if (notebookId) {
           const eventRef = doc(
@@ -306,7 +288,6 @@ export default function ScannerPage() {
       });
 
       data.missingDevices.forEach((hostname: string) => {
-        // CORREÇÃO: Tipo explícito
         const notebookId = hostnameToIdMap.get(hostname);
         if (notebookId) {
           const eventRef = doc(
@@ -330,6 +311,33 @@ export default function ScannerPage() {
         "Falha ao registrar eventos de ciclo de vida da conferência:",
         error
       );
+    }
+  };
+
+  const handleConcludeAndSend = async () => {
+    if (!summaryData) return;
+    try {
+      await addDoc(collection(db, "conferences"), {
+        ...summaryData,
+        startTime: Timestamp.fromDate(conferenceStartTime!),
+        endTime: Timestamp.now(),
+        userId: userProfile?.uid,
+      });
+      fetch("/api/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(summaryData),
+      });
+      logConferenceLifecycleEvents(summaryData);
+      toast.success("CONFERÊNCIA ENVIADA COM SUCESSO", { id: "global-toast" });
+      router.push("/inicio");
+    } catch (error) {
+      console.error("Erro ao concluir conferência:", error);
+      toast.error("Não foi possível salvar a conferência.", {
+        id: "global-toast",
+      });
+    } finally {
+      setIsSummaryModalOpen(false);
     }
   };
 
@@ -418,6 +426,29 @@ export default function ScannerPage() {
               </ul>
             </div>
           </div>
+
+          {maintenanceDevices.length > 0 && (
+            <div className="bg-white p-4 rounded-lg shadow-md">
+              <h3 className="font-bold text-amber-800 flex items-center">
+                <Wrench className="mr-2" />
+                EM MANUTENÇÃO ({maintenanceDevices.length})
+              </h3>
+              <p className="text-xs text-slate-500 mb-2">
+                Estes itens não precisam ser escaneados.
+              </p>
+              <ul className="h-24 overflow-y-auto mt-2 space-y-1 pr-2">
+                {maintenanceDevices.map((device) => (
+                  <li
+                    key={device}
+                    className="p-2 bg-amber-50 text-amber-800 rounded font-mono text-sm"
+                  >
+                    {device}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-md">
             <button
               onClick={handleRestart}
@@ -552,7 +583,9 @@ export default function ScannerPage() {
             </div>
             <hr />
             <p>
-              <span className="font-semibold">Total de Dispositivos:</span>{" "}
+              <span className="font-semibold">
+                Total de Dispositivos (Ativos):
+              </span>{" "}
               {summaryData.expectedCount}
             </p>
             <p>
@@ -561,10 +594,19 @@ export default function ScannerPage() {
             </p>
             <p>
               <span className="font-semibold text-red-600">
-                Não Escaneados:
+                Não Escaneados (Faltantes):
               </span>{" "}
               {summaryData.missingCount}
             </p>
+            {summaryData.maintenanceCount &&
+              summaryData.maintenanceCount > 0 && (
+                <p>
+                  <span className="font-semibold text-amber-600">
+                    Em Manutenção:
+                  </span>{" "}
+                  {summaryData.maintenanceCount}
+                </p>
+              )}
             {summaryData.missingCount > 0 && (
               <div>
                 <h4 className="font-semibold mt-2">Dispositivos Faltantes:</h4>
@@ -575,6 +617,19 @@ export default function ScannerPage() {
                 </ul>
               </div>
             )}
+            {summaryData.maintenanceCount &&
+              summaryData.maintenanceCount > 0 && (
+                <div>
+                  <h4 className="font-semibold mt-2">
+                    Dispositivos em Manutenção:
+                  </h4>
+                  <ul className="text-xs h-24 overflow-y-auto bg-slate-100 p-2 rounded-md mt-1 font-mono">
+                    {summaryData.maintenanceDevices?.map((device: string) => (
+                      <li key={device}>{device}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             <div className="flex justify-end pt-4">
               <button
                 onClick={handleConcludeAndSend}

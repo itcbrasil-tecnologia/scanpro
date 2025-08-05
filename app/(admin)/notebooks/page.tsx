@@ -253,14 +253,14 @@ export default function NotebooksPage() {
     }
   };
 
+  // CORREÇÃO: Handlers de formulário separados para garantir segurança de tipo.
   const handleFormChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
-    const isUpperCase = name === "hostname" || name === "prefix";
     setFormState((prev) => ({
       ...prev,
-      [name]: isUpperCase ? value.toUpperCase() : value,
+      [name]: name === "hostname" ? value.toUpperCase() : value,
     }));
   };
 
@@ -405,6 +405,7 @@ export default function NotebooksPage() {
   const handleViewBatchQrCodes = (umNotebooks: Notebook[]) => {
     const names = umNotebooks.map((n) => n.hostname).sort();
     setHostnamesForQrModal(names);
+    setIsQrModalOpen(true);
   };
 
   const openAddModal = () => {
@@ -604,7 +605,7 @@ export default function NotebooksPage() {
         );
       }
       toast.success(
-        `${generatedNames.length} notebooks adicionados com sucesso! Agora você pode gerar os QR Codes na lista abaixo.`,
+        `${generatedNames.length} notebooks adicionados com sucesso!`,
         { id: "global-toast", duration: 5000 }
       );
       fetchData();
