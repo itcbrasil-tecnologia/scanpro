@@ -40,6 +40,7 @@ interface UM {
   id: string;
   name: string;
   projectId: string;
+  expectedPeripherals?: string[];
 }
 
 interface Notebook {
@@ -61,10 +62,12 @@ interface SummaryData {
   missingDevices: string[];
   maintenanceDevices?: string[];
   maintenanceCount?: number;
-  miceCount: number;
-  chargersCount: number;
-  headsetsCount: number;
+  miceCount?: number;
+  chargersCount?: number;
+  headsetsCount?: number;
 }
+
+const AVAILABLE_PERIPHERALS = ["mouse", "carregador", "fone"];
 
 export default function ScannerPage() {
   const { userProfile } = useAuth();
@@ -77,6 +80,7 @@ export default function ScannerPage() {
   const [devicesToScan, setDevicesToScan] = useState<string[]>([]);
   const [maintenanceDevices, setMaintenanceDevices] = useState<string[]>([]);
   const [scannedDevices, setScannedDevices] = useState<string[]>([]);
+  const [expectedPeripherals, setExpectedPeripherals] = useState<string[]>([]);
 
   const [conferenceStartTime, setConferenceStartTime] = useState<Date | null>(
     null
@@ -121,10 +125,16 @@ export default function ScannerPage() {
         setDevicesToScan([]);
         setMaintenanceDevices([]);
         setScannedDevices([]);
+        setExpectedPeripherals([]);
         setConferenceStartTime(null);
         return;
       }
       try {
+        const selectedUMData = ums.find((um) => um.id === selectedUmId);
+        setExpectedPeripherals(
+          selectedUMData?.expectedPeripherals ?? AVAILABLE_PERIPHERALS
+        );
+
         const notebooksQuery = query(
           collection(db, "notebooks"),
           where("umId", "==", selectedUmId)
@@ -133,7 +143,6 @@ export default function ScannerPage() {
         const notebooksList: Notebook[] = notebooksSnapshot.docs.map(
           (doc) => doc.data() as Notebook
         );
-
         const active = notebooksList
           .filter((n) => n.status !== "Em Manutenção")
           .map((n) => n.hostname)
@@ -156,7 +165,7 @@ export default function ScannerPage() {
       }
     };
     fetchNotebooksForUM();
-  }, [selectedUmId]);
+  }, [selectedUmId, ums]);
 
   const handleScan = (result: IDetectedBarcode[]) => {
     const scannedText = result[0]?.rawValue;
@@ -210,7 +219,7 @@ export default function ScannerPage() {
       (project) => project.id === selectedUM?.projectId
     );
 
-    const data: SummaryData = {
+    const data: Partial<SummaryData> = {
       userName: userProfile?.nome,
       projectName: selectedProject?.name || "N/A",
       umName: selectedUM?.name,
@@ -230,11 +239,16 @@ export default function ScannerPage() {
       missingDevices: devicesToScan,
       maintenanceDevices: maintenanceDevices,
       maintenanceCount: maintenanceDevices.length,
-      miceCount: Number(miceCount),
-      chargersCount: Number(chargersCount),
-      headsetsCount: Number(headsetsCount),
     };
-    setSummaryData(data);
+
+    if (expectedPeripherals.includes("mouse"))
+      data.miceCount = Number(miceCount);
+    if (expectedPeripherals.includes("carregador"))
+      data.chargersCount = Number(chargersCount);
+    if (expectedPeripherals.includes("fone"))
+      data.headsetsCount = Number(headsetsCount);
+
+    setSummaryData(data as SummaryData);
     setIsSummaryModalOpen(true);
   };
 
@@ -242,12 +256,10 @@ export default function ScannerPage() {
     try {
       const allHostnames = [...data.scannedDevices, ...data.missingDevices];
       if (allHostnames.length === 0) return;
-
       const chunks: string[][] = [];
       for (let i = 0; i < allHostnames.length; i += 30) {
         chunks.push(allHostnames.slice(i, i + 30));
       }
-
       const queryPromises: Promise<QuerySnapshot<DocumentData>>[] = chunks.map(
         (chunk) => {
           const notebooksQuery = query(
@@ -257,21 +269,17 @@ export default function ScannerPage() {
           return getDocs(notebooksQuery);
         }
       );
-
       const querySnapshots = await Promise.all(queryPromises);
-
       const hostnameToIdMap = new Map<string, string>();
       querySnapshots.forEach((snapshot) => {
         snapshot.forEach((doc) => {
           hostnameToIdMap.set(doc.data().hostname, doc.id);
         });
       });
-
       const batch = writeBatch(db);
       const timestamp = Timestamp.now();
       const user = userProfile?.nome || "Sistema";
       const details = `Na conferência da UM: ${data.umName}`;
-
       data.scannedDevices.forEach((hostname: string) => {
         const notebookId = hostnameToIdMap.get(hostname);
         if (notebookId) {
@@ -286,7 +294,6 @@ export default function ScannerPage() {
           });
         }
       });
-
       data.missingDevices.forEach((hostname: string) => {
         const notebookId = hostnameToIdMap.get(hostname);
         if (notebookId) {
@@ -301,7 +308,6 @@ export default function ScannerPage() {
           });
         }
       });
-
       await batch.commit();
       console.log(
         "Eventos de ciclo de vida da conferência registrados com sucesso."
@@ -472,63 +478,69 @@ export default function ScannerPage() {
             3. Informe a Quantidade de Periféricos
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-            <div className="relative">
-              <label
-                htmlFor="mice"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Mouses
-              </label>
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none pt-6">
-                <Mouse className="h-5 w-5 text-gray-400" />
+            {expectedPeripherals.includes("mouse") && (
+              <div className="relative">
+                <label
+                  htmlFor="mice"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Mouses
+                </label>
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none pt-6">
+                  <Mouse className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="number"
+                  id="mice"
+                  value={miceCount}
+                  onChange={handleNumericInputChange(setMiceCount)}
+                  min="0"
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md"
+                />
               </div>
-              <input
-                type="number"
-                id="mice"
-                value={miceCount}
-                onChange={handleNumericInputChange(setMiceCount)}
-                min="0"
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md"
-              />
-            </div>
-            <div className="relative">
-              <label
-                htmlFor="chargers"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Carregadores
-              </label>
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none pt-6">
-                <Power className="h-5 w-5 text-gray-400" />
+            )}
+            {expectedPeripherals.includes("carregador") && (
+              <div className="relative">
+                <label
+                  htmlFor="chargers"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Carregadores
+                </label>
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none pt-6">
+                  <Power className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="number"
+                  id="chargers"
+                  value={chargersCount}
+                  onChange={handleNumericInputChange(setChargersCount)}
+                  min="0"
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md"
+                />
               </div>
-              <input
-                type="number"
-                id="chargers"
-                value={chargersCount}
-                onChange={handleNumericInputChange(setChargersCount)}
-                min="0"
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md"
-              />
-            </div>
-            <div className="relative">
-              <label
-                htmlFor="headsets"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Fones de Ouvido
-              </label>
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none pt-6">
-                <Headphones className="h-5 w-5 text-gray-400" />
+            )}
+            {expectedPeripherals.includes("fone") && (
+              <div className="relative">
+                <label
+                  htmlFor="headsets"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Fones de Ouvido
+                </label>
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none pt-6">
+                  <Headphones className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="number"
+                  id="headsets"
+                  value={headsetsCount}
+                  onChange={handleNumericInputChange(setHeadsetsCount)}
+                  min="0"
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md"
+                />
               </div>
-              <input
-                type="number"
-                id="headsets"
-                value={headsetsCount}
-                onChange={handleNumericInputChange(setHeadsetsCount)}
-                min="0"
-                className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md"
-              />
-            </div>
+            )}
           </div>
           <div className="flex justify-end pt-4">
             <button
@@ -566,22 +578,32 @@ export default function ScannerPage() {
               <span className="font-semibold">Horário:</span>{" "}
               {summaryData.startTime} às {summaryData.endTime}
             </p>
-            <hr />
+
+            {(summaryData.miceCount !== undefined ||
+              summaryData.chargersCount !== undefined ||
+              summaryData.headsetsCount !== undefined) && <hr />}
             <div className="grid grid-cols-2 gap-x-4">
-              <p>
-                <span className="font-semibold">Mouses:</span>{" "}
-                {summaryData.miceCount}
-              </p>
-              <p>
-                <span className="font-semibold">Carregadores:</span>{" "}
-                {summaryData.chargersCount}
-              </p>
-              <p>
-                <span className="font-semibold">Fones:</span>{" "}
-                {summaryData.headsetsCount}
-              </p>
+              {summaryData.miceCount !== undefined && (
+                <p>
+                  <span className="font-semibold">Mouses:</span>{" "}
+                  {summaryData.miceCount}
+                </p>
+              )}
+              {summaryData.chargersCount !== undefined && (
+                <p>
+                  <span className="font-semibold">Carregadores:</span>{" "}
+                  {summaryData.chargersCount}
+                </p>
+              )}
+              {summaryData.headsetsCount !== undefined && (
+                <p>
+                  <span className="font-semibold">Fones:</span>{" "}
+                  {summaryData.headsetsCount}
+                </p>
+              )}
             </div>
             <hr />
+
             <p>
               <span className="font-semibold">
                 Total de Dispositivos (Ativos):

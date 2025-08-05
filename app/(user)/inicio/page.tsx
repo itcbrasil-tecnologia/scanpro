@@ -16,14 +16,15 @@ import {
 } from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
 import { PeripheralsModal } from "@/components/ui/PeripheralsModal";
-import { ConferenceSummaryModal } from "@/components/ui/ConferenceSummaryModal"; // Importado
+import { ConferenceSummaryModal } from "@/components/ui/ConferenceSummaryModal";
 import {
   ScanBarcode,
   Camera,
   CheckCircle,
   TriangleAlert,
   FileText,
-} from "lucide-react"; // Ícones atualizados
+  Eye,
+} from "lucide-react"; // Ícone 'Eye' importado
 import toast from "react-hot-toast";
 
 interface Conference {
@@ -31,14 +32,14 @@ interface Conference {
   date: string;
   startTime: string;
   endTime: string;
-  projectName?: string; // Adicionado para passar para o modal
+  projectName?: string;
   um: string;
   expected: number;
   scanned: number;
   missing: number;
   missingHostnames: string[];
-  maintenanceDevices?: string[]; // Adicionado para passar para o modal
-  maintenanceCount?: number; // Adicionado para passar para o modal
+  maintenanceDevices?: string[];
+  maintenanceCount?: number;
   miceCount?: number;
   chargersCount?: number;
   headsetsCount?: number;
@@ -293,9 +294,10 @@ export default function InicioPage() {
                       <td className="p-3 text-center">
                         {conference.miceCount !== undefined && (
                           <button
-                            className="text-teal-600 hover:underline text-sm font-medium"
+                            className="flex items-center justify-center mx-auto text-xs font-semibold text-teal-800 bg-teal-100 hover:bg-teal-200 px-3 py-1 rounded-full transition-colors"
                             onClick={() => openPeripheralsModal(conference)}
                           >
+                            <Eye size={14} className="mr-1.5" />
                             Ver
                           </button>
                         )}

@@ -43,16 +43,20 @@ export async function POST(request: Request) {
     message += `*Horário:* ${summary.startTime} às ${summary.endTime}\n`;
     message += `------------------------------------\n\n`;
 
-    if (
-      summary.miceCount !== undefined &&
-      summary.chargersCount !== undefined &&
-      summary.headsetsCount !== undefined
-    ) {
+    const hasPeripherals =
+      summary.miceCount !== undefined ||
+      summary.chargersCount !== undefined ||
+      summary.headsetsCount !== undefined;
+
+    if (hasPeripherals) {
       message += `*Periféricos:*\n`;
-      message += `- Mouses: *${summary.miceCount}*\n`;
-      message += `- Carregadores: *${summary.chargersCount}*\n`;
-      message += `- Fones: *${summary.headsetsCount}*\n\n`;
-      message += `------------------------------------\n\n`;
+      if (summary.miceCount !== undefined)
+        message += `- Mouses: *${summary.miceCount}*\n`;
+      if (summary.chargersCount !== undefined)
+        message += `- Carregadores: *${summary.chargersCount}*\n`;
+      if (summary.headsetsCount !== undefined)
+        message += `- Fones: *${summary.headsetsCount}*\n`;
+      message += `\n------------------------------------\n\n`;
     }
 
     message += `*Dispositivos Ativos (Esperados):* ${summary.expectedCount}\n`;

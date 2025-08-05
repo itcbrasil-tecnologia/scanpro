@@ -29,7 +29,15 @@ interface UM {
   name: string;
   projectId: string;
   expectedNotebooks: number;
+  expectedPeripherals?: string[];
 }
+
+const AVAILABLE_PERIPHERALS = ["mouse", "carregador", "fone"];
+const PERIPHERAL_LABELS: { [key: string]: string } = {
+  mouse: "Mouse",
+  carregador: "Carregador",
+  fone: "Fone de Ouvido",
+};
 
 function UMListItem({
   um,
@@ -125,10 +133,15 @@ export default function UMsPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [currentUm, setCurrentUm] = useState<UM | null>(null);
   const [umToDelete, setUmToDelete] = useState<UM | null>(null);
+
   const [formState, setFormState] = useState({
     name: "",
     projectId: "",
     expectedNotebooks: 0,
+    peripherals: AVAILABLE_PERIPHERALS.reduce(
+      (acc, curr) => ({ ...acc, [curr]: true }),
+      {} as Record<string, boolean>
+    ),
   });
 
   const fetchData = useCallback(async () => {
@@ -173,8 +186,19 @@ export default function UMsPage() {
   const handleFormChange = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    const { name, value } = event.target;
-    setFormState((previousState) => ({ ...previousState, [name]: value }));
+    const { name, value, type } = event.target;
+    if (type === "checkbox") {
+      const { checked } = event.target as HTMLInputElement;
+      setFormState((prevState) => ({
+        ...prevState,
+        peripherals: {
+          ...prevState.peripherals,
+          [name]: checked,
+        },
+      }));
+    } else {
+      setFormState((prevState) => ({ ...prevState, [name]: value }));
+    }
   };
 
   const openAddModal = () => {
@@ -183,6 +207,10 @@ export default function UMsPage() {
       name: "",
       projectId: projects[0]?.id || "",
       expectedNotebooks: 0,
+      peripherals: AVAILABLE_PERIPHERALS.reduce(
+        (acc, curr) => ({ ...acc, [curr]: true }),
+        {} as Record<string, boolean>
+      ),
     });
     setIsFormModalOpen(true);
   };
@@ -193,6 +221,13 @@ export default function UMsPage() {
       name: um.name,
       projectId: um.projectId,
       expectedNotebooks: um.expectedNotebooks,
+      peripherals: AVAILABLE_PERIPHERALS.reduce(
+        (acc, curr) => ({
+          ...acc,
+          [curr]: um.expectedPeripherals?.includes(curr) ?? true,
+        }),
+        {} as Record<string, boolean>
+      ),
     });
     setIsFormModalOpen(true);
   };
@@ -214,11 +249,18 @@ export default function UMsPage() {
       });
       return;
     }
+
+    const expectedPeripherals = Object.entries(formState.peripherals)
+      .filter(([, isChecked]) => isChecked)
+      .map(([peripheralName]) => peripheralName);
+
     const umData = {
       name: formState.name,
       projectId: formState.projectId,
       expectedNotebooks: Number(formState.expectedNotebooks) || 0,
+      expectedPeripherals,
     };
+
     try {
       if (currentUm) {
         const umRef = doc(db, "ums", currentUm.id);
@@ -244,14 +286,12 @@ export default function UMsPage() {
   const handleDelete = async () => {
     if (!umToDelete) return;
     try {
-      // VERIFICAÇÃO DE DEPENDÊNCIA
       const notebooksQuery = query(
         collection(db, "notebooks"),
         where("umId", "==", umToDelete.id),
         limit(1)
       );
       const notebooksSnapshot = await getDocs(notebooksQuery);
-
       if (!notebooksSnapshot.empty) {
         toast.error(
           "Não é possível excluir. Existem notebooks associados a esta UM.",
@@ -260,8 +300,6 @@ export default function UMsPage() {
         closeModals();
         return;
       }
-
-      // EXCLUSÃO
       const umRef = doc(db, "ums", umToDelete.id);
       await deleteDoc(umRef);
       toast.success(`UM "${umToDelete.name}" excluída com sucesso!`, {
@@ -299,7 +337,7 @@ export default function UMsPage() {
               <h2 className="text-xl font-bold text-gray-700 mb-4 flex items-center">
                 <div
                   className="w-5 h-5 rounded-full mr-3"
-                  style={{ backgroundColor: project.color }}
+                  style={{ backgroundColor: project.color || "#ccc" }}
                 ></div>
                 {project.name}
               </h2>
@@ -381,6 +419,31 @@ export default function UMsPage() {
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
             />
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Periféricos Esperados
+            </label>
+            <div className="mt-2 space-y-2 sm:space-y-0 sm:flex sm:space-x-6">
+              {AVAILABLE_PERIPHERALS.map((peripheral) => (
+                <div key={peripheral} className="flex items-center">
+                  <input
+                    id={peripheral}
+                    name={peripheral}
+                    type="checkbox"
+                    checked={formState.peripherals[peripheral]}
+                    onChange={handleFormChange}
+                    className="h-4 w-4 text-teal-600 border-gray-300 rounded"
+                  />
+                  <label
+                    htmlFor={peripheral}
+                    className="ml-2 block text-sm text-gray-900"
+                  >
+                    {PERIPHERAL_LABELS[peripheral]}
+                  </label>
+                </div>
+              ))}
+            </div>
+          </div>
           <div className="flex justify-end pt-4">
             <button
               onClick={handleSave}
@@ -397,6 +460,8 @@ export default function UMsPage() {
         onConfirm={handleDelete}
         title="Confirmar Exclusão"
         message={`Tem certeza que deseja excluir a UM "${umToDelete?.name}"? Esta ação é irreversível.`}
+        confirmButtonText="Confirmar Exclusão"
+        confirmButtonVariant="danger"
       />
     </div>
   );
