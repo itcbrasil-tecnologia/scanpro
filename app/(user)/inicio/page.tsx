@@ -16,7 +16,14 @@ import {
 } from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
 import { PeripheralsModal } from "@/components/ui/PeripheralsModal";
-import { ScanBarcode, Camera, CheckCircle } from "lucide-react";
+import { ConferenceSummaryModal } from "@/components/ui/ConferenceSummaryModal"; // Importado
+import {
+  ScanBarcode,
+  Camera,
+  CheckCircle,
+  TriangleAlert,
+  FileText,
+} from "lucide-react"; // Ícones atualizados
 import toast from "react-hot-toast";
 
 interface Conference {
@@ -24,11 +31,14 @@ interface Conference {
   date: string;
   startTime: string;
   endTime: string;
+  projectName?: string; // Adicionado para passar para o modal
   um: string;
   expected: number;
   scanned: number;
   missing: number;
   missingHostnames: string[];
+  maintenanceDevices?: string[]; // Adicionado para passar para o modal
+  maintenanceCount?: number; // Adicionado para passar para o modal
   miceCount?: number;
   chargersCount?: number;
   headsetsCount?: number;
@@ -52,6 +62,10 @@ export default function InicioPage() {
   const [isPeripheralsModalOpen, setIsPeripheralsModalOpen] = useState(false);
   const [selectedPeripherals, setSelectedPeripherals] =
     useState<PeripheralsData | null>(null);
+
+  const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
+  const [selectedConferenceForSummary, setSelectedConferenceForSummary] =
+    useState<Conference | null>(null);
 
   const [dailyCounts, setDailyCounts] = useState({
     completed: 0,
@@ -109,19 +123,26 @@ export default function InicioPage() {
           return {
             id: document.id,
             date: data.endTime.toDate().toLocaleDateString("pt-BR"),
-            startTime: data.startTime.toDate().toLocaleTimeString("pt-BR", {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-            endTime: data.endTime.toDate().toLocaleTimeString("pt-BR", {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
+            startTime: data.startTime
+              .toDate()
+              .toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+            endTime: data.endTime
+              .toDate()
+              .toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
             um: data.umName,
+            projectName: data.projectName,
             expected: data.expectedCount,
             scanned: data.scannedCount,
             missing: data.missingCount,
             missingHostnames: data.missingDevices || [],
+            maintenanceDevices: data.maintenanceDevices || [],
+            maintenanceCount: data.maintenanceCount || 0,
             miceCount: data.miceCount,
             chargersCount: data.chargersCount,
             headsetsCount: data.headsetsCount,
@@ -150,6 +171,11 @@ export default function InicioPage() {
   const openPeripheralsModal = (data: PeripheralsData) => {
     setSelectedPeripherals(data);
     setIsPeripheralsModalOpen(true);
+  };
+
+  const openSummaryModal = (conference: Conference) => {
+    setSelectedConferenceForSummary(conference);
+    setIsSummaryModalOpen(true);
   };
 
   const renderStatus = (conference: Conference) => {
@@ -234,12 +260,15 @@ export default function InicioPage() {
                   <th className="p-3 text-sm font-semibold text-slate-600 text-center">
                     Detalhes
                   </th>
+                  <th className="p-3 text-sm font-semibold text-slate-600 text-center">
+                    Resumo
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan={6} className="text-center p-6 text-gray-500">
+                    <td colSpan={7} className="text-center p-6 text-gray-500">
                       A carregar histórico...
                     </td>
                   </tr>
@@ -277,20 +306,30 @@ export default function InicioPage() {
                       <td className="p-3 text-center">
                         {conference.missing > 0 && (
                           <button
+                            className="flex items-center justify-center mx-auto text-xs font-semibold text-amber-800 bg-amber-100 hover:bg-amber-200 px-3 py-1 rounded-full transition-colors"
                             onClick={() =>
                               openDetailsModal(conference.missingHostnames)
                             }
-                            className="text-teal-600 hover:underline text-sm font-medium"
                           >
+                            <TriangleAlert size={14} className="mr-1.5" />
                             Ver Faltantes
                           </button>
                         )}
+                      </td>
+                      <td className="p-3 text-center">
+                        <button
+                          className="flex items-center justify-center mx-auto text-xs font-semibold text-blue-800 bg-blue-100 hover:bg-blue-200 px-3 py-1 rounded-full transition-colors"
+                          onClick={() => openSummaryModal(conference)}
+                        >
+                          <FileText size={14} className="mr-1.5" />
+                          Ver Resumo
+                        </button>
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="text-center p-6 text-gray-500">
+                    <td colSpan={7} className="text-center p-6 text-gray-500">
                       Nenhuma conferência encontrada.
                     </td>
                   </tr>
@@ -321,6 +360,12 @@ export default function InicioPage() {
         isOpen={isPeripheralsModalOpen}
         onClose={() => setIsPeripheralsModalOpen(false)}
         data={selectedPeripherals}
+      />
+
+      <ConferenceSummaryModal
+        isOpen={isSummaryModalOpen}
+        onClose={() => setIsSummaryModalOpen(false)}
+        conferenceData={selectedConferenceForSummary}
       />
     </div>
   );
