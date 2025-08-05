@@ -24,19 +24,21 @@ import {
   TriangleAlert,
   FileText,
   Eye,
-} from "lucide-react"; // Ícone 'Eye' importado
+} from "lucide-react";
 import toast from "react-hot-toast";
 
+// CORREÇÃO: Interface padronizada com os nomes corretos das propriedades
 interface Conference {
   id: string;
+  userName?: string;
   date: string;
   startTime: string;
   endTime: string;
   projectName?: string;
-  um: string;
-  expected: number;
-  scanned: number;
-  missing: number;
+  umName: string;
+  expectedCount: number;
+  scannedCount: number;
+  missingCount: number;
   missingHostnames: string[];
   maintenanceDevices?: string[];
   maintenanceCount?: number;
@@ -121,8 +123,10 @@ export default function InicioPage() {
         const historySnapshot = await getDocs(historyQuery);
         const userConferences = historySnapshot.docs.map((document) => {
           const data = document.data();
+          // CORREÇÃO: Mapeamento para os nomes corretos das propriedades
           return {
             id: document.id,
+            userName: data.userName,
             date: data.endTime.toDate().toLocaleDateString("pt-BR"),
             startTime: data.startTime
               .toDate()
@@ -136,11 +140,11 @@ export default function InicioPage() {
                 hour: "2-digit",
                 minute: "2-digit",
               }),
-            um: data.umName,
+            umName: data.umName,
             projectName: data.projectName,
-            expected: data.expectedCount,
-            scanned: data.scannedCount,
-            missing: data.missingCount,
+            expectedCount: data.expectedCount,
+            scannedCount: data.scannedCount,
+            missingCount: data.missingCount,
             missingHostnames: data.missingDevices || [],
             maintenanceDevices: data.maintenanceDevices || [],
             maintenanceCount: data.maintenanceCount || 0,
@@ -180,7 +184,7 @@ export default function InicioPage() {
   };
 
   const renderStatus = (conference: Conference) => {
-    const isComplete = conference.scanned === conference.expected;
+    const isComplete = conference.scannedCount === conference.expectedCount;
     const style = isComplete
       ? "bg-green-100 text-green-800"
       : "bg-red-100 text-red-800";
@@ -286,10 +290,10 @@ export default function InicioPage() {
                         </p>
                       </td>
                       <td className="p-3 text-sm font-medium">
-                        {conference.um}
+                        {conference.umName}
                       </td>
                       <td className="p-3 text-sm text-center">
-                        {conference.scanned} / {conference.expected}
+                        {conference.scannedCount} / {conference.expectedCount}
                       </td>
                       <td className="p-3 text-center">
                         {conference.miceCount !== undefined && (
@@ -306,7 +310,7 @@ export default function InicioPage() {
                         {renderStatus(conference)}
                       </td>
                       <td className="p-3 text-center">
-                        {conference.missing > 0 && (
+                        {conference.missingCount > 0 && (
                           <button
                             className="flex items-center justify-center mx-auto text-xs font-semibold text-amber-800 bg-amber-100 hover:bg-amber-200 px-3 py-1 rounded-full transition-colors"
                             onClick={() =>
