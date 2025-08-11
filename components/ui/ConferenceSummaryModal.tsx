@@ -11,10 +11,11 @@ interface ConferenceData {
   date?: string;
   startTime?: string;
   endTime?: string;
+  totalCadastrados?: number; // Novo campo para o total geral
   expectedCount?: number;
   scannedCount?: number;
   missingCount?: number;
-  missingDevices?: string[];
+  missingDevices?: string[]; // Nome da propriedade corrigido
   maintenanceDevices?: string[];
   maintenanceCount?: number;
   miceCount?: number;
@@ -35,7 +36,6 @@ export function ConferenceSummaryModal({
 }: ConferenceSummaryModalProps) {
   if (!isOpen || !conferenceData) return null;
 
-  // Variável para verificar se existe pelo menos um periférico com contagem.
   const hasPeripherals =
     conferenceData.miceCount !== undefined ||
     conferenceData.chargersCount !== undefined ||
@@ -63,12 +63,10 @@ export function ConferenceSummaryModal({
           {conferenceData.startTime} às {conferenceData.endTime}
         </p>
 
-        {/* CORREÇÃO: A seção inteira agora é condicional */}
         {hasPeripherals && (
           <>
             <hr />
             <div className="grid grid-cols-2 gap-x-4">
-              {/* CORREÇÃO: Cada item é renderizado individualmente */}
               {conferenceData.miceCount !== undefined && (
                 <p>
                   <span className="font-semibold">Mouses:</span>{" "}
@@ -92,6 +90,16 @@ export function ConferenceSummaryModal({
         )}
 
         <hr />
+        {/* NOVO CAMPO ADICIONADO */}
+        {conferenceData.totalCadastrados !== undefined && (
+          <p>
+            <span className="font-semibold">
+              Total de Dispositivos Cadastrados:
+            </span>{" "}
+            {conferenceData.totalCadastrados}
+          </p>
+        )}
+
         <p>
           <span className="font-semibold">Total de Dispositivos (Ativos):</span>{" "}
           {conferenceData.expectedCount}
@@ -122,6 +130,7 @@ export function ConferenceSummaryModal({
             <div>
               <h4 className="font-semibold mt-2">Dispositivos Faltantes:</h4>
               <ul className="text-xs h-24 overflow-y-auto bg-slate-100 p-2 rounded-md mt-1 font-mono">
+                {/* NOME DA PROPRIEDADE CORRIGIDO */}
                 {conferenceData.missingDevices?.map((device: string) => (
                   <li key={device}>{device}</li>
                 ))}

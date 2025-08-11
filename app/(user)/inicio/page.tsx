@@ -27,7 +27,6 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 
-// CORREÇÃO: Interface padronizada com os nomes corretos das propriedades
 interface Conference {
   id: string;
   userName?: string;
@@ -36,10 +35,11 @@ interface Conference {
   endTime: string;
   projectName?: string;
   umName: string;
+  totalCadastrados: number; // Novo campo
   expectedCount: number;
   scannedCount: number;
   missingCount: number;
-  missingHostnames: string[];
+  missingDevices: string[]; // Nome da propriedade corrigido
   maintenanceDevices?: string[];
   maintenanceCount?: number;
   miceCount?: number;
@@ -123,7 +123,6 @@ export default function InicioPage() {
         const historySnapshot = await getDocs(historyQuery);
         const userConferences = historySnapshot.docs.map((document) => {
           const data = document.data();
-          // CORREÇÃO: Mapeamento para os nomes corretos das propriedades
           return {
             id: document.id,
             userName: data.userName,
@@ -142,10 +141,14 @@ export default function InicioPage() {
               }),
             umName: data.umName,
             projectName: data.projectName,
+            // NOVO CAMPO CALCULADO
+            totalCadastrados:
+              (data.expectedCount || 0) + (data.maintenanceCount || 0),
             expectedCount: data.expectedCount,
             scannedCount: data.scannedCount,
             missingCount: data.missingCount,
-            missingHostnames: data.missingDevices || [],
+            // NOME DA PROPRIEDADE CORRIGIDO
+            missingDevices: data.missingDevices || [],
             maintenanceDevices: data.maintenanceDevices || [],
             maintenanceCount: data.maintenanceCount || 0,
             miceCount: data.miceCount,
@@ -314,7 +317,7 @@ export default function InicioPage() {
                           <button
                             className="flex items-center justify-center mx-auto text-xs font-semibold text-amber-800 bg-amber-100 hover:bg-amber-200 px-3 py-1 rounded-full transition-colors"
                             onClick={() =>
-                              openDetailsModal(conference.missingHostnames)
+                              openDetailsModal(conference.missingDevices)
                             }
                           >
                             <TriangleAlert size={14} className="mr-1.5" />
