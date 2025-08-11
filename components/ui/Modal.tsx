@@ -1,4 +1,5 @@
-// components/ui/Modal.tsx
+"use client";
+
 import React from "react";
 import { X } from "lucide-react";
 
@@ -7,19 +8,22 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  icon?: React.ReactNode; // Nova propriedade opcional para o ícone
 }
 
-export function Modal({ isOpen, onClose, title, children }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, icon }: ModalProps) {
   if (!isOpen) {
     return null;
   }
 
   return (
-    // MUDANÇA AQUI: Trocamos 'bg-opacity-50' por 'bg-black/60' para um controle melhor da transparência
     <div className="fixed inset-0 bg-black/60 z-50 flex justify-center items-center p-4 backdrop-blur-sm">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-lg">
         <div className="flex justify-between items-center p-4 border-b">
-          <h3 className="text-xl font-bold text-gray-800">{title}</h3>
+          <div className="flex items-center">
+            {icon && <div className="mr-3">{icon}</div>}
+            <h3 className="text-xl font-bold text-gray-800">{title}</h3>
+          </div>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"

@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Modal } from "./Modal";
-import { X } from "lucide-react";
+import { X, FileText } from "lucide-react";
 
 interface ConferenceData {
   userName?: string;
@@ -11,11 +11,11 @@ interface ConferenceData {
   date?: string;
   startTime?: string;
   endTime?: string;
-  totalCadastrados?: number; // Novo campo para o total geral
+  totalCadastrados?: number;
   expectedCount?: number;
   scannedCount?: number;
   missingCount?: number;
-  missingDevices?: string[]; // Nome da propriedade corrigido
+  missingDevices?: string[];
   maintenanceDevices?: string[];
   maintenanceCount?: number;
   miceCount?: number;
@@ -42,31 +42,42 @@ export function ConferenceSummaryModal({
     conferenceData.headsetsCount !== undefined;
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Resumo da Conferência">
-      <div className="space-y-3 text-sm">
-        <p>
-          <span className="font-semibold">Técnico:</span>{" "}
-          {conferenceData.userName}
-        </p>
-        <p>
-          <span className="font-semibold">Projeto:</span>{" "}
-          {conferenceData.projectName}
-        </p>
-        <p>
-          <span className="font-semibold">UM:</span> {conferenceData.umName}
-        </p>
-        <p>
-          <span className="font-semibold">Data:</span> {conferenceData.date}
-        </p>
-        <p>
-          <span className="font-semibold">Horário:</span>{" "}
-          {conferenceData.startTime} às {conferenceData.endTime}
-        </p>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Resumo da Conferência"
+      icon={<FileText className="h-6 w-6 text-teal-600" />}
+    >
+      <div className="space-y-2 text-sm max-h-[70vh] overflow-y-auto pr-2">
+        <div className="grid grid-cols-2 gap-x-6">
+          <div className="space-y-1">
+            <p>
+              <span className="font-semibold">Técnico:</span>{" "}
+              {conferenceData.userName}
+            </p>
+            <p>
+              <span className="font-semibold">Data:</span> {conferenceData.date}
+            </p>
+            <p>
+              <span className="font-semibold">Horário:</span>{" "}
+              {conferenceData.startTime} às {conferenceData.endTime}
+            </p>
+          </div>
+          <div className="space-y-1">
+            <p>
+              <span className="font-semibold">Projeto:</span>{" "}
+              {conferenceData.projectName}
+            </p>
+            <p>
+              <span className="font-semibold">UM:</span> {conferenceData.umName}
+            </p>
+          </div>
+        </div>
 
         {hasPeripherals && (
           <>
-            <hr />
-            <div className="grid grid-cols-2 gap-x-4">
+            <hr className="my-1 border-slate-200" />
+            <div className="grid grid-cols-2 gap-x-6">
               {conferenceData.miceCount !== undefined && (
                 <p>
                   <span className="font-semibold">Mouses:</span>{" "}
@@ -89,48 +100,49 @@ export function ConferenceSummaryModal({
           </>
         )}
 
-        <hr />
-        {/* NOVO CAMPO ADICIONADO */}
-        {conferenceData.totalCadastrados !== undefined && (
-          <p>
-            <span className="font-semibold">
-              Total de Dispositivos Cadastrados:
-            </span>{" "}
-            {conferenceData.totalCadastrados}
-          </p>
-        )}
-
-        <p>
-          <span className="font-semibold">Total de Dispositivos (Ativos):</span>{" "}
-          {conferenceData.expectedCount}
-        </p>
-        <p>
-          <span className="font-semibold text-green-600">Escaneados:</span>{" "}
-          {conferenceData.scannedCount}
-        </p>
-        <p>
-          <span className="font-semibold text-red-600">
-            Não Escaneados (Faltantes):
-          </span>{" "}
-          {conferenceData.missingCount}
-        </p>
-
-        {conferenceData.maintenanceCount !== undefined &&
-          conferenceData.maintenanceCount > 0 && (
+        <hr className="my-1 border-slate-200" />
+        {/* CORREÇÃO: Adicionada margem superior (mt-2) para o espaçamento solicitado */}
+        <div className="space-y-1 mt-2">
+          {conferenceData.totalCadastrados !== undefined && (
             <p>
-              <span className="font-semibold text-amber-600">
-                Em Manutenção:
+              <span className="font-semibold">
+                Total de Dispositivos Cadastrados:
               </span>{" "}
-              {conferenceData.maintenanceCount}
+              {conferenceData.totalCadastrados}
             </p>
           )}
+          <p>
+            <span className="font-semibold">
+              Total de Dispositivos (Ativos):
+            </span>{" "}
+            {conferenceData.expectedCount}
+          </p>
+          <p>
+            <span className="font-semibold text-green-600">Escaneados:</span>{" "}
+            {conferenceData.scannedCount}
+          </p>
+          <p>
+            <span className="font-semibold text-red-600">
+              Não Escaneados (Faltantes):
+            </span>{" "}
+            {conferenceData.missingCount}
+          </p>
+          {conferenceData.maintenanceCount !== undefined &&
+            conferenceData.maintenanceCount > 0 && (
+              <p>
+                <span className="font-semibold text-amber-600">
+                  Em Manutenção:
+                </span>{" "}
+                {conferenceData.maintenanceCount}
+              </p>
+            )}
+        </div>
 
         {conferenceData.missingCount !== undefined &&
           conferenceData.missingCount > 0 && (
-            <div>
-              <h4 className="font-semibold mt-2">Dispositivos Faltantes:</h4>
-              <ul className="text-xs h-24 overflow-y-auto bg-slate-100 p-2 rounded-md mt-1 font-mono">
-                {/* NOME DA PROPRIEDADE CORRIGIDO */}
+            <div className="pt-2">
+              <h4 className="font-semibold">Dispositivos Faltantes:</h4>
+              <ul className="text-xs max-h-20 overflow-y-auto bg-slate-100 p-2 rounded-md mt-1 font-mono">
                 {conferenceData.missingDevices?.map((device: string) => (
                   <li key={device}>{device}</li>
                 ))}
@@ -139,26 +151,25 @@ export function ConferenceSummaryModal({
           )}
         {conferenceData.maintenanceCount !== undefined &&
           conferenceData.maintenanceCount > 0 && (
-            <div>
-              <h4 className="font-semibold mt-2">
-                Dispositivos em Manutenção:
-              </h4>
-              <ul className="text-xs h-24 overflow-y-auto bg-slate-100 p-2 rounded-md mt-1 font-mono">
+            <div className="pt-2">
+              <h4 className="font-semibold">Dispositivos em Manutenção:</h4>
+              <ul className="text-xs max-h-20 overflow-y-auto bg-slate-100 p-2 rounded-md mt-1 font-mono">
                 {conferenceData.maintenanceDevices?.map((device: string) => (
                   <li key={device}>{device}</li>
                 ))}
               </ul>
             </div>
           )}
-        <div className="flex justify-end pt-4">
-          <button
-            onClick={onClose}
-            className="flex items-center justify-center bg-slate-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-600 transition-colors"
-          >
-            <X size={20} className="mr-2" />
-            Fechar
-          </button>
-        </div>
+      </div>
+
+      <div className="flex justify-end pt-4 mt-4 border-t">
+        <button
+          onClick={onClose}
+          className="flex items-center justify-center bg-slate-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-600 transition-colors"
+        >
+          <X size={20} className="mr-2" />
+          Fechar
+        </button>
       </div>
     </Modal>
   );
