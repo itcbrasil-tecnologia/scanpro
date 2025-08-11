@@ -29,6 +29,7 @@ import {
   Power,
   Headphones,
   Wrench,
+  ChevronDown, // Importado para o acordeão
 } from "lucide-react";
 
 interface Project {
@@ -93,6 +94,7 @@ export default function ScannerPage() {
   const [headsetsCount, setHeadsetsCount] = useState(0);
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
   const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
+  const [isMaintenanceListOpen, setIsMaintenanceListOpen] = useState(false); // Estado para o acordeão
 
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -157,6 +159,7 @@ export default function ScannerPage() {
         setScannedDevices([]);
         setStep("scanning");
         setConferenceStartTime(new Date());
+        setIsMaintenanceListOpen(false); // Garante que a lista comece fechada
       } catch (error) {
         toast.error("Erro ao carregar notebooks para esta UM.", {
           id: "global-toast",
@@ -404,6 +407,46 @@ export default function ScannerPage() {
                 <List className="mr-2" />A SEREM ESCANEADOS (
                 {devicesToScan.length})
               </h3>
+
+              {maintenanceDevices.length > 0 && (
+                <div className="mt-4 border-t pt-3">
+                  <button
+                    className="w-full flex justify-between items-center text-left text-amber-800"
+                    onClick={() =>
+                      setIsMaintenanceListOpen(!isMaintenanceListOpen)
+                    }
+                  >
+                    <div className="flex items-center font-semibold text-sm">
+                      <Wrench size={14} className="mr-2" />
+                      {maintenanceDevices.length} dispositivo(s) em manutenção
+                    </div>
+                    <ChevronDown
+                      size={20}
+                      className={`transition-transform ${
+                        isMaintenanceListOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+                  {isMaintenanceListOpen && (
+                    <div className="mt-2 pl-2">
+                      <p className="text-xs text-slate-500 mb-2">
+                        Estes itens não precisam ser escaneados.
+                      </p>
+                      <ul className="h-24 overflow-y-auto space-y-1 pr-2">
+                        {maintenanceDevices.map((device) => (
+                          <li
+                            key={device}
+                            className="p-2 bg-amber-50 text-amber-800 rounded font-mono text-sm"
+                          >
+                            {device}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <ul className="h-48 overflow-y-auto mt-2 space-y-1 px-2">
                 {devicesToScan.map((device) => (
                   <li
@@ -432,28 +475,6 @@ export default function ScannerPage() {
               </ul>
             </div>
           </div>
-
-          {maintenanceDevices.length > 0 && (
-            <div className="bg-white p-4 rounded-lg shadow-md">
-              <h3 className="font-bold text-amber-800 flex items-center">
-                <Wrench className="mr-2" />
-                EM MANUTENÇÃO ({maintenanceDevices.length})
-              </h3>
-              <p className="text-xs text-slate-500 mb-2">
-                Estes itens não precisam ser escaneados.
-              </p>
-              <ul className="h-24 overflow-y-auto mt-2 space-y-1 pr-2">
-                {maintenanceDevices.map((device) => (
-                  <li
-                    key={device}
-                    className="p-2 bg-amber-50 text-amber-800 rounded font-mono text-sm"
-                  >
-                    {device}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
 
           <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-md">
             <button
@@ -578,7 +599,6 @@ export default function ScannerPage() {
               <span className="font-semibold">Horário:</span>{" "}
               {summaryData.startTime} às {summaryData.endTime}
             </p>
-
             {(summaryData.miceCount !== undefined ||
               summaryData.chargersCount !== undefined ||
               summaryData.headsetsCount !== undefined) && <hr />}
@@ -603,7 +623,6 @@ export default function ScannerPage() {
               )}
             </div>
             <hr />
-
             <p>
               <span className="font-semibold">
                 Total de Dispositivos (Ativos):
