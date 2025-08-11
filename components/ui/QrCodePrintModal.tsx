@@ -189,8 +189,9 @@ export function QrCodePrintModal({
               </label>
             </div>
           </div>
-          {showHostname && (
-            <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+          {/* CORREÇÃO: O Bloco abaixo foi movido para fora da condição 'showHostname' */}
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+            {showHostname ? (
               <div className="flex items-center space-x-4">
                 <span className="font-semibold text-sm text-slate-600">
                   Posição:
@@ -218,23 +219,26 @@ export function QrCodePrintModal({
                   </button>
                 </div>
               </div>
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="transparentBg"
-                  checked={transparentBg}
-                  onChange={(e) => setTransparentBg(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
-                />
-                <label
-                  htmlFor="transparentBg"
-                  className="ml-2 block text-sm text-slate-700"
-                >
-                  Fundo Transparente (PNG)
-                </label>
-              </div>
+            ) : (
+              // Adiciona um div vazio para manter o alinhamento quando a posição some
+              <div></div>
+            )}
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="transparentBg"
+                checked={transparentBg}
+                onChange={(e) => setTransparentBg(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+              />
+              <label
+                htmlFor="transparentBg"
+                className="ml-2 block text-sm text-slate-700"
+              >
+                Fundo Transparente (PNG)
+              </label>
             </div>
-          )}
+          </div>
         </div>
         <div
           id="printable-area"
