@@ -137,7 +137,7 @@ export function Navbar({ userProfile }: NavbarProps) {
       </button>
       {isUserDropdownOpen && (
         <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg py-1 bg-white z-10">
-          <div className="px-4 py-2 text-sm text-slate-500 border-b">
+          <div className="px-4 py-2 text-sm text-slate-500 border-b border-slate-200">
             <p>Sessão iniciada como</p>
             <p className="font-medium text-slate-800 truncate">
               {userProfile.email}
@@ -152,7 +152,6 @@ export function Navbar({ userProfile }: NavbarProps) {
               <Home size={16} className="mr-2 text-slate-500" /> Início
             </Link>
           )}
-          {/* O <div> com a borda foi removido daqui */}
           <Link
             href="/alterar-senha"
             className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
@@ -299,7 +298,9 @@ export function Navbar({ userProfile }: NavbarProps) {
           </div>
           <div className="pt-4 pb-3 border-t border-slate-700">
             <div className="flex items-center px-5">
-              <User size={24} className="text-slate-300" />
+              <div className="flex-shrink-0">
+                <User size={24} className="text-slate-300" />
+              </div>
               <div className="ml-3">
                 <div className="text-base font-medium leading-none text-white">
                   {userProfile.nome}

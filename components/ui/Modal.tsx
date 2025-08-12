@@ -8,7 +8,7 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
-  icon?: React.ReactNode; // Nova propriedade opcional para o ícone
+  icon?: React.ReactNode;
 }
 
 export function Modal({ isOpen, onClose, title, children, icon }: ModalProps) {

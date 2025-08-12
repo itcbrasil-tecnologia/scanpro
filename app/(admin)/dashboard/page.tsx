@@ -23,7 +23,7 @@ import {
   TriangleAlert,
   Eye,
   Wrench,
-  History, // Ícone de Histórico
+  History,
 } from "lucide-react";
 import toast from "react-hot-toast";
 

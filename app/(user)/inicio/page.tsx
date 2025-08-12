@@ -35,11 +35,11 @@ interface Conference {
   endTime: string;
   projectName?: string;
   umName: string;
-  totalCadastrados: number; // Novo campo
+  totalCadastrados: number;
   expectedCount: number;
   scannedCount: number;
   missingCount: number;
-  missingDevices: string[]; // Nome da propriedade corrigido
+  missingDevices: string[];
   maintenanceDevices?: string[];
   maintenanceCount?: number;
   miceCount?: number;
@@ -141,13 +141,11 @@ export default function InicioPage() {
               }),
             umName: data.umName,
             projectName: data.projectName,
-            // NOVO CAMPO CALCULADO
             totalCadastrados:
               (data.expectedCount || 0) + (data.maintenanceCount || 0),
             expectedCount: data.expectedCount,
             scannedCount: data.scannedCount,
             missingCount: data.missingCount,
-            // NOME DA PROPRIEDADE CORRIGIDO
             missingDevices: data.missingDevices || [],
             maintenanceDevices: data.maintenanceDevices || [],
             maintenanceCount: data.maintenanceCount || 0,
@@ -200,7 +198,7 @@ export default function InicioPage() {
 
   if (!userProfile || userProfile.role !== "USER") {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-100">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="text-slate-500">Carregando...</div>
       </div>
     );
