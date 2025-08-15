@@ -16,7 +16,7 @@ import {
   startAfter,
   QueryDocumentSnapshot,
   DocumentData,
-  QueryConstraint, // TIPO IMPORTADO AQUI
+  QueryConstraint,
 } from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
 import { PeripheralsModal } from "@/components/ui/PeripheralsModal";
@@ -29,6 +29,7 @@ import {
   TriangleAlert,
   FileText,
   Eye,
+  Bell, // Ícone importado
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -104,7 +105,6 @@ export default function InicioPage() {
           setTotalPages(Math.ceil(countSnapshot.size / ITEMS_PER_PAGE));
         }
 
-        // CORREÇÃO APLICADA AQUI: Declaramos explicitamente o tipo do array.
         const queryConstraints: QueryConstraint[] = [
           userConferencesQuery,
           orderBy("endTime", "desc"),
@@ -215,6 +215,49 @@ export default function InicioPage() {
     }
   };
 
+  const handleSubscribeToNotifications = async () => {
+    if (
+      !("serviceWorker" in navigator) ||
+      !("PushManager" in window) ||
+      !userProfile
+    ) {
+      toast.error("Seu navegador não suporta notificações push.");
+      return;
+    }
+
+    try {
+      const sw = await navigator.serviceWorker.ready;
+      const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+
+      if (!vapidPublicKey) {
+        console.error("Chave VAPID pública não configurada.");
+        toast.error("Erro de configuração para notificações.");
+        return;
+      }
+
+      const subscription = await sw.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: vapidPublicKey,
+      });
+
+      await fetch("/api/notifications/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uid: userProfile.uid,
+          subscription: subscription,
+        }),
+      });
+
+      toast.success("Notificações ativadas com sucesso!");
+    } catch (error) {
+      console.error("Erro ao se inscrever para notificações:", error);
+      toast.error(
+        "Não foi possível ativar as notificações. Você precisa dar permissão no pop-up do navegador."
+      );
+    }
+  };
+
   const openDetailsModal = (hostnames: string[]) => {
     setModalContent(hostnames);
     setIsDetailsModalOpen(true);
@@ -267,6 +310,17 @@ export default function InicioPage() {
               </p>
             </div>
           </div>
+
+          <div className="bg-white p-4 rounded-lg shadow-md text-center">
+            <h3 className="font-bold text-gray-700 mb-2">Notificações</h3>
+            <button
+              onClick={handleSubscribeToNotifications}
+              className="w-full flex items-center justify-center bg-slate-600 text-white px-4 py-2 rounded-lg shadow hover:bg-slate-700 transition-colors font-bold text-base"
+            >
+              <Bell size={18} className="mr-2" /> Ativar Notificações
+            </button>
+          </div>
+
           <div className="sm:hidden">
             {allDailyCountsCompleted ? (
               <div className="w-full flex items-center justify-center bg-gray-200 text-gray-500 px-4 py-3 rounded-lg font-bold text-lg">
@@ -338,7 +392,9 @@ export default function InicioPage() {
                         {conference.scannedCount} / {conference.expectedCount}
                       </td>
                       <td className="p-3 text-center">
-                        {conference.miceCount !== undefined && (
+                        {(conference.miceCount !== undefined ||
+                          conference.chargersCount !== undefined ||
+                          conference.headsetsCount !== undefined) && (
                           <button
                             className="flex items-center justify-center mx-auto text-xs font-semibold text-teal-800 bg-teal-100 hover:bg-teal-200 px-3 py-1 rounded-full transition-colors"
                             onClick={() => openPeripheralsModal(conference)}

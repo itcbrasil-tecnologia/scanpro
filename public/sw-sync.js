@@ -7,11 +7,9 @@ db.version(1).stores({
   conferencesOutbox: "++id, timestamp",
 });
 
-// Listener para o evento 'sync'
+// --- LÓGICA DE SINCRONIZAÇÃO DE CONFERÊNCIAS (JÁ EXISTENTE) ---
 self.addEventListener("sync", (event) => {
-  // A tag 'sync-conferences' é a que registramos na nossa página de scanner
   if (event.tag === "sync-conferences") {
-    // waitUntil garante que o service worker não será encerrado antes da tarefa terminar
     event.waitUntil(syncConferences());
   }
 });
@@ -32,9 +30,7 @@ async function syncConferences() {
     try {
       const response = await fetch("/api/conferences", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(item.conferenceData),
       });
 
@@ -42,24 +38,38 @@ async function syncConferences() {
         console.log(
           `[Service Worker] Conferência ID:${item.id} enviada com sucesso!`
         );
-        // Se foi enviado com sucesso, remove da outbox
         await db.conferencesOutbox.delete(item.id);
       } else {
         console.error(
           `[Service Worker] Falha ao enviar conferência ID:${item.id}. Status: ${response.status}`
         );
-        // Se a API falhar, a conferência permanecerá na outbox para a próxima tentativa
       }
     } catch (error) {
       console.error(
         `[Service Worker] Erro de rede ao tentar enviar conferência ID:${item.id}.`,
         error
       );
-      // Se houver um erro de rede, para a sincronização e tenta novamente mais tarde.
-      // O navegador irá disparar o evento 'sync' novamente.
       throw error;
     }
   }
 
   console.log("[Service Worker] Sincronização de conferências concluída.");
 }
+
+// --- NOVA LÓGICA PARA RECEBER NOTIFICAÇÕES PUSH ---
+self.addEventListener("push", (event) => {
+  console.log("[Service Worker] Notificação Push recebida.");
+
+  // Extrai os dados da notificação. Esperamos um JSON com title, body, etc.
+  const data = event.data.json();
+
+  const title = data.title || "ScanPRO";
+  const options = {
+    body: data.body || "Você tem uma nova notificação.",
+    icon: data.icon || "/icons/icon-192x192.png", // Ícone padrão
+    badge: "/icons/icon-192x192.png", // Ícone para a barra de status do Android
+  };
+
+  // Garante que o Service Worker não seja encerrado antes da notificação ser exibida
+  event.waitUntil(self.registration.showNotification(title, options));
+});
