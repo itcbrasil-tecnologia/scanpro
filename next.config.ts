@@ -1,11 +1,13 @@
 import type { NextConfig } from "next";
-// A importação agora vem da nova biblioteca
 import withPWAInit from "@ducanh2912/next-pwa";
 
 const withPWA = withPWAInit({
   dest: "public",
   register: true,
-  skipWaiting: true,
+  // A propriedade 'skipWaiting' foi movida para dentro de 'workboxOptions'
+  workboxOptions: {
+    skipWaiting: true,
+  },
   disable: process.env.NODE_ENV === "development",
 });
 
