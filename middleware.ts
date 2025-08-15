@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export function middleware(request: NextRequest) {
-  const token = request.cookies.get("firebaseAuthToken");
+export async function middleware(request: NextRequest) {
+  const sessionCookie = request.cookies.get("session");
   const { pathname } = request.nextUrl;
 
-  if (!token && pathname !== "/") {
+  // Se não há cookie de sessão e o usuário tenta acessar uma rota protegida
+  if (!sessionCookie && pathname !== "/") {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
-  if (token && pathname === "/") {
+  // Se há cookie de sessão e o usuário tenta acessar a página de login
+  if (sessionCookie && pathname === "/") {
     return NextResponse.redirect(new URL("/inicio", request.url));
   }
 
@@ -17,6 +19,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  // MATCHER ATUALIZADO: Adicionada uma regra para ignorar arquivos com extensões (ex: .svg, .png)
   matcher: ["/((?!api|_next/static|_next/image|.*\\..*|favicon.ico|icons).*)"],
 };

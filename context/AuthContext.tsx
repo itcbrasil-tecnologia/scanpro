@@ -6,7 +6,7 @@ import React, {
   useState,
   ReactNode,
 } from "react";
-import { onAuthStateChanged, User } from "firebase/auth";
+import { onIdTokenChanged, User } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase/config";
 import { UserProfile } from "@/types";
@@ -15,41 +15,44 @@ interface AuthContextType {
   user: User | null;
   userProfile: UserProfile | null;
   loading: boolean;
-  authError: string | null; // NOVO ESTADO DE ERRO
+  authError: string | null; // <-- PROPRIEDADE ADICIONADA AQUI
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   userProfile: null,
   loading: true,
-  authError: null, // VALOR INICIAL
+  authError: null, // <-- VALOR PADRÃO ADICIONADO AQUI
 });
 
 export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [authError, setAuthError] = useState<string | null>(null); // NOVO ESTADO DE ERRO
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      setAuthError(null); // Limpa o erro a cada nova verificação
+    const unsubscribe = onIdTokenChanged(auth, async (currentUser) => {
+      setAuthError(null);
       if (currentUser) {
         setUser(currentUser);
+        // Sincroniza o login com o servidor para criar o cookie de sessão
+        const idToken = await currentUser.getIdToken();
+        fetch("/api/auth", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ idToken }),
+        });
+
         try {
           const userDocRef = doc(db, "users", currentUser.uid);
           const userDocSnap = await getDoc(userDocRef);
-
           if (userDocSnap.exists()) {
-            const profileData = {
+            setUserProfile({
               uid: currentUser.uid,
               ...userDocSnap.data(),
-            } as UserProfile;
-            setUserProfile(profileData);
+            } as UserProfile);
           } else {
-            console.error(
-              "Perfil do usuário não encontrado no Firestore. Desconectando."
-            );
             setAuthError("Seu perfil de usuário não foi encontrado.");
             await auth.signOut();
           }
@@ -58,12 +61,12 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
           setAuthError(
             "Falha ao conectar com o banco de dados. Verifique seu firewall ou restrições de rede."
           );
-          setUserProfile(null);
           await auth.signOut();
         }
       } else {
         setUser(null);
         setUserProfile(null);
+        fetch("/api/auth", { method: "DELETE" });
       }
       setLoading(false);
     });

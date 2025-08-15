@@ -16,19 +16,20 @@ export const AuthGuard = ({
   allowedRoles,
   redirectPath,
 }: AuthGuardProps) => {
-  const { userProfile, authError } = useAuth(); // Não precisamos mais do 'loading' aqui
+  const { userProfile, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    // A lógica agora é mais simples: se o perfil existe, mas a role é errada, redireciona.
-    if (userProfile && !allowedRoles.includes(userProfile.role)) {
-      router.replace(redirectPath);
+    if (!loading) {
+      if (userProfile && !allowedRoles.includes(userProfile.role)) {
+        router.replace(redirectPath);
+      }
     }
-  }, [userProfile, router, allowedRoles, redirectPath]);
+  }, [userProfile, loading, router, allowedRoles, redirectPath]);
 
-  // Se o perfil não corresponder, renderiza null brevemente enquanto o useEffect redireciona.
-  // A tela de "Carregando..." global já foi exibida pelo AuthHandler.
-  if (!userProfile || !allowedRoles.includes(userProfile.role) || authError) {
+  // Enquanto o AuthContext carrega o perfil, ou se o perfil não for válido, não exibe nada.
+  // A tela de carregamento global já foi exibida pelo ClientProviders.
+  if (loading || !userProfile || !allowedRoles.includes(userProfile.role)) {
     return null;
   }
 

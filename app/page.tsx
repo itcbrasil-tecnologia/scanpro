@@ -27,6 +27,8 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      // O AuthContext irá detectar a mudança, criar a sessão via API, e o middleware irá
+      // lidar com os redirecionamentos em futuras requisições. Aqui, apenas redirecionamos.
       router.push("/inicio");
     } catch (error) {
       if (
