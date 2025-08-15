@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
 import { auth } from "@/lib/firebase/config";
-import { useAuth } from "@/context/AuthContext";
 import toast from "react-hot-toast";
 import { Eye, EyeOff } from "lucide-react";
 
@@ -16,13 +15,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
-
-  useEffect(() => {
-    if (!authLoading && user) {
-      router.replace("/inicio");
-    }
-  }, [user, authLoading, router]);
 
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -52,14 +44,6 @@ export default function LoginPage() {
     }
   };
 
-  if (authLoading || user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-100">
-        <div className="text-slate-500">Redirecionando...</div>
-      </div>
-    );
-  }
-
   return (
     <main className="flex items-center justify-center min-h-screen bg-slate-100">
       <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-xl">
@@ -69,7 +53,7 @@ export default function LoginPage() {
             alt="ScanPRO Logo"
             width={180}
             height={60}
-            className="mx-auto mb-4 h-auto" // <-- CORREÇÃO APLICADA AQUI
+            className="mx-auto mb-4 h-auto"
             priority
           />
           <p className="mt-2 text-sm text-gray-600">
