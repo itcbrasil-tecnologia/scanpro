@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, UserCredential } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
 import { auth } from "@/lib/firebase/config";
 import toast from "react-hot-toast";
@@ -25,10 +25,32 @@ export default function LoginPage() {
       return;
     }
     setIsLoading(true);
+
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      // O AuthContext irá detectar a mudança, criar a sessão via API, e o middleware irá
-      // lidar com os redirecionamentos em futuras requisições. Aqui, apenas redirecionamos.
+      // Passo 1: Autentica o usuário no cliente
+      const userCredential: UserCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      const user = userCredential.user;
+
+      // Passo 2: Obtém o ID Token do usuário
+      const idToken = await user.getIdToken();
+
+      // Passo 3: Envia o token para a API para criar o cookie de sessão e ESPERA a resposta
+      const response = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken }),
+      });
+
+      // Se a criação da sessão no servidor falhar, interrompe o processo
+      if (!response.ok) {
+        throw new Error("Falha ao criar sessão no servidor.");
+      }
+
+      // Passo 4: SOMENTE APÓS o cookie ser criado com sucesso, redireciona o usuário
       router.push("/inicio");
     } catch (error) {
       if (
@@ -39,8 +61,10 @@ export default function LoginPage() {
           id: "global-toast",
         });
       } else {
-        console.error("Erro no login (desconhecido):", error);
-        toast.error("Ocorreu um erro inesperado.", { id: "global-toast" });
+        console.error("Erro no login:", error);
+        toast.error("Ocorreu um erro inesperado durante o login.", {
+          id: "global-toast",
+        });
       }
       setIsLoading(false);
     }

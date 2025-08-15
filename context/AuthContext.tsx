@@ -15,14 +15,14 @@ interface AuthContextType {
   user: User | null;
   userProfile: UserProfile | null;
   loading: boolean;
-  authError: string | null; // <-- PROPRIEDADE ADICIONADA AQUI
+  authError: string | null;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   userProfile: null,
   loading: true,
-  authError: null, // <-- VALOR PADRÃO ADICIONADO AQUI
+  authError: null,
 });
 
 export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
@@ -36,7 +36,6 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
       setAuthError(null);
       if (currentUser) {
         setUser(currentUser);
-        // Sincroniza o login com o servidor para criar o cookie de sessão
         const idToken = await currentUser.getIdToken();
         fetch("/api/auth", {
           method: "POST",
@@ -66,7 +65,7 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
       } else {
         setUser(null);
         setUserProfile(null);
-        fetch("/api/auth", { method: "DELETE" });
+        // A chamada fetch para DELETE foi REMOVIDA daqui.
       }
       setLoading(false);
     });

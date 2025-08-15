@@ -40,8 +40,15 @@ export function Navbar({ userProfile }: NavbarProps) {
 
   const handleLogout = async () => {
     try {
+      // Passo 1: Avisa o servidor para destruir o cookie de sessão e espera a confirmação.
+      await fetch("/api/auth", { method: "DELETE" });
+
+      // Passo 2: Desloga do Firebase no lado do cliente.
       await signOut(auth);
+
       toast.success("Você saiu com sucesso!", { id: "global-toast" });
+
+      // Passo 3: Redireciona para o login. Agora o middleware não verá mais o cookie.
       router.push("/");
     } catch (error) {
       console.error("Erro ao tentar sair:", error);
@@ -70,12 +77,10 @@ export function Navbar({ userProfile }: NavbarProps) {
 
   const isAdminOrMaster =
     userProfile.role === "ADMIN" || userProfile.role === "MASTER";
-
   const adminMenuItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Relatórios", href: "/relatorios", icon: FileText },
   ];
-
   const adminDropdownItems = [
     { name: "Projetos", href: "/projetos", icon: BriefcaseBusiness },
     { name: "UMs", href: "/ums", icon: Truck },
@@ -157,8 +162,7 @@ export function Navbar({ userProfile }: NavbarProps) {
             className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
             onClick={() => setIsUserDropdownOpen(false)}
           >
-            <KeyRound size={16} className="mr-2 text-slate-500" />
-            Alterar Senha
+            <KeyRound size={16} className="mr-2 text-slate-500" /> Alterar Senha
           </Link>
           <button
             onClick={handleLogout}
