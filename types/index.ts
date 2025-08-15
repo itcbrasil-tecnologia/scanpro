@@ -6,5 +6,27 @@ export interface UserProfile {
   nome: string;
   whatsapp: string;
   role: UserRole;
-  dailyConferenceGoal?: number; // NOVA PROPRIEDADE
+  dailyConferenceGoal?: number;
+}
+
+// NOVO TIPO ADICIONADO
+export interface ConferenceData {
+  userName?: string;
+  projectName: string;
+  umName?: string;
+  userId?: string;
+  conferenceStartTime?: Date;
+  date: string;
+  startTime?: string;
+  endTime: string;
+  expectedCount: number;
+  scannedCount: number;
+  missingCount: number;
+  scannedDevices: string[];
+  missingDevices: string[];
+  maintenanceDevices?: string[];
+  maintenanceCount?: number;
+  miceCount?: number;
+  chargersCount?: number;
+  headsetsCount?: number;
 }

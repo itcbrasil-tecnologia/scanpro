@@ -8,6 +8,7 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "ScanPRO",
   description: "Sistema de Conferência de Dispositivos",
+  manifest: "/manifest.json", // <-- ADICIONADO AQUI
 };
 
 export default function RootLayout({

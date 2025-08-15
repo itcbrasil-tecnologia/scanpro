@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Scanner, IDetectedBarcode } from "@yudiel/react-qr-scanner";
 import { useAuth } from "@/context/AuthContext";
-import { db } from "@/lib/firebase/config";
+import { db as firestoreDB } from "@/lib/firebase/config"; // Renomeado para evitar conflito
 import {
   collection,
   getDocs,
@@ -29,8 +29,13 @@ import {
   Power,
   Headphones,
   Wrench,
-  ChevronDown, // Importado para o acordeão
+  ChevronDown,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
+
+// Importa nossa instância do Dexie
+import { db as dexieDB } from "@/lib/dexie/db";
 
 interface Project {
   id: string;
@@ -53,6 +58,8 @@ interface SummaryData {
   userName?: string;
   projectName: string;
   umName?: string;
+  userId?: string;
+  conferenceStartTime?: Date;
   date: string;
   startTime?: string;
   endTime: string;
@@ -78,11 +85,12 @@ export default function ScannerPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedUmId, setSelectedUmId] = useState<string>("");
 
+  const [isOnline, setIsOnline] = useState(true);
+
   const [devicesToScan, setDevicesToScan] = useState<string[]>([]);
   const [maintenanceDevices, setMaintenanceDevices] = useState<string[]>([]);
   const [scannedDevices, setScannedDevices] = useState<string[]>([]);
   const [expectedPeripherals, setExpectedPeripherals] = useState<string[]>([]);
-
   const [conferenceStartTime, setConferenceStartTime] = useState<Date | null>(
     null
   );
@@ -94,18 +102,37 @@ export default function ScannerPage() {
   const [headsetsCount, setHeadsetsCount] = useState(0);
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
   const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
-  const [isMaintenanceListOpen, setIsMaintenanceListOpen] = useState(false); // Estado para o acordeão
+  const [isMaintenanceListOpen, setIsMaintenanceListOpen] = useState(false);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    if (typeof window !== "undefined") {
+      setIsOnline(navigator.onLine);
+    }
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     const fetchInitialData = async () => {
       setIsLoading(true);
       try {
-        const umsSnapshot = await getDocs(collection(db, "ums"));
+        const umsSnapshot = await getDocs(collection(firestoreDB, "ums"));
         const umsList = umsSnapshot.docs.map(
           (doc) => ({ id: doc.id, ...doc.data() } as UM)
         );
         setUms(umsList);
-        const projectsSnapshot = await getDocs(collection(db, "projects"));
+        const projectsSnapshot = await getDocs(
+          collection(firestoreDB, "projects")
+        );
         const projectsList = projectsSnapshot.docs.map(
           (doc) => ({ id: doc.id, ...doc.data() } as Project)
         );
@@ -136,9 +163,8 @@ export default function ScannerPage() {
         setExpectedPeripherals(
           selectedUMData?.expectedPeripherals ?? AVAILABLE_PERIPHERALS
         );
-
         const notebooksQuery = query(
-          collection(db, "notebooks"),
+          collection(firestoreDB, "notebooks"),
           where("umId", "==", selectedUmId)
         );
         const notebooksSnapshot = await getDocs(notebooksQuery);
@@ -153,13 +179,12 @@ export default function ScannerPage() {
           .filter((n) => n.status === "Em Manutenção")
           .map((n) => n.hostname)
           .sort();
-
         setDevicesToScan(active);
         setMaintenanceDevices(maintenance);
         setScannedDevices([]);
         setStep("scanning");
         setConferenceStartTime(new Date());
-        setIsMaintenanceListOpen(false); // Garante que a lista comece fechada
+        setIsMaintenanceListOpen(false);
       } catch (error) {
         toast.error("Erro ao carregar notebooks para esta UM.", {
           id: "global-toast",
@@ -173,12 +198,10 @@ export default function ScannerPage() {
   const handleScan = (result: IDetectedBarcode[]) => {
     const scannedText = result[0]?.rawValue;
     if (!scannedText) return;
-
     if (scannedDevices.includes(scannedText)) {
       toast.error(`"${scannedText}" já escaneado.`, { id: "global-toast" });
       return;
     }
-
     if (devicesToScan.includes(scannedText)) {
       setDevicesToScan((previousState) =>
         previousState.filter((device) => device !== scannedText)
@@ -226,6 +249,8 @@ export default function ScannerPage() {
       userName: userProfile?.nome,
       projectName: selectedProject?.name || "N/A",
       umName: selectedUM?.name,
+      userId: userProfile?.uid,
+      conferenceStartTime: conferenceStartTime!,
       date: endTime.toLocaleDateString("pt-BR"),
       startTime: conferenceStartTime?.toLocaleTimeString("pt-BR", {
         hour: "2-digit",
@@ -266,12 +291,13 @@ export default function ScannerPage() {
       const queryPromises: Promise<QuerySnapshot<DocumentData>>[] = chunks.map(
         (chunk) => {
           const notebooksQuery = query(
-            collection(db, "notebooks"),
+            collection(firestoreDB, "notebooks"),
             where("hostname", "in", chunk)
           );
           return getDocs(notebooksQuery);
         }
       );
+
       const querySnapshots = await Promise.all(queryPromises);
       const hostnameToIdMap = new Map<string, string>();
       querySnapshots.forEach((snapshot) => {
@@ -279,15 +305,17 @@ export default function ScannerPage() {
           hostnameToIdMap.set(doc.data().hostname, doc.id);
         });
       });
-      const batch = writeBatch(db);
+
+      const batch = writeBatch(firestoreDB);
       const timestamp = Timestamp.now();
       const user = userProfile?.nome || "Sistema";
       const details = `Na conferência da UM: ${data.umName}`;
+
       data.scannedDevices.forEach((hostname: string) => {
         const notebookId = hostnameToIdMap.get(hostname);
         if (notebookId) {
           const eventRef = doc(
-            collection(db, "notebooks", notebookId, "lifecycleEvents")
+            collection(firestoreDB, "notebooks", notebookId, "lifecycleEvents")
           );
           batch.set(eventRef, {
             timestamp,
@@ -301,7 +329,7 @@ export default function ScannerPage() {
         const notebookId = hostnameToIdMap.get(hostname);
         if (notebookId) {
           const eventRef = doc(
-            collection(db, "notebooks", notebookId, "lifecycleEvents")
+            collection(firestoreDB, "notebooks", notebookId, "lifecycleEvents")
           );
           batch.set(eventRef, {
             timestamp,
@@ -323,30 +351,61 @@ export default function ScannerPage() {
     }
   };
 
+  const saveConferenceOffline = async (data: SummaryData) => {
+    try {
+      await dexieDB.conferencesOutbox.add({
+        conferenceData: data,
+        timestamp: new Date(),
+      });
+
+      if ("serviceWorker" in navigator && "SyncManager" in window) {
+        navigator.serviceWorker.ready.then((sw) => {
+          sw.sync.register("sync-conferences");
+        });
+      }
+
+      toast.success(
+        "Conexão indisponível. Sua conferência foi salva localmente e será enviada depois.",
+        { duration: 5000 }
+      );
+      router.push("/inicio");
+    } catch (error) {
+      console.error("Falha ao salvar conferência no IndexedDB:", error);
+      toast.error("Não foi possível salvar a conferência localmente.");
+    }
+  };
+
   const handleConcludeAndSend = async () => {
     if (!summaryData) return;
+    setIsSummaryModalOpen(false);
+
+    if (!navigator.onLine) {
+      await saveConferenceOffline(summaryData);
+      return;
+    }
+
     try {
-      await addDoc(collection(db, "conferences"), {
+      await addDoc(collection(firestoreDB, "conferences"), {
         ...summaryData,
-        startTime: Timestamp.fromDate(conferenceStartTime!),
+        startTime: Timestamp.fromDate(summaryData.conferenceStartTime!),
         endTime: Timestamp.now(),
-        userId: userProfile?.uid,
       });
+
       fetch("/api/notify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(summaryData),
       });
+
       logConferenceLifecycleEvents(summaryData);
       toast.success("CONFERÊNCIA ENVIADA COM SUCESSO", { id: "global-toast" });
       router.push("/inicio");
     } catch (error) {
-      console.error("Erro ao concluir conferência:", error);
-      toast.error("Não foi possível salvar a conferência.", {
-        id: "global-toast",
-      });
-    } finally {
-      setIsSummaryModalOpen(false);
+      console.error(
+        "Erro ao concluir conferência online, salvando localmente:",
+        error
+      );
+      await saveConferenceOffline(summaryData);
     }
   };
 
@@ -361,29 +420,43 @@ export default function ScannerPage() {
 
   return (
     <div className="space-y-4">
-      <div className="bg-white p-4 rounded-lg shadow-md">
-        <label
-          htmlFor="um-select"
-          className="block text-sm font-medium text-gray-700"
-        >
-          1. Selecione a Unidade Móvel (UM)
-        </label>
-        <select
-          id="um-select"
-          value={selectedUmId}
-          onChange={(event) => setSelectedUmId(event.target.value)}
-          disabled={isLoading || step !== "selection"}
-          className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm rounded-md bg-white disabled:bg-slate-50"
-        >
-          <option value="">
-            {isLoading ? "Carregando..." : "-- Selecione para iniciar"}
-          </option>
-          {ums.map((um) => (
-            <option key={um.id} value={um.id}>
-              {um.name}
+      <div className="bg-white p-4 rounded-lg shadow-md flex justify-between items-center">
+        <div>
+          <label
+            htmlFor="um-select"
+            className="block text-sm font-medium text-gray-700"
+          >
+            1. Selecione a Unidade Móvel (UM)
+          </label>
+          <select
+            id="um-select"
+            value={selectedUmId}
+            onChange={(event) => setSelectedUmId(event.target.value)}
+            disabled={isLoading || step !== "selection"}
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm rounded-md bg-white disabled:bg-slate-50"
+          >
+            <option value="">
+              {isLoading ? "Carregando..." : "-- Selecione para iniciar"}
             </option>
-          ))}
-        </select>
+            {ums.map((um) => (
+              <option key={um.id} value={um.id}>
+                {um.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div
+          className={`flex items-center text-xs font-bold px-3 py-1 rounded-full ${
+            isOnline ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+          }`}
+        >
+          {isOnline ? (
+            <Wifi size={14} className="mr-2" />
+          ) : (
+            <WifiOff size={14} className="mr-2" />
+          )}
+          {isOnline ? "Online" : "Offline"}
+        </div>
       </div>
 
       {step === "scanning" && (
@@ -407,7 +480,6 @@ export default function ScannerPage() {
                 <List className="mr-2" />A SEREM ESCANEADOS (
                 {devicesToScan.length})
               </h3>
-
               {maintenanceDevices.length > 0 && (
                 <div className="mt-4 border-t pt-3">
                   <button
@@ -446,7 +518,6 @@ export default function ScannerPage() {
                   )}
                 </div>
               )}
-
               <ul className="h-48 overflow-y-auto mt-2 space-y-1 px-2">
                 {devicesToScan.map((device) => (
                   <li
@@ -475,7 +546,6 @@ export default function ScannerPage() {
               </ul>
             </div>
           </div>
-
           <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-md">
             <button
               onClick={handleRestart}
