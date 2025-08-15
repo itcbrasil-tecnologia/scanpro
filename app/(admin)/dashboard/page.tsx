@@ -28,7 +28,6 @@ import {
 import toast from "react-hot-toast";
 
 type ModalListItem = { name: string; whatsapp?: string };
-
 interface Conference {
   id: string;
   date: string;
@@ -45,13 +44,11 @@ interface Conference {
   chargersCount?: number;
   headsetsCount?: number;
 }
-
 interface PeripheralsData {
   miceCount?: number;
   chargersCount?: number;
   headsetsCount?: number;
 }
-
 interface MaintenanceNotebook {
   id: string;
   hostname: string;
@@ -68,29 +65,25 @@ export default function DashboardPage() {
     notebooks: 0,
     maintenance: 0,
   });
-
   const [conferences, setConferences] = useState<Conference[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Estados de Modais e Listas
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [detailsModalContent, setDetailsModalContent] = useState<{
     title: string;
     data: ModalListItem[] | string[];
   }>({ title: "", data: [] });
-
   const [isPeripheralsModalOpen, setIsPeripheralsModalOpen] = useState(false);
   const [selectedPeripherals, setSelectedPeripherals] =
     useState<PeripheralsData | null>(null);
-
   const [isMaintenanceModalOpen, setIsMaintenanceModalOpen] = useState(false);
   const [maintenanceNotebooks, setMaintenanceNotebooks] = useState<
     MaintenanceNotebook[]
   >([]);
-
   const [isLifecycleModalOpen, setIsLifecycleModalOpen] = useState(false);
   const [selectedNotebookForHistory, setSelectedNotebookForHistory] =
     useState<MaintenanceNotebook | null>(null);
-
   const [techniciansList, setTechniciansList] = useState<ModalListItem[]>([]);
   const [projectsList, setProjectsList] = useState<ModalListItem[]>([]);
 
@@ -102,29 +95,29 @@ export default function DashboardPage() {
           collection(db, "notebooks"),
           where("status", "==", "Em Manutenção")
         );
+        const conferencesQuery = query(
+          collection(db, "conferences"),
+          orderBy("endTime", "desc"),
+          limit(10)
+        );
 
         const [
           projectsSnapshot,
           umsSnapshot,
           notebooksSnapshot,
           techniciansSnapshot,
-          conferencesSnapshot,
           maintenanceSnapshot,
+          conferencesSnapshot,
         ] = await Promise.all([
           getDocs(collection(db, "projects")),
           getDocs(collection(db, "ums")),
           getDocs(collection(db, "notebooks")),
           getDocs(query(collection(db, "users"), where("role", "==", "USER"))),
-          getDocs(
-            query(
-              collection(db, "conferences"),
-              orderBy("endTime", "desc"),
-              limit(10)
-            )
-          ),
           getDocs(maintenanceQuery),
+          getDocs(conferencesQuery),
         ]);
 
+        // Processamento dos dados dos cards
         const projectsData = projectsSnapshot.docs.map((doc) => ({
           name: doc.data().name,
         }));
@@ -149,6 +142,7 @@ export default function DashboardPage() {
           maintenance: maintenanceSnapshot.size,
         });
 
+        // Processamento dos dados das conferências
         const conferencesList = conferencesSnapshot.docs.map((doc) => {
           const data = doc.data();
           return {
@@ -188,6 +182,7 @@ export default function DashboardPage() {
         setIsLoading(false);
       }
     };
+
     fetchData();
   }, []);
 
@@ -198,12 +193,10 @@ export default function DashboardPage() {
     setDetailsModalContent({ title, data });
     setIsDetailsModalOpen(true);
   };
-
   const openPeripheralsModal = (data: PeripheralsData) => {
     setSelectedPeripherals(data);
     setIsPeripheralsModalOpen(true);
   };
-
   const openHistoryModal = (notebook: MaintenanceNotebook) => {
     setSelectedNotebookForHistory(notebook);
     setIsLifecycleModalOpen(true);
@@ -226,6 +219,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
         <DashboardCard
           title="Técnicos Cadastrados"
@@ -318,12 +312,15 @@ export default function DashboardPage() {
                       {conference.scanned} / {conference.expected}
                     </td>
                     <td className="p-3 text-center">
-                      {conference.miceCount !== undefined && (
+                      {(conference.miceCount !== undefined ||
+                        conference.chargersCount !== undefined ||
+                        conference.headsetsCount !== undefined) && (
                         <button
                           className="flex items-center justify-center mx-auto text-xs font-semibold text-teal-800 bg-teal-100 hover:bg-teal-200 px-3 py-1 rounded-full transition-colors"
                           onClick={() => openPeripheralsModal(conference)}
                         >
-                          <Eye size={14} className="mr-1.5" /> Visualizar
+                          <Eye size={14} className="mr-1.5" />
+                          Visualizar
                         </button>
                       )}
                     </td>
@@ -341,8 +338,8 @@ export default function DashboardPage() {
                             )
                           }
                         >
-                          <TriangleAlert size={14} className="mr-1.5" /> Ver
-                          Faltantes
+                          <TriangleAlert size={14} className="mr-1.5" />
+                          Ver Faltantes
                         </button>
                       )}
                     </td>
@@ -357,23 +354,6 @@ export default function DashboardPage() {
               )}
             </tbody>
           </table>
-        </div>
-        <div className="flex justify-end items-center mt-4 text-sm">
-          <span>Itens por página: 10</span>
-          <div className="ml-4">
-            <button
-              className="px-3 py-1 border rounded-md hover:bg-slate-100"
-              disabled
-            >
-              Anterior
-            </button>
-            <button
-              className="px-3 py-1 border rounded-md hover:bg-slate-100 ml-2"
-              disabled
-            >
-              Próximo
-            </button>
-          </div>
         </div>
       </div>
 

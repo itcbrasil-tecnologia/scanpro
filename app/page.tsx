@@ -8,12 +8,12 @@ import { FirebaseError } from "firebase/app";
 import { auth } from "@/lib/firebase/config";
 import { useAuth } from "@/context/AuthContext";
 import toast from "react-hot-toast";
-import { Eye, EyeOff } from "lucide-react"; // Importa os ícones
+import { Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false); // Novo estado
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
@@ -69,7 +69,7 @@ export default function LoginPage() {
             alt="ScanPRO Logo"
             width={180}
             height={60}
-            className="mx-auto mb-4"
+            className="mx-auto mb-4 h-auto" // <-- CORREÇÃO APLICADA AQUI
             priority
           />
           <p className="mt-2 text-sm text-gray-600">
@@ -106,7 +106,7 @@ export default function LoginPage() {
               <input
                 id="password"
                 name="password"
-                type={showPassword ? "text" : "password"} // Muda o tipo dinamicamente
+                type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
                 required
                 value={password}

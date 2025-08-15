@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -13,10 +13,15 @@ import {
   orderBy,
   limit,
   Timestamp,
+  startAfter,
+  QueryDocumentSnapshot,
+  DocumentData,
+  QueryConstraint, // TIPO IMPORTADO AQUI
 } from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
 import { PeripheralsModal } from "@/components/ui/PeripheralsModal";
 import { ConferenceSummaryModal } from "@/components/ui/ConferenceSummaryModal";
+import { PaginationControls } from "@/components/ui/PaginationControls";
 import {
   ScanBarcode,
   Camera,
@@ -53,19 +58,26 @@ interface PeripheralsData {
   headsetsCount?: number;
 }
 
+const ITEMS_PER_PAGE = 20;
+
 export default function InicioPage() {
   const { userProfile } = useAuth();
   const router = useRouter();
   const [conferences, setConferences] = useState<Conference[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Estados de Paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [lastVisible, setLastVisible] =
+    useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+
+  // Estados de Modais
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState<string[]>([]);
-
   const [isPeripheralsModalOpen, setIsPeripheralsModalOpen] = useState(false);
   const [selectedPeripherals, setSelectedPeripherals] =
     useState<PeripheralsData | null>(null);
-
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
   const [selectedConferenceForSummary, setSelectedConferenceForSummary] =
     useState<Conference | null>(null);
@@ -75,52 +87,37 @@ export default function InicioPage() {
     total: 2,
   });
 
-  useEffect(() => {
-    if (
-      userProfile &&
-      (userProfile.role === "MASTER" || userProfile.role === "ADMIN")
-    ) {
-      router.replace("/dashboard");
-    }
-  }, [userProfile, router]);
-
-  useEffect(() => {
-    const fetchPageData = async () => {
-      if (!userProfile || userProfile.role !== "USER") {
-        return;
-      }
+  const fetchConferences = useCallback(
+    async (
+      page: number,
+      startingAfter?: QueryDocumentSnapshot<DocumentData>
+    ) => {
+      if (!userProfile) return;
       setIsLoading(true);
       try {
-        const today = new Date();
-        const startOfDay = new Date(
-          today.getFullYear(),
-          today.getMonth(),
-          today.getDate()
-        );
-        const endOfDay = new Date(
-          today.getFullYear(),
-          today.getMonth(),
-          today.getDate() + 1
-        );
-        const dailyCountQuery = query(
-          collection(db, "conferences"),
-          where("userId", "==", userProfile.uid),
-          where("endTime", ">=", Timestamp.fromDate(startOfDay)),
-          where("endTime", "<", Timestamp.fromDate(endOfDay))
-        );
-        const dailySnapshot = await getDocs(dailyCountQuery);
-        setDailyCounts({
-          completed: dailySnapshot.size,
-          total: userProfile.dailyConferenceGoal || 2,
-        });
+        const conferencesRef = collection(db, "conferences");
+        const userConferencesQuery = where("userId", "==", userProfile.uid);
 
-        const historyQuery = query(
-          collection(db, "conferences"),
-          where("userId", "==", userProfile.uid),
+        if (totalPages === 0) {
+          const countQuery = query(conferencesRef, userConferencesQuery);
+          const countSnapshot = await getDocs(countQuery);
+          setTotalPages(Math.ceil(countSnapshot.size / ITEMS_PER_PAGE));
+        }
+
+        // CORREÇÃO APLICADA AQUI: Declaramos explicitamente o tipo do array.
+        const queryConstraints: QueryConstraint[] = [
+          userConferencesQuery,
           orderBy("endTime", "desc"),
-          limit(20)
-        );
+          limit(ITEMS_PER_PAGE),
+        ];
+
+        if (page > 1 && startingAfter) {
+          queryConstraints.push(startAfter(startingAfter));
+        }
+
+        const historyQuery = query(conferencesRef, ...queryConstraints);
         const historySnapshot = await getDocs(historyQuery);
+
         const userConferences = historySnapshot.docs.map((document) => {
           const data = document.data();
           return {
@@ -155,35 +152,81 @@ export default function InicioPage() {
           } as Conference;
         });
         setConferences(userConferences);
+        setLastVisible(
+          historySnapshot.docs[historySnapshot.docs.length - 1] || null
+        );
+        setCurrentPage(page);
       } catch (error) {
-        console.error("Erro ao buscar dados da página:", error);
-        toast.error("Não foi possível carregar os seus dados.", {
-          id: "global-toast",
-        });
+        console.error("Erro ao buscar conferências:", error);
+        toast.error("Não foi possível carregar seu histórico de conferências.");
       } finally {
         setIsLoading(false);
       }
+    },
+    [userProfile, totalPages]
+  );
+
+  useEffect(() => {
+    const fetchStaticData = async () => {
+      if (!userProfile || userProfile.role !== "USER") {
+        if (
+          userProfile &&
+          (userProfile.role === "MASTER" || userProfile.role === "ADMIN")
+        ) {
+          router.replace("/dashboard");
+        }
+        return;
+      }
+
+      const today = new Date();
+      const startOfDay = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate()
+      );
+      const endOfDay = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate() + 1
+      );
+      const dailyCountQuery = query(
+        collection(db, "conferences"),
+        where("userId", "==", userProfile.uid),
+        where("endTime", ">=", Timestamp.fromDate(startOfDay)),
+        where("endTime", "<", Timestamp.fromDate(endOfDay))
+      );
+      const dailySnapshot = await getDocs(dailyCountQuery);
+      setDailyCounts({
+        completed: dailySnapshot.size,
+        total: userProfile.dailyConferenceGoal || 2,
+      });
+
+      fetchConferences(1);
     };
-    if (userProfile) {
-      fetchPageData();
+
+    fetchStaticData();
+  }, [userProfile, router, fetchConferences]);
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage > currentPage && lastVisible) {
+      fetchConferences(newPage, lastVisible);
+    } else if (newPage < currentPage) {
+      fetchConferences(1);
     }
-  }, [userProfile]);
+  };
 
   const openDetailsModal = (hostnames: string[]) => {
     setModalContent(hostnames);
     setIsDetailsModalOpen(true);
   };
-
   const openPeripheralsModal = (data: PeripheralsData) => {
     setSelectedPeripherals(data);
     setIsPeripheralsModalOpen(true);
   };
-
   const openSummaryModal = (conference: Conference) => {
     setSelectedConferenceForSummary(conference);
     setIsSummaryModalOpen(true);
   };
-
   const renderStatus = (conference: Conference) => {
     const isComplete = conference.scannedCount === conference.expectedCount;
     const style = isComplete
@@ -227,14 +270,12 @@ export default function InicioPage() {
           <div className="sm:hidden">
             {allDailyCountsCompleted ? (
               <div className="w-full flex items-center justify-center bg-gray-200 text-gray-500 px-4 py-3 rounded-lg font-bold text-lg">
-                <CheckCircle size={24} className="mr-3" />
-                CONCLUÍDO
+                <CheckCircle size={24} className="mr-3" /> CONCLUÍDO
               </div>
             ) : (
               <Link href="/scanner" passHref>
                 <div className="w-full flex items-center justify-center bg-teal-600 text-white px-4 py-3 rounded-lg shadow-lg hover:bg-teal-700 transition-colors font-bold text-lg">
-                  <Camera size={24} className="mr-3" />
-                  INICIAR CONFERÊNCIA
+                  <Camera size={24} className="mr-3" /> INICIAR CONFERÊNCIA
                 </div>
               </Link>
             )}
@@ -242,7 +283,7 @@ export default function InicioPage() {
         </div>
         <div className="lg:col-span-3 bg-white p-4 rounded-lg shadow-md overflow-hidden">
           <h2 className="text-xl font-bold text-gray-800 mb-4">
-            As suas Últimas Conferências
+            Seu Histórico de Conferências
           </h2>
           <div className="overflow-x-auto">
             <table className="w-full text-left">
@@ -344,8 +385,16 @@ export default function InicioPage() {
               </tbody>
             </table>
           </div>
+          <div className="p-4 border-t">
+            <PaginationControls
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={handlePageChange}
+            />
+          </div>
         </div>
       </div>
+
       <Modal
         isOpen={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}

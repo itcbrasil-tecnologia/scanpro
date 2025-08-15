@@ -278,22 +278,67 @@ export default function ReportsPage() {
     : ums;
 
   const handleExportCSV = async () => {
-    toast.loading("Exportando todos os dados...", { id: "global-toast" });
+    toast.loading("Exportando dados...", { id: "global-toast" });
     try {
-      const allConferencesSnapshot = await getDocs(
-        query(collection(db, "conferences"), orderBy("endTime", "desc"))
+      const conferencesRef = collection(db, "conferences");
+      const queryConstraints: QueryConstraint[] = [];
+
+      // 1. Constrói a consulta com os filtros atuais, igual a `fetchConferences`
+      if (filters.projectId) {
+        const selectedProject = projects.find(
+          (p) => p.id === filters.projectId
+        );
+        if (selectedProject)
+          queryConstraints.push(
+            where("projectName", "==", selectedProject.name)
+          );
+      }
+      if (filters.umId) {
+        const selectedUm = ums.find((u) => u.id === filters.umId);
+        if (selectedUm)
+          queryConstraints.push(where("umName", "==", selectedUm.name));
+      }
+      if (filters.technicianId) {
+        queryConstraints.push(where("userId", "==", filters.technicianId));
+      }
+      if (filters.startDate) {
+        queryConstraints.push(
+          where(
+            "endTime",
+            ">=",
+            Timestamp.fromDate(new Date(filters.startDate))
+          )
+        );
+      }
+      if (filters.endDate) {
+        const endOfDay = new Date(filters.endDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        queryConstraints.push(
+          where("endTime", "<=", Timestamp.fromDate(endOfDay))
+        );
+      }
+
+      // 2. Cria a query final para exportação (sem limit)
+      const exportQuery = query(
+        conferencesRef,
+        ...queryConstraints,
+        orderBy("endTime", "desc")
       );
-      const allConferences = allConferencesSnapshot.docs.map((doc) =>
+      const dataToExportSnapshot = await getDocs(exportQuery);
+      const dataToExport = dataToExportSnapshot.docs.map((doc) =>
         mapDocToConference(doc as QueryDocumentSnapshot<DocumentData>)
       );
 
-      if (allConferences.length === 0) {
-        toast.error("Nenhum dado para exportar.", { id: "global-toast" });
+      if (dataToExport.length === 0) {
+        toast.error("Nenhum dado para exportar com os filtros atuais.", {
+          id: "global-toast",
+        });
         return;
       }
 
+      // 3. Usa PapaParse para converter os dados filtrados para CSV
       const csvData = Papa.unparse(
-        allConferences.map((c) => ({
+        dataToExport.map((c) => ({
           Data: c.date,
           Inicio: c.startTime,
           Fim: c.endTime,
@@ -310,18 +355,19 @@ export default function ReportsPage() {
         { header: true }
       );
 
+      // 4. Lógica para criar e baixar o arquivo blob
       const blob = new Blob([`\uFEFF${csvData}`], {
         type: "text/csv;charset=utf-8;",
       });
       const link = document.createElement("a");
       const url = URL.createObjectURL(blob);
       link.setAttribute("href", url);
-      link.setAttribute("download", "relatorio_conferencias_completo.csv");
+      link.setAttribute("download", "relatorio_scanpro.csv");
       link.style.visibility = "hidden";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      toast.success("Relatório completo exportado!", { id: "global-toast" });
+      toast.success("Relatório exportado com sucesso!", { id: "global-toast" });
     } catch (error) {
       console.error("Erro ao exportar CSV:", error);
       toast.error("Falha ao exportar relatório.", { id: "global-toast" });
@@ -338,7 +384,7 @@ export default function ReportsPage() {
           onClick={handleExportCSV}
           className="flex items-center text-sm bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 transition-colors"
         >
-          <Download size={16} className="mr-2" /> Exportar Relatório Completo
+          <Download size={16} className="mr-2" /> Exportar CSV
         </button>
       </div>
 

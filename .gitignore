@@ -10,6 +10,9 @@
 !.yarn/releases
 !.yarn/versions
 
+# Arquivo de chave de serviço do Firebase Admin (MUITO SENSÍVEL)
+serviceAccountKey.json
+
 # testing
 /coverage
 
