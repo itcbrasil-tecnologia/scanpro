@@ -4,43 +4,49 @@ import React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface PaginationControlsProps {
-  onNext: () => void;
-  onPrev: () => void;
-  hasNextPage: boolean;
-  hasPrevPage: boolean;
-  isLoading: boolean;
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
 }
 
 export function PaginationControls({
-  onNext,
-  onPrev,
-  hasNextPage,
-  hasPrevPage,
-  isLoading,
+  currentPage,
+  totalPages,
+  onPageChange,
 }: PaginationControlsProps) {
-  const buttonStyle =
-    "px-3 py-1 border rounded-md flex items-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
-  const enabledStyle = "hover:bg-slate-100";
-  const disabledStyle = "bg-slate-50 text-slate-400";
+  if (totalPages <= 1) {
+    return null;
+  }
+
+  const handlePrev = () => {
+    if (currentPage > 1) {
+      onPageChange(currentPage - 1);
+    }
+  };
+
+  const handleNext = () => {
+    if (currentPage < totalPages) {
+      onPageChange(currentPage + 1);
+    }
+  };
 
   return (
-    <div className="flex justify-end items-center mt-4 text-sm space-x-2">
+    <div className="flex justify-end items-center text-sm space-x-2">
       <button
-        onClick={onPrev}
-        disabled={!hasPrevPage || isLoading}
-        className={`${buttonStyle} ${
-          !hasPrevPage ? disabledStyle : enabledStyle
-        }`}
+        onClick={handlePrev}
+        disabled={currentPage === 1}
+        className="px-3 py-1 border rounded-md flex items-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100"
       >
         <ChevronLeft size={16} className="mr-1" />
         Anterior
       </button>
+      <span className="px-2 text-slate-600">
+        Página {currentPage} de {totalPages}
+      </span>
       <button
-        onClick={onNext}
-        disabled={!hasNextPage || isLoading}
-        className={`${buttonStyle} ${
-          !hasNextPage ? disabledStyle : enabledStyle
-        }`}
+        onClick={handleNext}
+        disabled={currentPage === totalPages}
+        className="px-3 py-1 border rounded-md flex items-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100"
       >
         Próximo
         <ChevronRight size={16} className="ml-1" />

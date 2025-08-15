@@ -32,23 +32,29 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
-        setUser(currentUser); // Define o usuário do Firebase imediatamente
-        const userDocRef = doc(db, "users", currentUser.uid);
-        const userDocSnap = await getDoc(userDocRef);
+        setUser(currentUser);
+        // A lógica original e estável com getDoc
+        try {
+          const userDocRef = doc(db, "users", currentUser.uid);
+          const userDocSnap = await getDoc(userDocRef);
 
-        if (userDocSnap.exists()) {
-          // **A CORREÇÃO**: Garante que o 'uid' seja adicionado ao objeto de perfil.
-          const profileData = {
-            uid: currentUser.uid,
-            ...userDocSnap.data(),
-          } as UserProfile;
-          setUserProfile(profileData);
-        } else {
-          console.error(
-            "Perfil do usuário não encontrado no Firestore. Desconectando."
-          );
+          if (userDocSnap.exists()) {
+            const profileData = {
+              uid: currentUser.uid,
+              ...userDocSnap.data(),
+            } as UserProfile;
+            setUserProfile(profileData);
+          } else {
+            console.error(
+              "Perfil do usuário não encontrado no Firestore. Desconectando."
+            );
+            setUserProfile(null);
+            await auth.signOut();
+          }
+        } catch (error) {
+          console.error("Erro ao buscar perfil do usuário:", error);
           setUserProfile(null);
-          auth.signOut();
+          await auth.signOut();
         }
       } else {
         setUser(null);

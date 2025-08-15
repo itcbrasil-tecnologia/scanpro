@@ -1,13 +1,27 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { db } from "@/lib/firebase/config";
-import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
-import { Download, Filter, XCircle, Eye } from "lucide-react"; // Importado Eye
+import {
+  collection,
+  getDocs,
+  query,
+  orderBy,
+  limit,
+  startAfter,
+  where,
+  QueryConstraint,
+  QueryDocumentSnapshot,
+  DocumentData,
+  Timestamp,
+} from "firebase/firestore";
+import { Download, Eye, Filter, X } from "lucide-react";
 import Papa from "papaparse";
 import toast from "react-hot-toast";
-import { PeripheralsModal } from "@/components/ui/PeripheralsModal"; // Importado
+import { PeripheralsModal } from "@/components/ui/PeripheralsModal";
+import { PaginationControls } from "@/components/ui/PaginationControls";
 
+// Interfaces de Dados
 interface Conference {
   id: string;
   date: string;
@@ -19,148 +33,239 @@ interface Conference {
   expectedCount: number;
   scannedCount: number;
   missingCount: number;
-  // Novos campos
   miceCount?: number;
   chargersCount?: number;
   headsetsCount?: number;
 }
-
-interface Project {
-  id: string;
-  name: string;
-}
-
-interface UM {
-  id: string;
-  name: string;
-}
-
-interface User {
-  uid: string;
-  nome: string;
-}
-
 interface PeripheralsData {
   miceCount?: number;
   chargersCount?: number;
   headsetsCount?: number;
 }
+interface Project {
+  id: string;
+  name: string;
+}
+interface UM {
+  id: string;
+  name: string;
+  projectId: string;
+}
+interface Technician {
+  uid: string;
+  nome: string;
+}
+interface Filters {
+  projectId: string;
+  umId: string;
+  technicianId: string;
+  startDate: string;
+  endDate: string;
+}
+
+const ITEMS_PER_PAGE = 15;
 
 export default function ReportsPage() {
-  const [allConferences, setAllConferences] = useState<Conference[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [ums, setUms] = useState<UM[]>([]);
-  const [technicians, setTechnicians] = useState<User[]>([]);
+  // Estados de dados e UI
+  const [conferences, setConferences] = useState<Conference[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [filters, setFilters] = useState({
-    date: "",
-    projectId: "",
-    umId: "",
-    technicianId: "",
-  });
-
-  // State para o novo modal de periféricos
   const [isPeripheralsModalOpen, setIsPeripheralsModalOpen] = useState(false);
   const [selectedPeripherals, setSelectedPeripherals] =
     useState<PeripheralsData | null>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        const [projectsSnapshot, umsSnapshot, techSnapshot, confSnapshot] =
-          await Promise.all([
-            getDocs(collection(db, "projects")),
-            getDocs(collection(db, "ums")),
-            getDocs(
-              query(collection(db, "users"), where("role", "==", "USER"))
-            ),
-            getDocs(
-              query(collection(db, "conferences"), orderBy("endTime", "desc"))
-            ),
-          ]);
+  // Estados para Paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [lastVisible, setLastVisible] =
+    useState<QueryDocumentSnapshot<DocumentData> | null>(null);
 
+  // Estados para Filtros
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [ums, setUms] = useState<UM[]>([]);
+  const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [filters, setFilters] = useState<Filters>({
+    projectId: "",
+    umId: "",
+    technicianId: "",
+    startDate: "",
+    endDate: "",
+  });
+
+  // Carrega dados para preencher os menus de filtro
+  useEffect(() => {
+    const fetchFilterData = async () => {
+      try {
+        const [projectsSnap, umsSnap, techniciansSnap] = await Promise.all([
+          getDocs(query(collection(db, "projects"), orderBy("name"))),
+          getDocs(query(collection(db, "ums"), orderBy("name"))),
+          getDocs(
+            query(
+              collection(db, "users"),
+              where("role", "==", "USER"),
+              orderBy("nome")
+            )
+          ),
+        ]);
         setProjects(
-          projectsSnapshot.docs.map(
-            (doc) => ({ id: doc.id, name: doc.data().name } as Project)
+          projectsSnap.docs.map(
+            (doc) => ({ id: doc.id, ...doc.data() } as Project)
           )
         );
         setUms(
-          umsSnapshot.docs.map(
-            (doc) => ({ id: doc.id, name: doc.data().name } as UM)
-          )
+          umsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as UM))
         );
         setTechnicians(
-          techSnapshot.docs.map(
-            (doc) => ({ uid: doc.id, nome: doc.data().nome } as User)
+          techniciansSnap.docs.map(
+            (doc) =>
+              ({
+                uid: doc.id,
+                nome: doc.data().nome,
+              } as Technician)
           )
         );
+      } catch (error) {
+        console.error("Erro ao buscar dados para filtros:", error);
+        toast.error("Não foi possível carregar as opções de filtro.");
+      }
+    };
+    fetchFilterData();
+  }, []);
 
-        const conferencesList = confSnapshot.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            date: data.endTime.toDate().toISOString().split("T")[0],
-            startTime: data.startTime.toDate().toLocaleTimeString("pt-BR", {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-            endTime: data.endTime.toDate().toLocaleTimeString("pt-BR", {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-            projectName: data.projectName,
-            umName: data.umName,
-            userName: data.userName,
-            expectedCount: data.expectedCount,
-            scannedCount: data.scannedCount,
-            missingCount: data.missingCount,
-            miceCount: data.miceCount,
-            chargersCount: data.chargersCount,
-            headsetsCount: data.headsetsCount,
-          } as Conference;
-        });
-        setAllConferences(conferencesList);
+  const mapDocToConference = (
+    doc: QueryDocumentSnapshot<DocumentData>
+  ): Conference => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      date: data.endTime.toDate().toLocaleDateString("pt-BR"),
+      startTime: data.startTime
+        .toDate()
+        .toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+      endTime: data.endTime
+        .toDate()
+        .toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+      projectName: data.projectName,
+      umName: data.umName,
+      userName: data.userName,
+      expectedCount: data.expectedCount,
+      scannedCount: data.scannedCount,
+      missingCount: data.missingCount,
+      miceCount: data.miceCount,
+      chargersCount: data.chargersCount,
+      headsetsCount: data.headsetsCount,
+    };
+  };
+
+  const fetchConferences = useCallback(
+    async (
+      page: number,
+      startingAfter?: QueryDocumentSnapshot<DocumentData>
+    ) => {
+      setIsLoading(true);
+      try {
+        const conferencesRef = collection(db, "conferences");
+        const queryConstraints: QueryConstraint[] = [];
+
+        if (filters.projectId) {
+          const selectedProject = projects.find(
+            (p) => p.id === filters.projectId
+          );
+          if (selectedProject)
+            queryConstraints.push(
+              where("projectName", "==", selectedProject.name)
+            );
+        }
+        if (filters.umId) {
+          const selectedUm = ums.find((u) => u.id === filters.umId);
+          if (selectedUm)
+            queryConstraints.push(where("umName", "==", selectedUm.name));
+        }
+        if (filters.technicianId) {
+          queryConstraints.push(where("userId", "==", filters.technicianId));
+        }
+        if (filters.startDate) {
+          queryConstraints.push(
+            where(
+              "endTime",
+              ">=",
+              Timestamp.fromDate(new Date(filters.startDate))
+            )
+          );
+        }
+        if (filters.endDate) {
+          const endOfDay = new Date(filters.endDate);
+          endOfDay.setHours(23, 59, 59, 999);
+          queryConstraints.push(
+            where("endTime", "<=", Timestamp.fromDate(endOfDay))
+          );
+        }
+
+        const countQuery = query(conferencesRef, ...queryConstraints);
+        const countSnapshot = await getDocs(countQuery);
+        setTotalPages(Math.ceil(countSnapshot.size / ITEMS_PER_PAGE));
+
+        const dataQueryConstraints = [
+          ...queryConstraints,
+          orderBy("endTime", "desc"),
+          limit(ITEMS_PER_PAGE),
+        ];
+        if (page > 1 && startingAfter) {
+          dataQueryConstraints.push(startAfter(startingAfter));
+        }
+
+        const dataQuery = query(conferencesRef, ...dataQueryConstraints);
+        const documentSnapshots = await getDocs(dataQuery);
+
+        setConferences(documentSnapshots.docs.map(mapDocToConference));
+        setLastVisible(
+          documentSnapshots.docs[documentSnapshots.docs.length - 1] || null
+        );
+        setCurrentPage(page);
       } catch (error) {
         console.error("Erro ao buscar dados para relatórios:", error);
-        toast.error("Não foi possível carregar os dados.", {
-          id: "global-toast",
-        });
+        toast.error(
+          "Não foi possível carregar os dados. Verifique o console para criar o índice no Firestore, se necessário.",
+          { duration: 6000 }
+        );
       } finally {
         setIsLoading(false);
       }
-    };
-    fetchData();
-  }, []);
+    },
+    [filters, projects, ums]
+  );
 
-  const filteredConferences = useMemo(() => {
-    return allConferences.filter((conference) => {
-      const projectMatch = filters.projectId
-        ? projects.find((p) => p.id === filters.projectId)?.name ===
-          conference.projectName
-        : true;
-      const umMatch = filters.umId
-        ? ums.find((u) => u.id === filters.umId)?.name === conference.umName
-        : true;
-      const techMatch = filters.technicianId
-        ? technicians.find((t) => t.uid === filters.technicianId)?.nome ===
-          conference.userName
-        : true;
-      const dateMatch = filters.date ? conference.date === filters.date : true;
-
-      return projectMatch && umMatch && techMatch && dateMatch;
+  const handleApplyFilters = () => {
+    fetchConferences(1);
+  };
+  const handleClearFilters = () => {
+    setFilters({
+      projectId: "",
+      umId: "",
+      technicianId: "",
+      startDate: "",
+      endDate: "",
     });
-  }, [filters, allConferences, projects, ums, technicians]);
-
-  const handleFilterChange = (
-    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = event.target;
-    setFilters((previousState) => ({ ...previousState, [name]: value }));
   };
 
-  const clearFilters = () => {
-    setFilters({ date: "", projectId: "", umId: "", technicianId: "" });
+  useEffect(() => {
+    if (Object.values(filters).every((val) => val === "")) {
+      fetchConferences(1);
+    }
+  }, [filters, fetchConferences]);
+
+  const handleFilterChange = (
+    e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>
+  ) => {
+    const { name, value } = e.target;
+    setFilters((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage > currentPage && lastVisible) {
+      fetchConferences(newPage, lastVisible);
+    } else if (newPage < currentPage) {
+      fetchConferences(1);
+    }
   };
 
   const openPeripheralsModal = (data: PeripheralsData) => {
@@ -168,72 +273,87 @@ export default function ReportsPage() {
     setIsPeripheralsModalOpen(true);
   };
 
-  const handleExportCSV = () => {
-    if (filteredConferences.length === 0) {
-      toast.error("Nenhum dado para exportar.", { id: "global-toast" });
-      return;
+  const filteredUms = filters.projectId
+    ? ums.filter((um) => um.projectId === filters.projectId)
+    : ums;
+
+  const handleExportCSV = async () => {
+    toast.loading("Exportando todos os dados...", { id: "global-toast" });
+    try {
+      const allConferencesSnapshot = await getDocs(
+        query(collection(db, "conferences"), orderBy("endTime", "desc"))
+      );
+      const allConferences = allConferencesSnapshot.docs.map((doc) =>
+        mapDocToConference(doc as QueryDocumentSnapshot<DocumentData>)
+      );
+
+      if (allConferences.length === 0) {
+        toast.error("Nenhum dado para exportar.", { id: "global-toast" });
+        return;
+      }
+
+      const csvData = Papa.unparse(
+        allConferences.map((c) => ({
+          Data: c.date,
+          Inicio: c.startTime,
+          Fim: c.endTime,
+          Projeto: c.projectName,
+          UM: c.umName,
+          Tecnico: c.userName,
+          Esperados: c.expectedCount,
+          Escaneados: c.scannedCount,
+          Faltantes: c.missingCount,
+          Mouses: c.miceCount ?? 0,
+          Carregadores: c.chargersCount ?? 0,
+          "Fones de Ouvido": c.headsetsCount ?? 0,
+        })),
+        { header: true }
+      );
+
+      const blob = new Blob([`\uFEFF${csvData}`], {
+        type: "text/csv;charset=utf-8;",
+      });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", "relatorio_conferencias_completo.csv");
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success("Relatório completo exportado!", { id: "global-toast" });
+    } catch (error) {
+      console.error("Erro ao exportar CSV:", error);
+      toast.error("Falha ao exportar relatório.", { id: "global-toast" });
     }
-
-    const csvData = Papa.unparse(
-      filteredConferences.map((c) => ({
-        Data: new Date(c.date).toLocaleDateString("pt-BR", {
-          timeZone: "UTC",
-        }),
-        Inicio: c.startTime,
-        Fim: c.endTime,
-        Projeto: c.projectName,
-        UM: c.umName,
-        Tecnico: c.userName,
-        Esperados: c.expectedCount,
-        Escaneados: c.scannedCount,
-        Faltantes: c.missingCount,
-        Mouses: c.miceCount ?? 0,
-        Carregadores: c.chargersCount ?? 0,
-        "Fones de Ouvido": c.headsetsCount ?? 0,
-      })),
-      { header: true }
-    );
-
-    const blob = new Blob([csvData], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", "relatorio_conferencias.csv");
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-800">
-        Relatórios de Conferências
-      </h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-gray-800">
+          Relatórios de Conferências
+        </h1>
+        <button
+          onClick={handleExportCSV}
+          className="flex items-center text-sm bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 transition-colors"
+        >
+          <Download size={16} className="mr-2" /> Exportar Relatório Completo
+        </button>
+      </div>
 
-      <div className="bg-white p-4 rounded-lg shadow-md">
-        <div className="flex items-center mb-4">
-          <Filter size={20} className="mr-2 text-gray-600" />
-          <h3 className="text-lg font-bold text-gray-700">Filtros</h3>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <input
-            type="date"
-            name="date"
-            value={filters.date}
-            onChange={handleFilterChange}
-            className="p-2 border rounded-md bg-white"
-          />
+      <div className="bg-white p-4 rounded-lg shadow-md space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <select
             name="projectId"
             value={filters.projectId}
             onChange={handleFilterChange}
-            className="p-2 border rounded-md bg-white"
+            className="w-full p-2 border border-gray-300 rounded-md bg-white"
           >
             <option value="">Todos os Projetos</option>
-            {projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.name}
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
               </option>
             ))}
           </select>
@@ -241,12 +361,12 @@ export default function ReportsPage() {
             name="umId"
             value={filters.umId}
             onChange={handleFilterChange}
-            className="p-2 border rounded-md bg-white"
+            className="w-full p-2 border border-gray-300 rounded-md bg-white"
           >
             <option value="">Todas as UMs</option>
-            {ums.map((um) => (
-              <option key={um.id} value={um.id}>
-                {um.name}
+            {filteredUms.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.name}
               </option>
             ))}
           </select>
@@ -254,28 +374,42 @@ export default function ReportsPage() {
             name="technicianId"
             value={filters.technicianId}
             onChange={handleFilterChange}
-            className="p-2 border rounded-md bg-white"
+            className="w-full p-2 border border-gray-300 rounded-md bg-white"
           >
             <option value="">Todos os Técnicos</option>
-            {technicians.map((tech) => (
-              <option key={tech.uid} value={tech.uid}>
-                {tech.nome}
+            {technicians.map((t) => (
+              <option key={t.uid} value={t.uid}>
+                {t.nome}
               </option>
             ))}
           </select>
+          <input
+            type="date"
+            name="startDate"
+            value={filters.startDate}
+            onChange={handleFilterChange}
+            className="w-full p-2 border border-gray-300 rounded-md"
+          />
+          <input
+            type="date"
+            name="endDate"
+            value={filters.endDate}
+            onChange={handleFilterChange}
+            className="w-full p-2 border border-gray-300 rounded-md"
+          />
         </div>
-        <div className="flex justify-end space-x-3 mt-4">
+        <div className="flex justify-end space-x-2">
           <button
-            onClick={clearFilters}
-            className="flex items-center text-sm text-gray-600 hover:text-gray-900"
+            onClick={handleClearFilters}
+            className="flex items-center text-sm bg-gray-500 text-white px-4 py-2 rounded-lg shadow hover:bg-gray-600 transition-colors"
           >
-            <XCircle size={16} className="mr-1" /> Limpar Filtros
+            <X size={16} className="mr-2" /> Limpar Filtros
           </button>
           <button
-            onClick={handleExportCSV}
-            className="flex items-center text-sm bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 transition-colors"
+            onClick={handleApplyFilters}
+            className="flex items-center text-sm bg-teal-600 text-white px-4 py-2 rounded-lg shadow hover:bg-teal-700 transition-colors"
           >
-            <Download size={16} className="mr-2" /> Exportar para .CSV
+            <Filter size={16} className="mr-2" /> Aplicar Filtros
           </button>
         </div>
       </div>
@@ -285,28 +419,28 @@ export default function ReportsPage() {
           <table className="w-full text-left">
             <thead className="bg-slate-200 border-b-2 border-slate-300">
               <tr>
-                <th className="p-3 text-sm font-semibold text-slate-600">
+                <th className="p-3 text-sm font-semibold text-gray-800">
                   Data
                 </th>
-                <th className="p-3 text-sm font-semibold text-slate-600">
+                <th className="p-3 text-sm font-semibold text-gray-800">
                   Horário
                 </th>
-                <th className="p-3 text-sm font-semibold text-slate-600">
+                <th className="p-3 text-sm font-semibold text-gray-800">
                   Projeto / UM
                 </th>
-                <th className="p-3 text-sm font-semibold text-slate-600">
+                <th className="p-3 text-sm font-semibold text-gray-800">
                   Técnico
                 </th>
-                <th className="p-3 text-sm font-semibold text-slate-600 text-center">
+                <th className="p-3 text-sm font-semibold text-gray-800 text-center">
                   Escaneados
                 </th>
-                <th className="p-3 text-sm font-semibold text-slate-600 text-center">
+                <th className="p-3 text-sm font-semibold text-gray-800 text-center">
                   Faltantes
                 </th>
-                <th className="p-3 text-sm font-semibold text-slate-600 text-center">
+                <th className="p-3 text-sm font-semibold text-gray-800 text-center">
                   Periféricos
                 </th>
-                <th className="p-3 text-sm font-semibold text-slate-600 text-center">
+                <th className="p-3 text-sm font-semibold text-gray-800 text-center">
                   Total
                 </th>
               </tr>
@@ -318,17 +452,13 @@ export default function ReportsPage() {
                     Carregando relatórios...
                   </td>
                 </tr>
-              ) : filteredConferences.length > 0 ? (
-                filteredConferences.map((conference) => (
+              ) : conferences.length > 0 ? (
+                conferences.map((conference) => (
                   <tr
                     key={conference.id}
                     className="border-b hover:bg-slate-50"
                   >
-                    <td className="p-3">
-                      {new Date(conference.date).toLocaleDateString("pt-BR", {
-                        timeZone: "UTC",
-                      })}
-                    </td>
+                    <td className="p-3">{conference.date}</td>
                     <td className="p-3">
                       {conference.startTime} - {conference.endTime}
                     </td>
@@ -343,7 +473,9 @@ export default function ReportsPage() {
                       {conference.missingCount}
                     </td>
                     <td className="p-3 text-center">
-                      {conference.miceCount !== undefined && (
+                      {(conference.miceCount !== undefined ||
+                        conference.chargersCount !== undefined ||
+                        conference.headsetsCount !== undefined) && (
                         <button
                           className="flex items-center justify-center mx-auto text-xs font-semibold text-teal-800 bg-teal-100 hover:bg-teal-200 px-3 py-1 rounded-full transition-colors"
                           onClick={() => openPeripheralsModal(conference)}
@@ -361,12 +493,19 @@ export default function ReportsPage() {
               ) : (
                 <tr>
                   <td colSpan={8} className="text-center p-6 text-gray-500">
-                    Nenhum resultado encontrado.
+                    Nenhum resultado encontrado para os filtros selecionados.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
+        </div>
+        <div className="p-4 border-t">
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+          />
         </div>
       </div>
 
