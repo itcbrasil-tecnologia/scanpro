@@ -21,6 +21,9 @@ import {
   Home,
   Truck,
   BriefcaseBusiness,
+  Bell,
+  BellOff,
+  BellRing,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -33,22 +36,104 @@ export function Navbar({ userProfile }: NavbarProps) {
   const [isAdminDropdownOpen, setIsAdminDropdownOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [isMobileAdminOpen, setIsMobileAdminOpen] = useState(false);
+  const [notificationPermission, setNotificationPermission] =
+    useState<NotificationPermission>("default");
+
   const pathname = usePathname();
   const router = useRouter();
   const adminDropdownRef = useRef<HTMLDivElement>(null);
   const userDropdownRef = useRef<HTMLDivElement>(null);
 
+  useEffect(() => {
+    if (userProfile.role === "USER" && "Notification" in window) {
+      setNotificationPermission(Notification.permission);
+    }
+  }, [userProfile.role]);
+
+  const handleSubscribeToNotifications = async () => {
+    if (
+      !("serviceWorker" in navigator) ||
+      !("PushManager" in window) ||
+      !userProfile
+    ) {
+      toast.error("Seu navegador não suporta notificações push.");
+      return;
+    }
+    try {
+      const sw = await navigator.serviceWorker.ready;
+      const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      if (!vapidPublicKey) {
+        console.error("Chave VAPID pública não configurada.");
+        toast.error("Erro de configuração para notificações.");
+        return;
+      }
+      const subscription = await sw.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: vapidPublicKey,
+      });
+      await fetch("/api/notifications/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uid: userProfile.uid,
+          subscription: subscription,
+        }),
+      });
+      toast.success("Notificações ativadas com sucesso!");
+      setNotificationPermission("granted");
+    } catch (error) {
+      console.error("Erro ao se inscrever para notificações:", error);
+      setNotificationPermission(Notification.permission);
+      toast.error(
+        "Não foi possível ativar as notificações. Você precisa dar permissão no pop-up do navegador."
+      );
+    }
+  };
+
+  const NotificationBell = () => {
+    // Renderiza o componente apenas para o perfil USER
+    if (userProfile.role !== "USER") {
+      return null;
+    }
+
+    switch (notificationPermission) {
+      case "granted":
+        return (
+          <div
+            className="flex items-center p-2 text-green-400"
+            title="Notificações ativadas"
+          >
+            <BellRing size={20} />
+          </div>
+        );
+      case "denied":
+        return (
+          <div
+            className="flex items-center p-2 text-red-400"
+            title="Notificações bloqueadas. Habilite nas configurações do navegador."
+          >
+            <BellOff size={20} />
+          </div>
+        );
+      case "default":
+      default:
+        return (
+          <button
+            onClick={handleSubscribeToNotifications}
+            className="flex items-center p-2 text-slate-300 hover:text-white rounded-full transition-colors hover:bg-slate-700"
+            title="Ativar notificações"
+          >
+            <Bell size={20} />
+          </button>
+        );
+    }
+  };
+
   const handleLogout = async () => {
     try {
-      // Passo 1: Avisa o servidor para destruir o cookie de sessão e espera a confirmação.
       await fetch("/api/auth", { method: "DELETE" });
-
-      // Passo 2: Desloga do Firebase no lado do cliente.
       await signOut(auth);
-
       toast.success("Você saiu com sucesso!", { id: "global-toast" });
-
-      // Passo 3: Redireciona para o login. Agora o middleware não verá mais o cookie.
       router.push("/");
     } catch (error) {
       console.error("Erro ao tentar sair:", error);
@@ -224,7 +309,8 @@ export function Navbar({ userProfile }: NavbarProps) {
               </div>
             </div>
           )}
-          <div className="hidden md:block flex-shrink-0">
+          <div className="hidden md:flex items-center space-x-2">
+            <NotificationBell />
             <UserMenu />
           </div>
           <div className="md:hidden flex items-center">
@@ -312,6 +398,9 @@ export function Navbar({ userProfile }: NavbarProps) {
                 <div className="text-sm font-medium leading-none text-slate-400">
                   {userProfile.email}
                 </div>
+              </div>
+              <div className="ml-auto flex items-center">
+                <NotificationBell />
               </div>
             </div>
             <div className="mt-3 px-2 space-y-1">
