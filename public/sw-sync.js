@@ -56,7 +56,7 @@ async function syncConferences() {
   console.log("[Service Worker] Sincronização de conferências concluída.");
 }
 
-// --- NOVA LÓGICA PARA RECEBER NOTIFICAÇÕES PUSH ---
+// --- NOVA LÓGICA PARA RECEBER E EXIBIR NOTIFICAÇÕES PUSH ---
 self.addEventListener("push", (event) => {
   console.log("[Service Worker] Notificação Push recebida.");
 
@@ -66,7 +66,7 @@ self.addEventListener("push", (event) => {
   const title = data.title || "ScanPRO";
   const options = {
     body: data.body || "Você tem uma nova notificação.",
-    icon: data.icon || "/icons/icon-192x192.png", // Ícone padrão
+    icon: data.icon || "/icons/icon-192x192.png",
     badge: "/icons/icon-192x192.png", // Ícone para a barra de status do Android
   };
 

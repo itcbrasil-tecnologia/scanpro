@@ -71,6 +71,8 @@ export function Navbar({ userProfile }: NavbarProps) {
         userVisibleOnly: true,
         applicationServerKey: vapidPublicKey,
       });
+
+      // Salva a inscrição no Firestore
       await fetch("/api/notifications/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -79,8 +81,16 @@ export function Navbar({ userProfile }: NavbarProps) {
           subscription: subscription,
         }),
       });
+
       toast.success("Notificações ativadas com sucesso!");
       setNotificationPermission("granted");
+
+      // CHAMA A API PARA ENVIAR A NOTIFICAÇÃO DE BOAS-VINDAS
+      await fetch("/api/notifications/send-welcome", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid: userProfile.uid }),
+      });
     } catch (error) {
       console.error("Erro ao se inscrever para notificações:", error);
       setNotificationPermission(Notification.permission);
