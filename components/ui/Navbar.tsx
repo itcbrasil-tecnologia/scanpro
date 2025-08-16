@@ -71,8 +71,6 @@ export function Navbar({ userProfile }: NavbarProps) {
         userVisibleOnly: true,
         applicationServerKey: vapidPublicKey,
       });
-
-      // Salva a inscrição no Firestore
       await fetch("/api/notifications/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -81,11 +79,9 @@ export function Navbar({ userProfile }: NavbarProps) {
           subscription: subscription,
         }),
       });
-
       toast.success("Notificações ativadas com sucesso!");
       setNotificationPermission("granted");
 
-      // CHAMA A API PARA ENVIAR A NOTIFICAÇÃO DE BOAS-VINDAS
       await fetch("/api/notifications/send-welcome", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -101,7 +97,6 @@ export function Navbar({ userProfile }: NavbarProps) {
   };
 
   const NotificationBell = () => {
-    // Renderiza o componente apenas para o perfil USER
     if (userProfile.role !== "USER") {
       return null;
     }
@@ -323,10 +318,8 @@ export function Navbar({ userProfile }: NavbarProps) {
             <NotificationBell />
             <UserMenu />
           </div>
-          <div className="md:hidden flex items-center">
-            <div className="md:hidden absolute left-4">
-              <Logo />
-            </div>
+          <div className="md:hidden flex items-center ml-auto space-x-2">
+            <NotificationBell />
             <button
               onClick={() => setIsMobileMenuOpen((prev) => !prev)}
               className="inline-flex items-center justify-center p-2 rounded-md text-slate-300 hover:text-white focus:outline-none"
@@ -408,9 +401,6 @@ export function Navbar({ userProfile }: NavbarProps) {
                 <div className="text-sm font-medium leading-none text-slate-400">
                   {userProfile.email}
                 </div>
-              </div>
-              <div className="ml-auto flex items-center">
-                <NotificationBell />
               </div>
             </div>
             <div className="mt-3 px-2 space-y-1">
