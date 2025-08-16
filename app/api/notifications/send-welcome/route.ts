@@ -4,7 +4,7 @@ import webpush from "web-push";
 
 // Configura o web-push com as chaves VAPID do nosso ambiente
 webpush.setVapidDetails(
-  "mailto:suporte@scanpro.com", // Um e-mail de contato
+  "mailto:scanpro@grupoitcbrasil.com.br", // Um e-mail de contato
   process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
   process.env.VAPID_PRIVATE_KEY!
 );
