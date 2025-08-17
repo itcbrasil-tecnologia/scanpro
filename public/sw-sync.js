@@ -1,4 +1,4 @@
-// ATUALIZADO: Importa a cópia local do Dexie
+// Importa a cópia local do Dexie
 self.importScripts("/dexie.min.js");
 
 const db = new self.Dexie("ScanProDB");
@@ -54,15 +54,27 @@ async function syncConferences() {
   console.log("[Service Worker] Sincronização de conferências concluída.");
 }
 
+// Lógica para receber notificações push ATUALIZADA com try...catch
 self.addEventListener("push", (event) => {
   console.log("[Service Worker] Notificação Push recebida.");
 
-  const data = event.data.json();
+  let notificationData = {};
 
-  const title = data.title || "ScanPRO";
+  try {
+    // Tenta interpretar o payload como JSON
+    notificationData = event.data.json();
+  } catch (e) {
+    // Se falhar, trata como texto simples e o usa como corpo da notificação
+    console.log("[Service Worker] Payload não era JSON, tratando como texto.");
+    notificationData = {
+      body: event.data.text(),
+    };
+  }
+
+  const title = notificationData.title || "ScanPRO";
   const options = {
-    body: data.body || "Você tem uma nova notificação.",
-    icon: data.icon || "/icons/icon-192x192.png",
+    body: notificationData.body || "Você tem uma nova notificação.",
+    icon: notificationData.icon || "/icons/icon-192x192.png",
     badge: "/icons/icon-192x192.png",
   };
 
