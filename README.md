@@ -3,30 +3,73 @@
 <p align="center">
   <img src="public/Logo.svg" alt="ScanPRO Logo" width="250"/>
 </p>
- 
+
 <p align="center">
   <img src="https://img.shields.io/badge/framework-Next.js-black?logo=next.js" alt="Next.js">
   <img src="https://img.shields.io/badge/linguagem-Typescript-blue?logo=typescript&logoColor=white" alt="TypeScript">
   <img src="https://img.shields.io/badge/backend-Firebase-orange?logo=firebase" alt="Firebase">
+  <img src="https://img.shields.io/badge/PWA-Offline--First-purple?logo=pwa" alt="PWA">
   <img src="https://img.shields.io/badge/estilo-Tailwind%20CSS-blue?logo=tailwind-css" alt="Tailwind CSS">
 </p>
- 
-**ScanPRO** é uma aplicação web full-stack robusta e escalável, projetada para a gestão e conferência de ativos (notebooks) através da leitura de QR Codes. Construído com as mais recentes tecnologias, o sistema oferece uma interface de usuário simples e intuitiva, com diferentes níveis de acesso e funcionalidades para otimizar o fluxo de trabalho de equipes de TI e logística.
- 
+
+**ScanPRO** é uma aplicação web full-stack robusta e escalável, projetada para a gestão e conferência de ativos (notebooks) através da leitura de QR Codes. Agora, evoluído para um **Progressive Web App (PWA)**, o sistema garante funcionalidade contínua mesmo em ambientes offline, otimizando o fluxo de trabalho de equipes de TI e logística.
+
 ---
- 
+
+## Índice
+
+- [ScanPRO - Sistema de Conferência de Ativos](#scanpro---sistema-de-conferência-de-ativos)
+  - [Índice](#índice)
+  - [Visão Geral](#visão-geral)
+  - [Principais Funcionalidades](#principais-funcionalidades)
+  - [Stack de Tecnologia](#stack-de-tecnologia)
+  - [Começando](#começando)
+    - [Pré-requisitos](#pré-requisitos)
+    - [Instalação](#instalação)
+  - [Estrutura do Projeto](#estrutura-do-projeto)
+  - [Deploy](#deploy)
+
 ## Visão Geral
- 
+
 O objetivo principal do ScanPRO é substituir processos manuais de controle de inventário por um fluxo digital, ágil e à prova de erros. Os técnicos utilizam a câmera de seus celulares para realizar conferências diárias, garantindo que cada dispositivo seja contabilizado. Gestores e administradores têm acesso a dashboards, relatórios e ferramentas de gestão completas para supervisionar todo o processo.
 
-- **Perfis de Usuário:** O sistema conta com três níveis de acesso (Técnico, Admin, Master), cada um com permissões e interfaces específicas.
-- **Gestão Completa de Ativos:** Interface administrativa para gerenciar Projetos, Unidades Móveis (UMs), Notebooks (com status, S/N e patrimônio) e Usuários.
-- **Ciclo de Vida do Ativo:** Rastreamento completo de eventos para cada ativo, desde sua criação, passando por conferências (sucesso ou falha) e ciclos de manutenção.
-- **Fluxo de Conferência Inteligente:** Uma interface otimizada para dispositivos móveis permite que os técnicos selecionem uma UM, escaneiem QR Codes e registrem a contagem de periféricos específicos daquela unidade.
-- **Notificações em Tempo Real:** Após cada conferência, um resumo detalhado é enviado automaticamente para um grupo no Telegram, mantendo os gestores informados.
-- **Geração de QR Codes:** Ferramenta integrada para gerar e imprimir etiquetas de QR Code, tanto individualmente quanto em lote, com opções de personalização.
+Com a transformação em PWA, a aplicação agora oferece uma experiência "app-like", com a capacidade de funcionar offline e sincronizar dados em segundo plano, tornando-a uma ferramenta de campo ainda mais confiável.
 
----
+## Principais Funcionalidades
+
+- ✅ **Arquitetura PWA (Progressive Web App):**
+
+  - **Modo de Conferência Offline:** Técnicos podem realizar conferências completas sem conexão com a internet. Os dados são salvos localmente no dispositivo.
+  - **Sincronização em Segundo Plano:** As conferências salvas offline são enviadas automaticamente para o servidor assim que uma conexão estável é restabelecida.
+
+- ✅ **Autenticação Segura e Robusta:**
+
+  - Login baseado em email/senha com três níveis de acesso (`Técnico`, `Admin`, `Master`).
+  - Arquitetura de sessão segura com cookies `HttpOnly` e `middleware` para proteção de rotas no servidor.
+
+- ✅ **Gestão Completa de Ativos:**
+
+  - Interfaces CRUD para administradores gerenciarem Projetos, UMs e Notebooks, incluindo S/N, Patrimônio e Status.
+  - Gestão do ciclo de vida do ativo, com histórico de eventos e status de manutenção.
+  - Cadastro em lote via importação de arquivos CSV.
+
+- ✅ **Relatórios e Análises:**
+
+  - Página de relatórios completa com busca, filtros dinâmicos e paginação no lado do servidor para alta performance.
+  - Exportação dos relatórios (completos ou filtrados) para o formato CSV.
+
+- ✅ **Fluxo de Conferência Inteligente:**
+
+  - Interface otimizada para dispositivos móveis que utiliza a câmera para a conferência de ativos.
+  - Periféricos configuráveis por Unidade Móvel (UM) para um fluxo de conferência mais preciso.
+
+- ✅ **Notificações em Tempo Real:**
+
+  - Envio automático de resumos de conferência para um grupo no Telegram.
+  - Disparo de Notificações Push para os dispositivos dos técnicos (PWA).
+
+- ✅ **Geração de QR Code:**
+  - Ferramenta para gerar e imprimir/baixar etiquetas de QR Code, tanto individualmente quanto em lote, com opções de personalização.
 
 ## Stack de Tecnologia
 
@@ -36,9 +79,10 @@ O projeto foi construído com foco em performance, escalabilidade e qualidade de
 - **Linguagem:** [TypeScript](https://www.typescriptlang.org/)
 - **Estilização:** [TailwindCSS](https://tailwindcss.com/)
 - **Backend & Banco de Dados:** [Firebase](https://firebase.google.com/) (Authentication, Cloud Firestore)
-- **Notificações:** [react-hot-toast](https://react-hot-toast.com/)
-- **Geração de QR Code:** [qrcode.react](https://github.com/zpao/qrcode.react)
-- **Manipulação de Arquivos (Frontend):** [jszip](https://stuk.github.io/jszip/) & [file-saver](https://github.com/eligrey/FileSaver.js/) & [papaparse](https://www.papaparse.com/)
+- **PWA e Service Worker:** [@ducanh2912/next-pwa](https://github.com/DuCanh2912/next-pwa)
+- **Banco de Dados Offline:** [dexie.js](https://dexie.org/)
+- **Notificações Push:** [web-push](https://github.com/web-push-libs/web-push)
+- **Manipulação de Arquivos (Frontend):** [jszip](https://stuk.github.io/jszip/), [file-saver](https://github.com/eligrey/FileSaver.js/) & [papaparse](https://www.papaparse.com/)
 - **Ícones:** [Lucide React](https://lucide.dev/)
 - **Deploy:** [Vercel](https://vercel.com/)
 
@@ -70,10 +114,10 @@ Para executar este projeto localmente, siga os passos abaixo.
     ```
 
 3.  **Configure as Variáveis de Ambiente:**
-    Crie um arquivo chamado `.env.local` na raiz do projeto e adicione suas credenciais do Firebase e do Telegram. Este arquivo **não deve** ser enviado para o GitHub.
+    Crie um arquivo chamado `.env.local` na raiz do projeto e adicione suas credenciais.
 
     ```env
-    # Firebase - Credenciais do Cliente (para o navegador)
+    # Firebase - Credenciais do Cliente
     NEXT_PUBLIC_FIREBASE_API_KEY="AIza..."
     NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="seu-projeto.firebaseapp.com"
     NEXT_PUBLIC_FIREBASE_PROJECT_ID="seu-projeto"
@@ -89,13 +133,16 @@ Para executar este projeto localmente, siga os passos abaixo.
     # Telegram
     TELEGRAM_BOT_TOKEN="seu-token-do-botfather"
     TELEGRAM_CHAT_ID="id-do-seu-grupo-ou-canal"
+
+    # Notificações Push (VAPID Keys)
+    NEXT_PUBLIC_VAPID_PUBLIC_KEY="SUA_CHAVE_PUBLICA_VAPID"
+    VAPID_PRIVATE_KEY="SUA_CHAVE_PRIVADA_VAPID"
     ```
 
 4.  **Execute o servidor de desenvolvimento:**
     ```bash
     npm run dev
     ```
-    Abra [http://localhost:3000](http://localhost:3000) no seu navegador para ver a aplicação.
 
 ---
 
@@ -105,47 +152,15 @@ A estrutura de arquivos foi organizada para garantir a escalabilidade e a manute
 
 - `app/`: Contém todas as rotas da aplicação, utilizando o App Router do Next.js.
   - `(admin)` e `(user)`: Grupos de rotas para organizar os layouts e permissões.
-  - `api/`: Rotas de backend seguras para ações no servidor (criação de usuários, notificações).
+  - `api/`: Rotas de backend para ações no servidor (autenticação, notificações, etc.).
 - `components/`: Componentes React reutilizáveis.
-  - `layout/`: Componentes de layout principais (ex: `AdminLayout`).
-  - `ui/`: Componentes de UI genéricos (botões, modais, etc.).
 - `context/`: Contextos React para gestão de estado global (ex: `AuthContext`).
-- `lib/`: Módulos de utilidade e configuração.
-  - `firebase/`: Configuração do cliente e do admin do Firebase.
-- `providers/`: Componentes de "provider" para envolver a aplicação (ex: `ClientProviders`).
+- `lib/`: Módulos de utilidade e configuração, incluindo a configuração do Firebase e do Dexie.
+- `providers/`: Componentes de "provider" para envolver a aplicação.
+- `public/`: Arquivos estáticos, incluindo ícones, manifesto do PWA e scripts do Service Worker.
+- `scripts/`: Scripts de utilidade para o projeto (ex: copiar arquivos no postinstall).
 - `types/`: Definições de tipos e interfaces TypeScript.
-
----
-
-## Funcionalidades Principais
-
-- ✅ **Autenticação Segura:** Login baseado em email/senha com gestão de sessão via Firebase.
-- ✅ **Controle de Acesso Baseado em Perfil (RBAC):** Layouts condicionais garantem que os usuários só acessem as páginas permitidas.
-- ✅ **Gestão Completa de Ativos:** Interfaces CRUD para administradores gerenciarem Projetos, UMs e Notebooks, incluindo S/N, Patrimônio e Status.
-- ✅ **Gestão de Manutenção de Ativos:** Ferramentas para administradores moverem ativos para o status "Em Manutenção", removendo-os temporariamente das conferências esperadas.
-- ✅ **Histórico de Vida Completo do Ativo (Lifecycle):** Rastreabilidade total de cada notebook, com um log detalhado de eventos como criação, conferências (sucesso/falha) e ciclos de manutenção.
-- ✅ **Cadastro em Lote via Importação CSV:** Ferramenta para administradores cadastrarem centenas de notebooks de uma só vez através do upload de uma planilha CSV.
-- ✅ **Periféricos Configuráveis por Unidade Móvel (UM):** Flexibilidade para administradores definirem quais periféricos (mouse, carregador, fone, etc.) são esperados em cada UM, tornando o fluxo do técnico mais preciso.
-- ✅ **Exclusão Segura:** Lógica de negócio que previne a exclusão de itens que possuem dependências (ex: projetos com UMs associadas).
-- ✅ **Gestão de Usuários (Apenas Master):** O perfil `MASTER` pode criar, editar e apagar outros usuários.
-- ✅ **Scanner de QR Code:** Interface otimizada para celular que utiliza a câmera para a conferência de ativos.
-- ✅ **Notificações via Telegram:** Envio automático de resumos de conferência para um chat pré-definido.
-- ✅ **Geração de QR Codes On-Demand:** Ferramenta completa para gerar e imprimir/baixar etiquetas de QR Code com múltiplas opções de personalização.
-
----
 
 ## Deploy
 
 A aplicação está configurada para deploy contínuo na **Vercel**. Qualquer `push` para a branch `main` irá acionar um novo build e deploy de produção. As variáveis de ambiente devem ser configuradas no painel de "Environment Variables" do projeto na Vercel.
-
----
-
-## Como Contribuir
-
-Este projeto é mantido ativamente. Para contribuir:
-
-1.  Crie um fork do repositório.
-2.  Crie uma nova branch para a sua feature (`git checkout -b feature/nova-feature`).
-3.  Faça commit das suas alterações (`git commit -m 'Adiciona nova feature'`).
-4.  Faça push para a sua branch (`git push origin feature/nova-feature`).
-5.  Abra um Pull Request.
