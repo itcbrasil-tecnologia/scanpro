@@ -24,6 +24,7 @@ import {
   Bell,
   BellOff,
   BellRing,
+  MessageSquare,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -175,6 +176,7 @@ export function Navbar({ userProfile }: NavbarProps) {
     { name: "Projetos", href: "/projetos", icon: BriefcaseBusiness },
     { name: "UMs", href: "/ums", icon: Truck },
     { name: "Notebooks", href: "/notebooks", icon: Laptop },
+    { name: "Notificações", href: "/notificacoes", icon: MessageSquare },
     ...(userProfile.role === "MASTER"
       ? [{ name: "Usuários", href: "/usuarios", icon: Users }]
       : []),

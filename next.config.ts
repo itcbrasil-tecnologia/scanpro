@@ -4,9 +4,10 @@ import withPWAInit from "@ducanh2912/next-pwa";
 const withPWA = withPWAInit({
   dest: "public",
   register: true,
-  // A propriedade 'skipWaiting' foi movida para dentro de 'workboxOptions'
   workboxOptions: {
     skipWaiting: true,
+    // ADICIONADO AQUI: Instrui o Service Worker principal a importar e executar nosso script customizado.
+    importScripts: ["/sw-sync.js"],
   },
   disable: process.env.NODE_ENV === "development",
 });
