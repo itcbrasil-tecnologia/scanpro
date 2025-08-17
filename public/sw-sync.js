@@ -54,17 +54,15 @@ async function syncConferences() {
   console.log("[Service Worker] Sincronização de conferências concluída.");
 }
 
-// Lógica para receber notificações push ATUALIZADA com try...catch
 self.addEventListener("push", (event) => {
   console.log("[Service Worker] Notificação Push recebida.");
 
   let notificationData = {};
 
   try {
-    // Tenta interpretar o payload como JSON
     notificationData = event.data.json();
-  } catch (e) {
-    // Se falhar, trata como texto simples e o usa como corpo da notificação
+  } catch {
+    // CORREÇÃO: O parâmetro (e) foi removido aqui
     console.log("[Service Worker] Payload não era JSON, tratando como texto.");
     notificationData = {
       body: event.data.text(),
