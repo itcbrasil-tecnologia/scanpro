@@ -7,9 +7,9 @@ export interface UserProfile {
   whatsapp: string;
   role: UserRole;
   dailyConferenceGoal?: number;
+  pushSubscription?: object; // Adicionado anteriormente
 }
 
-// NOVO TIPO ADICIONADO
 export interface ConferenceData {
   userName?: string;
   projectName: string;
@@ -29,4 +29,7 @@ export interface ConferenceData {
   miceCount?: number;
   chargersCount?: number;
   headsetsCount?: number;
+  // NOVOS CAMPOS ADICIONADOS AQUI
+  latitude?: number;
+  longitude?: number;
 }

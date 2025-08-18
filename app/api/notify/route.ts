@@ -16,6 +16,8 @@ interface SummaryData {
   miceCount?: number;
   chargersCount?: number;
   headsetsCount?: number;
+  latitude?: number;
+  longitude?: number;
 }
 
 export async function POST(request: Request) {
@@ -41,6 +43,13 @@ export async function POST(request: Request) {
     message += `*UM:* ${summary.umName || "N/A"}\n`;
     message += `*Data:* ${summary.date}\n`;
     message += `*Horário:* ${summary.startTime} às ${summary.endTime}\n`;
+
+    // Adiciona o link de geolocalização se existir
+    if (summary.latitude && summary.longitude) {
+      const mapUrl = `https://maps.google.com/?q=${summary.latitude},${summary.longitude}`;
+      message += `*Localização:* [Ver no Mapa](${mapUrl})\n`;
+    }
+
     message += `------------------------------------\n\n`;
 
     const hasPeripherals =
@@ -62,13 +71,11 @@ export async function POST(request: Request) {
     message += `*Dispositivos Ativos (Esperados):* ${summary.expectedCount}\n`;
     message += `*Dispositivos Escaneados:* ${summary.scannedCount}\n`;
     message += `*Dispositivos Faltantes:* ${summary.missingCount}\n`;
-
     if (summary.maintenanceCount && summary.maintenanceCount > 0) {
       message += `*Dispositivos em Manutenção:* ${summary.maintenanceCount}\n\n`;
     } else {
       message += `\n`;
     }
-
     if (summary.missingCount > 0) {
       message += `*Lista de Faltantes:*\n`;
       summary.missingDevices.forEach((device) => {
@@ -76,7 +83,6 @@ export async function POST(request: Request) {
       });
       message += `\n`;
     }
-
     if (
       summary.maintenanceCount &&
       summary.maintenanceCount > 0 &&
@@ -89,7 +95,6 @@ export async function POST(request: Request) {
     }
 
     const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
-
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

@@ -2,26 +2,8 @@
 
 import React from "react";
 import { Modal } from "./Modal";
-import { X, FileText } from "lucide-react";
-
-interface ConferenceData {
-  userName?: string;
-  projectName?: string;
-  umName?: string;
-  date?: string;
-  startTime?: string;
-  endTime?: string;
-  totalCadastrados?: number;
-  expectedCount?: number;
-  scannedCount?: number;
-  missingCount?: number;
-  missingDevices?: string[];
-  maintenanceDevices?: string[];
-  maintenanceCount?: number;
-  miceCount?: number;
-  chargersCount?: number;
-  headsetsCount?: number;
-}
+import { X, FileText, MapPin } from "lucide-react";
+import { ConferenceData } from "@/types";
 
 interface ConferenceSummaryModalProps {
   isOpen: boolean;
@@ -40,6 +22,11 @@ export function ConferenceSummaryModal({
     conferenceData.miceCount !== undefined ||
     conferenceData.chargersCount !== undefined ||
     conferenceData.headsetsCount !== undefined;
+
+  // Calcula o total de dispositivos cadastrados
+  const totalCadastrados =
+    (conferenceData.expectedCount || 0) +
+    (conferenceData.maintenanceCount || 0);
 
   return (
     <Modal
@@ -77,7 +64,7 @@ export function ConferenceSummaryModal({
         {hasPeripherals && (
           <>
             <hr className="my-1 border-slate-200" />
-            <div className="grid grid-cols-2 gap-x-6">
+            <div className="grid grid-cols-2 gap-x-6 pt-2">
               {conferenceData.miceCount !== undefined && (
                 <p>
                   <span className="font-semibold">Mouses:</span>{" "}
@@ -100,17 +87,34 @@ export function ConferenceSummaryModal({
           </>
         )}
 
+        {conferenceData.latitude && conferenceData.longitude && (
+          <>
+            <hr className="my-1 border-slate-200" />
+            <div className="pt-2">
+              <p className="font-semibold flex items-center mb-1">
+                <MapPin size={14} className="mr-2" /> Localização Registrada:
+              </p>
+              <a
+                href={`https://maps.google.com/?q=${conferenceData.latitude},${conferenceData.longitude}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-teal-600 hover:underline text-sm font-medium"
+              >
+                Ver no Mapa
+              </a>
+            </div>
+          </>
+        )}
+
         <hr className="my-1 border-slate-200" />
-        {/* CORREÇÃO: Adicionada margem superior (mt-2) para o espaçamento solicitado */}
+
         <div className="space-y-1 mt-2">
-          {conferenceData.totalCadastrados !== undefined && (
-            <p>
-              <span className="font-semibold">
-                Total de Dispositivos Cadastrados:
-              </span>{" "}
-              {conferenceData.totalCadastrados}
-            </p>
-          )}
+          <p>
+            <span className="font-semibold">
+              Total de Dispositivos Cadastrados:
+            </span>{" "}
+            {totalCadastrados}
+          </p>
           <p>
             <span className="font-semibold">
               Total de Dispositivos (Ativos):
@@ -149,6 +153,7 @@ export function ConferenceSummaryModal({
               </ul>
             </div>
           )}
+
         {conferenceData.maintenanceCount !== undefined &&
           conferenceData.maintenanceCount > 0 && (
             <div className="pt-2">

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Scanner, IDetectedBarcode } from "@yudiel/react-qr-scanner";
 import { useAuth } from "@/context/AuthContext";
-import { db as firestoreDB } from "@/lib/firebase/config"; // Renomeado para evitar conflito
+import { db as firestoreDB } from "@/lib/firebase/config";
 import {
   collection,
   getDocs,
@@ -33,9 +33,8 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react";
-
-// Importa nossa instância do Dexie
 import { db as dexieDB } from "@/lib/dexie/db";
+import { ConferenceData } from "@/types";
 
 interface Project {
   id: string;
@@ -54,28 +53,19 @@ interface Notebook {
   status?: "Ativo" | "Em Manutenção";
 }
 
-interface SummaryData {
-  userName?: string;
-  projectName: string;
-  umName?: string;
-  userId?: string;
-  conferenceStartTime?: Date;
-  date: string;
-  startTime?: string;
-  endTime: string;
-  expectedCount: number;
-  scannedCount: number;
-  missingCount: number;
-  scannedDevices: string[];
-  missingDevices: string[];
-  maintenanceDevices?: string[];
-  maintenanceCount?: number;
-  miceCount?: number;
-  chargersCount?: number;
-  headsetsCount?: number;
-}
+// A interface SummaryData foi removida.
 
 const AVAILABLE_PERIPHERALS = ["mouse", "carregador", "fone"];
+
+const getCurrentPosition = (): Promise<GeolocationPosition> => {
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0,
+    });
+  });
+};
 
 export default function ScannerPage() {
   const { userProfile } = useAuth();
@@ -84,9 +74,7 @@ export default function ScannerPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedUmId, setSelectedUmId] = useState<string>("");
-
   const [isOnline, setIsOnline] = useState(true);
-
   const [devicesToScan, setDevicesToScan] = useState<string[]>([]);
   const [maintenanceDevices, setMaintenanceDevices] = useState<string[]>([]);
   const [scannedDevices, setScannedDevices] = useState<string[]>([]);
@@ -101,20 +89,17 @@ export default function ScannerPage() {
   const [chargersCount, setChargersCount] = useState(0);
   const [headsetsCount, setHeadsetsCount] = useState(0);
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
-  const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
+  const [summaryData, setSummaryData] = useState<ConferenceData | null>(null); // CORRIGIDO
   const [isMaintenanceListOpen, setIsMaintenanceListOpen] = useState(false);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
-
     if (typeof window !== "undefined") {
       setIsOnline(navigator.onLine);
     }
-
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
-
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
@@ -238,14 +223,15 @@ export default function ScannerPage() {
     setStep("peripherals");
   };
 
-  const handleFinalizeConference = () => {
+  const handleFinalizeConference = async () => {
     const endTime = new Date();
     const selectedUM = ums.find((um) => um.id === selectedUmId);
     const selectedProject = projects.find(
       (project) => project.id === selectedUM?.projectId
     );
 
-    const data: Partial<SummaryData> = {
+    const data: Partial<ConferenceData> = {
+      // CORRIGIDO
       userName: userProfile?.nome,
       projectName: selectedProject?.name || "N/A",
       umName: selectedUM?.name,
@@ -276,11 +262,29 @@ export default function ScannerPage() {
     if (expectedPeripherals.includes("fone"))
       data.headsetsCount = Number(headsetsCount);
 
-    setSummaryData(data as SummaryData);
+    if ("geolocation" in navigator) {
+      try {
+        toast.loading("Obtendo localização...", { id: "location-toast" });
+        const position = await getCurrentPosition();
+        data.latitude = position.coords.latitude;
+        data.longitude = position.coords.longitude;
+        toast.dismiss("location-toast");
+      } catch (error) {
+        console.warn("Não foi possível obter a geolocalização:", error);
+        toast.dismiss("location-toast");
+        toast.error(
+          "Não foi possível obter a localização. A conferência será salva sem ela.",
+          { duration: 4000 }
+        );
+      }
+    }
+
+    setSummaryData(data as ConferenceData); // CORRIGIDO
     setIsSummaryModalOpen(true);
   };
 
-  const logConferenceLifecycleEvents = async (data: SummaryData) => {
+  const logConferenceLifecycleEvents = async (data: ConferenceData) => {
+    // CORRIGIDO
     try {
       const allHostnames = [...data.scannedDevices, ...data.missingDevices];
       if (allHostnames.length === 0) return;
@@ -351,19 +355,18 @@ export default function ScannerPage() {
     }
   };
 
-  const saveConferenceOffline = async (data: SummaryData) => {
+  const saveConferenceOffline = async (data: ConferenceData) => {
+    // CORRIGIDO
     try {
       await dexieDB.conferencesOutbox.add({
         conferenceData: data,
         timestamp: new Date(),
       });
-
       if ("serviceWorker" in navigator && "SyncManager" in window) {
         navigator.serviceWorker.ready.then((sw) => {
           sw.sync.register("sync-conferences");
         });
       }
-
       toast.success(
         "Conexão indisponível. Sua conferência foi salva localmente e será enviada depois.",
         { duration: 5000 }

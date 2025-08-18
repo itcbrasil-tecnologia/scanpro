@@ -13,42 +13,33 @@ import {
 } from "firebase/firestore";
 import { DashboardCard } from "@/components/ui/DashboardCard";
 import { Modal } from "@/components/ui/Modal";
-import { PeripheralsModal } from "@/components/ui/PeripheralsModal";
 import { AssetLifecycleModal } from "@/components/ui/AssetLifecycleModal";
+import { ConferenceSummaryModal } from "@/components/ui/ConferenceSummaryModal";
 import {
   Users,
   BriefcaseBusiness,
   Truck,
   Laptop,
-  TriangleAlert,
-  Eye,
   Wrench,
   History,
+  MapPin,
+  FileText,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { ConferenceData } from "@/types";
 
 type ModalListItem = { name: string; whatsapp?: string };
-interface Conference {
+
+interface Conference extends ConferenceData {
   id: string;
-  date: string;
-  startTime: string;
-  endTime: string;
   project: string;
   um: string;
   technician: string;
   expected: number;
   scanned: number;
   missing: number;
-  missingHostnames: string[];
-  miceCount?: number;
-  chargersCount?: number;
-  headsetsCount?: number;
 }
-interface PeripheralsData {
-  miceCount?: number;
-  chargersCount?: number;
-  headsetsCount?: number;
-}
+
 interface MaintenanceNotebook {
   id: string;
   hostname: string;
@@ -67,16 +58,11 @@ export default function DashboardPage() {
   });
   const [conferences, setConferences] = useState<Conference[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Estados de Modais e Listas
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [detailsModalContent, setDetailsModalContent] = useState<{
     title: string;
     data: ModalListItem[] | string[];
   }>({ title: "", data: [] });
-  const [isPeripheralsModalOpen, setIsPeripheralsModalOpen] = useState(false);
-  const [selectedPeripherals, setSelectedPeripherals] =
-    useState<PeripheralsData | null>(null);
   const [isMaintenanceModalOpen, setIsMaintenanceModalOpen] = useState(false);
   const [maintenanceNotebooks, setMaintenanceNotebooks] = useState<
     MaintenanceNotebook[]
@@ -86,6 +72,10 @@ export default function DashboardPage() {
     useState<MaintenanceNotebook | null>(null);
   const [techniciansList, setTechniciansList] = useState<ModalListItem[]>([]);
   const [projectsList, setProjectsList] = useState<ModalListItem[]>([]);
+
+  const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
+  const [selectedConferenceForSummary, setSelectedConferenceForSummary] =
+    useState<ConferenceData | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -117,7 +107,6 @@ export default function DashboardPage() {
           getDocs(conferencesQuery),
         ]);
 
-        // Processamento dos dados dos cards
         const projectsData = projectsSnapshot.docs.map((doc) => ({
           name: doc.data().name,
         }));
@@ -142,9 +131,9 @@ export default function DashboardPage() {
           maintenance: maintenanceSnapshot.size,
         });
 
-        // Processamento dos dados das conferências
         const conferencesList = conferencesSnapshot.docs.map((doc) => {
           const data = doc.data();
+          // CORREÇÃO: Removido o `...data` que causava o erro de renderização do Timestamp
           return {
             id: doc.id,
             date: data.endTime.toDate().toLocaleDateString("pt-BR"),
@@ -166,10 +155,14 @@ export default function DashboardPage() {
             expected: data.expectedCount,
             scanned: data.scannedCount,
             missing: data.missingCount,
-            missingHostnames: data.missingDevices || [],
+            missingDevices: data.missingDevices || [],
+            maintenanceDevices: data.maintenanceDevices || [],
             miceCount: data.miceCount,
             chargersCount: data.chargersCount,
             headsetsCount: data.headsetsCount,
+            latitude: data.latitude,
+            longitude: data.longitude,
+            // Adicione outros campos da ConferenceData aqui se necessário
           } as Conference;
         });
         setConferences(conferencesList);
@@ -193,13 +186,15 @@ export default function DashboardPage() {
     setDetailsModalContent({ title, data });
     setIsDetailsModalOpen(true);
   };
-  const openPeripheralsModal = (data: PeripheralsData) => {
-    setSelectedPeripherals(data);
-    setIsPeripheralsModalOpen(true);
-  };
+
   const openHistoryModal = (notebook: MaintenanceNotebook) => {
     setSelectedNotebookForHistory(notebook);
     setIsLifecycleModalOpen(true);
+  };
+
+  const openSummaryModal = (conference: ConferenceData) => {
+    setSelectedConferenceForSummary(conference);
+    setIsSummaryModalOpen(true);
   };
 
   const renderStatus = (scanned: number, expected: number) => {
@@ -265,9 +260,6 @@ export default function DashboardPage() {
                   Data
                 </th>
                 <th className="p-3 text-sm font-semibold text-slate-600">
-                  Horários
-                </th>
-                <th className="p-3 text-sm font-semibold text-slate-600">
                   Projeto / UM
                 </th>
                 <th className="p-3 text-sm font-semibold text-slate-600">
@@ -277,20 +269,20 @@ export default function DashboardPage() {
                   Contagem
                 </th>
                 <th className="p-3 text-sm font-semibold text-slate-600 text-center">
-                  Periféricos
-                </th>
-                <th className="p-3 text-sm font-semibold text-slate-600 text-center">
                   Status
                 </th>
                 <th className="p-3 text-sm font-semibold text-slate-600 text-center">
-                  Detalhes
+                  Localidade
+                </th>
+                <th className="p-3 text-sm font-semibold text-slate-600 text-center">
+                  Resumo
                 </th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={8} className="text-center p-6 text-gray-500">
+                  <td colSpan={7} className="text-center p-6 text-gray-500">
                     Carregando conferências...
                   </td>
                 </tr>
@@ -300,9 +292,12 @@ export default function DashboardPage() {
                     key={conference.id}
                     className="border-b hover:bg-slate-50"
                   >
-                    <td className="p-3">{conference.date}</td>
-                    <td className="p-3">
-                      {conference.startTime} - {conference.endTime}
+                    <td className="p-3 text-sm">
+                      {conference.date}
+                      <br />
+                      <span className="text-xs text-gray-500">
+                        {conference.startTime} - {conference.endTime}
+                      </span>
                     </td>
                     <td className="p-3">
                       {conference.project} / {conference.um}
@@ -312,42 +307,33 @@ export default function DashboardPage() {
                       {conference.scanned} / {conference.expected}
                     </td>
                     <td className="p-3 text-center">
-                      {(conference.miceCount !== undefined ||
-                        conference.chargersCount !== undefined ||
-                        conference.headsetsCount !== undefined) && (
-                        <button
-                          className="flex items-center justify-center mx-auto text-xs font-semibold text-teal-800 bg-teal-100 hover:bg-teal-200 px-3 py-1 rounded-full transition-colors"
-                          onClick={() => openPeripheralsModal(conference)}
-                        >
-                          <Eye size={14} className="mr-1.5" />
-                          Visualizar
-                        </button>
-                      )}
-                    </td>
-                    <td className="p-3 text-center">
                       {renderStatus(conference.scanned, conference.expected)}
                     </td>
                     <td className="p-3 text-center">
-                      {conference.missing > 0 && (
-                        <button
-                          className="flex items-center justify-center mx-auto text-xs font-semibold text-amber-800 bg-amber-100 hover:bg-amber-200 px-3 py-1 rounded-full transition-colors"
-                          onClick={() =>
-                            openDetailsModal(
-                              "Dispositivos Não Escaneados",
-                              conference.missingHostnames
-                            )
-                          }
+                      {conference.latitude && conference.longitude && (
+                        <a
+                          href={`https://maps.google.com/?q=${conference.latitude},${conference.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-teal-600 hover:underline font-semibold flex items-center justify-center"
                         >
-                          <TriangleAlert size={14} className="mr-1.5" />
-                          Ver Faltantes
-                        </button>
+                          <MapPin size={14} className="mr-1" /> Link
+                        </a>
                       )}
+                    </td>
+                    <td className="p-3 text-center">
+                      <button
+                        onClick={() => openSummaryModal(conference)}
+                        className="flex items-center justify-center mx-auto text-xs font-semibold text-blue-800 bg-blue-100 hover:bg-blue-200 px-3 py-1 rounded-full transition-colors"
+                      >
+                        <FileText size={14} className="mr-1.5" /> Ver
+                      </button>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} className="text-center p-6 text-gray-500">
+                  <td colSpan={7} className="text-center p-6 text-gray-500">
                     Nenhuma conferência registrada ainda.
                   </td>
                 </tr>
@@ -375,12 +361,6 @@ export default function DashboardPage() {
           ))}
         </ul>
       </Modal>
-
-      <PeripheralsModal
-        isOpen={isPeripheralsModalOpen}
-        onClose={() => setIsPeripheralsModalOpen(false)}
-        data={selectedPeripherals}
-      />
 
       <Modal
         isOpen={isMaintenanceModalOpen}
@@ -441,6 +421,12 @@ export default function DashboardPage() {
         isOpen={isLifecycleModalOpen}
         onClose={() => setIsLifecycleModalOpen(false)}
         notebook={selectedNotebookForHistory}
+      />
+
+      <ConferenceSummaryModal
+        isOpen={isSummaryModalOpen}
+        onClose={() => setIsSummaryModalOpen(false)}
+        conferenceData={selectedConferenceForSummary}
       />
     </div>
   );
