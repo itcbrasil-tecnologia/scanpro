@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-// A importação 'admin' foi removida daqui
+import "@/lib/firebase/admin"; // CORREÇÃO: Importa o módulo apenas por seu efeito colateral (inicialização)
 import webpush, { PushSubscription } from "web-push";
 import { getFirestore, QueryDocumentSnapshot } from "firebase-admin/firestore";
 

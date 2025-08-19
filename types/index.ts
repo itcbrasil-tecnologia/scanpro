@@ -7,10 +7,11 @@ export interface UserProfile {
   whatsapp: string;
   role: UserRole;
   dailyConferenceGoal?: number;
-  pushSubscription?: object; // Adicionado anteriormente
+  pushSubscription?: object;
 }
 
 export interface ConferenceData {
+  id?: string; // PROPRIEDADE ADICIONADA AQUI
   userName?: string;
   projectName: string;
   umName?: string;
@@ -29,7 +30,6 @@ export interface ConferenceData {
   miceCount?: number;
   chargersCount?: number;
   headsetsCount?: number;
-  // NOVOS CAMPOS ADICIONADOS AQUI
   latitude?: number;
   longitude?: number;
 }
