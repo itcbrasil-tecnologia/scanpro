@@ -1,18 +1,19 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, Fragment } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase/config";
 import { UserProfile } from "@/types";
+import { Menu, Transition } from "@headlessui/react";
 import {
   LogOut,
   User,
   KeyRound,
   ChevronDown,
-  Menu,
+  Menu as MenuIcon,
   X,
   LayoutDashboard,
   FileText,
@@ -21,12 +22,10 @@ import {
   Home,
   Truck,
   BriefcaseBusiness,
-  Bell,
-  BellOff,
-  BellRing,
   MessageSquare,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { NotificationBell } from "./NotificationBell";
 
 interface NavbarProps {
   userProfile: UserProfile;
@@ -34,106 +33,10 @@ interface NavbarProps {
 
 export function Navbar({ userProfile }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isAdminDropdownOpen, setIsAdminDropdownOpen] = useState(false);
-  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [isMobileAdminOpen, setIsMobileAdminOpen] = useState(false);
-  const [notificationPermission, setNotificationPermission] =
-    useState<NotificationPermission>("default");
 
   const pathname = usePathname();
   const router = useRouter();
-  const adminDropdownRef = useRef<HTMLDivElement>(null);
-  const userDropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (userProfile.role === "USER" && "Notification" in window) {
-      setNotificationPermission(Notification.permission);
-    }
-  }, [userProfile.role]);
-
-  const handleSubscribeToNotifications = async () => {
-    if (
-      !("serviceWorker" in navigator) ||
-      !("PushManager" in window) ||
-      !userProfile
-    ) {
-      toast.error("Seu navegador não suporta notificações push.");
-      return;
-    }
-    try {
-      const sw = await navigator.serviceWorker.ready;
-      const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-      if (!vapidPublicKey) {
-        console.error("Chave VAPID pública não configurada.");
-        toast.error("Erro de configuração para notificações.");
-        return;
-      }
-      const subscription = await sw.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: vapidPublicKey,
-      });
-      await fetch("/api/notifications/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          uid: userProfile.uid,
-          subscription: subscription,
-        }),
-      });
-      toast.success("Notificações ativadas com sucesso!");
-      setNotificationPermission("granted");
-
-      await fetch("/api/notifications/send-welcome", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uid: userProfile.uid }),
-      });
-    } catch (error) {
-      console.error("Erro ao se inscrever para notificações:", error);
-      setNotificationPermission(Notification.permission);
-      toast.error(
-        "Não foi possível ativar as notificações. Você precisa dar permissão no pop-up do navegador."
-      );
-    }
-  };
-
-  const NotificationBell = () => {
-    if (userProfile.role !== "USER") {
-      return null;
-    }
-
-    switch (notificationPermission) {
-      case "granted":
-        return (
-          <div
-            className="flex items-center p-2 text-green-400"
-            title="Notificações ativadas"
-          >
-            <BellRing size={20} />
-          </div>
-        );
-      case "denied":
-        return (
-          <div
-            className="flex items-center p-2 text-red-400"
-            title="Notificações bloqueadas. Habilite nas configurações do navegador."
-          >
-            <BellOff size={20} />
-          </div>
-        );
-      case "default":
-      default:
-        return (
-          <button
-            onClick={handleSubscribeToNotifications}
-            className="flex items-center p-2 text-slate-300 hover:text-white rounded-full transition-colors hover:bg-slate-700"
-            title="Ativar notificações"
-          >
-            <Bell size={20} />
-          </button>
-        );
-    }
-  };
 
   const handleLogout = async () => {
     try {
@@ -147,31 +50,14 @@ export function Navbar({ userProfile }: NavbarProps) {
     }
   };
 
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        adminDropdownRef.current &&
-        !adminDropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsAdminDropdownOpen(false);
-      }
-      if (
-        userDropdownRef.current &&
-        !userDropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsUserDropdownOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   const isAdminOrMaster =
     userProfile.role === "ADMIN" || userProfile.role === "MASTER";
+
   const adminMenuItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Relatórios", href: "/relatorios", icon: FileText },
   ];
+
   const adminDropdownItems = [
     { name: "Projetos", href: "/projetos", icon: BriefcaseBusiness },
     { name: "UMs", href: "/ums", icon: Truck },
@@ -223,48 +109,70 @@ export function Navbar({ userProfile }: NavbarProps) {
   );
 
   const UserMenu = () => (
-    <div className="relative" ref={userDropdownRef}>
-      <button
-        onClick={() => setIsUserDropdownOpen((prev) => !prev)}
-        className="flex items-center text-sm rounded-full text-slate-300 hover:text-white hover:bg-slate-700 p-2 focus:outline-none"
-      >
+    <Menu as="div" className="relative">
+      <Menu.Button className="flex items-center text-sm rounded-full text-slate-300 hover:text-white hover:bg-slate-700 p-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75">
         <User size={24} />
-        <span className="ml-2">{userProfile.nome.split(" ")[0]}</span>
+        <span className="hidden sm:inline ml-2">
+          {userProfile.nome.split(" ")[0]}
+        </span>
         <ChevronDown size={16} className="ml-1" />
-      </button>
-      {isUserDropdownOpen && (
-        <div className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg py-1 bg-white z-10">
-          <div className="px-4 py-2 text-sm text-slate-500 border-b border-slate-200">
+      </Menu.Button>
+      <Transition
+        as={Fragment}
+        enter="transition ease-out duration-100"
+        enterFrom="transform opacity-0 scale-95"
+        enterTo="transform opacity-100 scale-100"
+        leave="transition ease-in duration-75"
+        leaveFrom="transform opacity-100 scale-100"
+        leaveTo="transform opacity-0 scale-95"
+      >
+        <Menu.Items className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
+          <div className="px-4 py-3 text-sm text-slate-500 border-b border-slate-200">
             <p>Sessão iniciada como</p>
             <p className="font-medium text-slate-800 truncate">
               {userProfile.email}
             </p>
           </div>
-          {!isAdminOrMaster && (
-            <Link
-              href="/inicio"
-              className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
-              onClick={() => setIsUserDropdownOpen(false)}
-            >
-              <Home size={16} className="mr-2 text-slate-500" /> Início
-            </Link>
-          )}
-          <Link
-            href="/alterar-senha"
-            className="flex items-center px-4 py-2 text-sm text-slate-700 hover:bg-slate-100"
-            onClick={() => setIsUserDropdownOpen(false)}
-          >
-            <KeyRound size={16} className="mr-2 text-slate-500" /> Alterar Senha
-          </Link>
-          <button
-            onClick={handleLogout}
-            className="w-full text-left flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-          >
-            <LogOut size={16} className="mr-2" /> Sair
-          </button>
-        </div>
-      )}
-    </div>
+          <Menu.Item>
+            {({ active }) => (
+              <Link
+                href="/inicio"
+                className={`flex items-center w-full px-4 py-2 text-sm text-slate-700 ${
+                  active ? "bg-slate-100" : ""
+                }`}
+              >
+                <Home size={16} className="mr-3 text-slate-500" /> Início
+              </Link>
+            )}
+          </Menu.Item>
+          <Menu.Item>
+            {({ active }) => (
+              <Link
+                href="/alterar-senha"
+                className={`flex items-center w-full px-4 py-2 text-sm text-slate-700 ${
+                  active ? "bg-slate-100" : ""
+                }`}
+              >
+                <KeyRound size={16} className="mr-3 text-slate-500" />
+                Alterar Senha
+              </Link>
+            )}
+          </Menu.Item>
+          <Menu.Item>
+            {({ active }) => (
+              <button
+                onClick={handleLogout}
+                className={`w-full text-left flex items-center px-4 py-2 text-sm text-red-600 ${
+                  active ? "bg-red-50" : ""
+                }`}
+              >
+                <LogOut size={16} className="mr-3" /> Sair
+              </button>
+            )}
+          </Menu.Item>
+        </Menu.Items>
+      </Transition>
+    </Menu>
   );
 
   return (
@@ -274,7 +182,8 @@ export function Navbar({ userProfile }: NavbarProps) {
           <div className="flex-shrink-0">
             <Logo />
           </div>
-          {isAdminOrMaster && (
+          {/* A lógica de navegação principal agora verifica se o usuário é admin/master */}
+          {isAdminOrMaster ? (
             <div className="hidden md:flex flex-1 items-center justify-center">
               <div className="flex items-baseline space-x-4">
                 {adminMenuItems.map((item) => (
@@ -282,57 +191,74 @@ export function Navbar({ userProfile }: NavbarProps) {
                     {item.name}
                   </NavLink>
                 ))}
-                <div className="relative" ref={adminDropdownRef}>
-                  <button
-                    onClick={() => setIsAdminDropdownOpen((prev) => !prev)}
-                    className={`px-4 py-2 rounded-md text-base font-medium transition-colors flex items-center ${
+
+                <Menu as="div" className="relative">
+                  <Menu.Button
+                    className={`px-4 py-2 rounded-md text-base font-medium transition-colors flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 ${
                       pathname.startsWith("/projetos") ||
                       pathname.startsWith("/ums") ||
                       pathname.startsWith("/notebooks") ||
-                      pathname.startsWith("/usuarios")
+                      pathname.startsWith("/usuarios") ||
+                      pathname.startsWith("/notificacoes")
                         ? "bg-slate-700 text-white"
                         : "text-slate-300 hover:bg-slate-700 hover:text-white"
                     }`}
                   >
                     <span>Administração</span>
                     <ChevronDown size={16} className="ml-1" />
-                  </button>
-                  {isAdminDropdownOpen && (
-                    <div className="origin-top-right absolute mt-2 w-48 rounded-md shadow-lg py-1 bg-slate-800 z-10">
+                  </Menu.Button>
+                  <Transition
+                    as={Fragment}
+                    enter="transition ease-out duration-100"
+                    enterFrom="transform opacity-0 scale-95"
+                    enterTo="transform opacity-100 scale-100"
+                    leave="transition ease-in duration-75"
+                    leaveFrom="transform opacity-100 scale-100"
+                    leaveTo="transform opacity-0 scale-95"
+                  >
+                    <Menu.Items className="origin-top-center absolute mt-2 w-48 rounded-md shadow-lg py-1 bg-slate-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
                       {adminDropdownItems.map((item) => (
-                        <Link
-                          key={item.name}
-                          href={item.href}
-                          className="flex items-center px-4 py-2 text-sm text-slate-200 hover:bg-slate-700 hover:text-white"
-                          onClick={() => setIsAdminDropdownOpen(false)}
-                        >
-                          <item.icon size={16} className="mr-2" />
-                          {item.name}
-                        </Link>
+                        <Menu.Item key={item.name}>
+                          {({ active }) => (
+                            <Link
+                              href={item.href}
+                              className={`flex items-center w-full px-4 py-2 text-sm text-slate-200 ${
+                                active ? "bg-slate-700 text-white" : ""
+                              }`}
+                            >
+                              <item.icon size={16} className="mr-3" />
+                              {item.name}
+                            </Link>
+                          )}
+                        </Menu.Item>
                       ))}
-                    </div>
-                  )}
-                </div>
+                    </Menu.Items>
+                  </Transition>
+                </Menu>
               </div>
             </div>
+          ) : (
+            // Para técnicos, o centro da navbar em desktop fica vazio, criando um layout mais limpo
+            <div className="hidden md:flex flex-1 items-center justify-center"></div>
           )}
           <div className="hidden md:flex items-center space-x-2">
-            <NotificationBell />
+            <NotificationBell userProfile={userProfile} />
             <UserMenu />
           </div>
           <div className="md:hidden flex items-center ml-auto space-x-2">
-            <NotificationBell />
+            <NotificationBell userProfile={userProfile} />
             <button
               onClick={() => setIsMobileMenuOpen((prev) => !prev)}
               className="inline-flex items-center justify-center p-2 rounded-md text-slate-300 hover:text-white focus:outline-none"
             >
-              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              {isMobileMenuOpen ? <X size={24} /> : <MenuIcon size={24} />}
             </button>
           </div>
         </div>
       </div>
       {isMobileMenuOpen && (
         <div className="md:hidden bg-slate-800 border-t border-slate-700">
+          {/* A navegação mobile permanece a mesma, pois é a principal para o técnico */}
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
             {isAdminOrMaster ? (
               <>

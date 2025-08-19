@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { Scanner, IDetectedBarcode } from "@yudiel/react-qr-scanner";
 import { useAuth } from "@/context/AuthContext";
@@ -16,6 +16,7 @@ import {
   doc,
   DocumentData,
   QuerySnapshot,
+  orderBy,
 } from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
 import toast from "react-hot-toast";
@@ -32,9 +33,13 @@ import {
   ChevronDown,
   Wifi,
   WifiOff,
+  Check,
+  ChevronsUpDown,
 } from "lucide-react";
 import { db as dexieDB } from "@/lib/dexie/db";
 import { ConferenceData } from "@/types";
+import { Listbox, Transition, Disclosure } from "@headlessui/react"; // ADICIONADO: Disclosure
+import { NumberInput } from "@/components/ui/NumberInput";
 
 interface Project {
   id: string;
@@ -88,7 +93,8 @@ export default function ScannerPage() {
   const [headsetsCount, setHeadsetsCount] = useState(0);
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
   const [summaryData, setSummaryData] = useState<ConferenceData | null>(null);
-  const [isMaintenanceListOpen, setIsMaintenanceListOpen] = useState(false);
+  // REMOVIDO: Estado não é mais utilizado após a introdução do Disclosure
+  // const [isMaintenanceListOpen, setIsMaintenanceListOpen] = useState(false);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -108,7 +114,9 @@ export default function ScannerPage() {
     const fetchInitialData = async () => {
       setIsLoading(true);
       try {
-        const umsSnapshot = await getDocs(collection(firestoreDB, "ums"));
+        const umsSnapshot = await getDocs(
+          query(collection(firestoreDB, "ums"), orderBy("name"))
+        );
         const umsList = umsSnapshot.docs.map(
           (doc) => ({ id: doc.id, ...doc.data() } as UM)
         );
@@ -167,7 +175,6 @@ export default function ScannerPage() {
         setScannedDevices([]);
         setStep("scanning");
         setConferenceStartTime(new Date());
-        setIsMaintenanceListOpen(false);
       } catch (error) {
         toast.error("Erro ao carregar notebooks para esta UM.", {
           id: "global-toast",
@@ -227,7 +234,6 @@ export default function ScannerPage() {
     const selectedProject = projects.find(
       (project) => project.id === selectedUM?.projectId
     );
-
     const data: ConferenceData = {
       userName: userProfile?.nome,
       projectName: selectedProject?.name || "N/A",
@@ -268,7 +274,6 @@ export default function ScannerPage() {
         );
       }
     }
-
     setSummaryData(data);
     setIsSummaryModalOpen(true);
   };
@@ -290,7 +295,6 @@ export default function ScannerPage() {
           return getDocs(notebooksQuery);
         }
       );
-
       const querySnapshots = await Promise.all(queryPromises);
       const hostnameToIdMap = new Map<string, string>();
       querySnapshots.forEach((snapshot) => {
@@ -298,7 +302,6 @@ export default function ScannerPage() {
           hostnameToIdMap.set(doc.data().hostname, doc.id);
         });
       });
-
       const batch = writeBatch(firestoreDB);
       const timestamp = Timestamp.now();
       const user = userProfile?.nome || "Sistema";
@@ -372,7 +375,6 @@ export default function ScannerPage() {
       await saveConferenceOffline(summaryData);
       return;
     }
-
     try {
       await addDoc(collection(firestoreDB, "conferences"), {
         ...summaryData,
@@ -397,44 +399,76 @@ export default function ScannerPage() {
     }
   };
 
-  const handleNumericInputChange =
-    (setter: React.Dispatch<React.SetStateAction<number>>) =>
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = e.target.value;
-      if (/^\d*$/.test(value)) {
-        setter(Number(value));
-      }
-    };
+  const getUmName = (id: string) =>
+    ums.find((u) => u.id === id)?.name ||
+    (isLoading ? "Carregando..." : "-- Selecione para iniciar");
 
   return (
     <div className="space-y-4">
       <div className="bg-white p-4 rounded-lg shadow-md flex justify-between items-center">
-        <div>
-          <label
-            htmlFor="um-select"
-            className="block text-sm font-medium text-gray-700"
-          >
+        <div className="w-full">
+          <label className="block text-sm font-medium text-gray-700">
             1. Selecione a Unidade Móvel (UM)
           </label>
-          <select
-            id="um-select"
+          <Listbox
             value={selectedUmId}
-            onChange={(event) => setSelectedUmId(event.target.value)}
+            onChange={setSelectedUmId}
             disabled={isLoading || step !== "selection"}
-            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-teal-500 focus:border-teal-500 sm:text-sm rounded-md bg-white disabled:bg-slate-50"
           >
-            <option value="">
-              {isLoading ? "Carregando..." : "-- Selecione para iniciar"}
-            </option>
-            {ums.map((um) => (
-              <option key={um.id} value={um.id}>
-                {um.name}
-              </option>
-            ))}
-          </select>
+            <div className="relative mt-1">
+              <Listbox.Button className="relative w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-teal-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-teal-300 sm:text-sm disabled:bg-slate-50 disabled:cursor-not-allowed">
+                <span className="block truncate">
+                  {getUmName(selectedUmId)}
+                </span>
+                <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                  <ChevronsUpDown
+                    className="h-5 w-5 text-gray-400"
+                    aria-hidden="true"
+                  />
+                </span>
+              </Listbox.Button>
+              <Transition
+                as={Fragment}
+                leave="transition ease-in duration-100"
+                leaveFrom="opacity-100"
+                leaveTo="opacity-0"
+              >
+                <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-10">
+                  {ums.map((um) => (
+                    <Listbox.Option
+                      key={um.id}
+                      value={um.id}
+                      className={({ active }) =>
+                        `relative cursor-default select-none py-2 pl-10 pr-4 ${
+                          active ? "bg-teal-100 text-teal-900" : "text-gray-900"
+                        }`
+                      }
+                    >
+                      {({ selected }) => (
+                        <>
+                          <span
+                            className={`block truncate ${
+                              selected ? "font-medium" : "font-normal"
+                            }`}
+                          >
+                            {um.name}
+                          </span>
+                          {selected ? (
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-teal-600">
+                              <Check className="h-5 w-5" aria-hidden="true" />
+                            </span>
+                          ) : null}
+                        </>
+                      )}
+                    </Listbox.Option>
+                  ))}
+                </Listbox.Options>
+              </Transition>
+            </div>
+          </Listbox>
         </div>
         <div
-          className={`flex items-center text-xs font-bold px-3 py-1 rounded-full ${
+          className={`flex items-center text-xs font-bold px-3 py-1 rounded-full ml-4 flex-shrink-0 ${
             isOnline ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
           }`}
         >
@@ -470,40 +504,40 @@ export default function ScannerPage() {
               </h3>
               {maintenanceDevices.length > 0 && (
                 <div className="mt-4 border-t pt-3">
-                  <button
-                    className="w-full flex justify-between items-center text-left text-amber-800"
-                    onClick={() =>
-                      setIsMaintenanceListOpen(!isMaintenanceListOpen)
-                    }
-                  >
-                    <div className="flex items-center font-semibold text-sm">
-                      <Wrench size={14} className="mr-2" />
-                      {maintenanceDevices.length} dispositivo(s) em manutenção
-                    </div>
-                    <ChevronDown
-                      size={20}
-                      className={`transition-transform ${
-                        isMaintenanceListOpen ? "rotate-180" : ""
-                      }`}
-                    />
-                  </button>
-                  {isMaintenanceListOpen && (
-                    <div className="mt-2 pl-2">
-                      <p className="text-xs text-slate-500 mb-2">
-                        Estes itens não precisam ser escaneados.
-                      </p>
-                      <ul className="h-24 overflow-y-auto space-y-1 pr-2">
-                        {maintenanceDevices.map((device) => (
-                          <li
-                            key={device}
-                            className="p-2 bg-amber-50 text-amber-800 rounded font-mono text-sm"
-                          >
-                            {device}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                  <Disclosure>
+                    {({ open }) => (
+                      <>
+                        <Disclosure.Button className="w-full flex justify-between items-center text-left text-amber-800">
+                          <div className="flex items-center font-semibold text-sm">
+                            <Wrench size={14} className="mr-2" />
+                            {maintenanceDevices.length} dispositivo(s) em
+                            manutenção
+                          </div>
+                          <ChevronDown
+                            size={20}
+                            className={`transition-transform ${
+                              open ? "rotate-180" : ""
+                            }`}
+                          />
+                        </Disclosure.Button>
+                        <Disclosure.Panel className="mt-2 pl-2">
+                          <p className="text-xs text-slate-500 mb-2">
+                            Estes itens não precisam ser escaneados.
+                          </p>
+                          <ul className="h-24 overflow-y-auto space-y-1 pr-2">
+                            {maintenanceDevices.map((device) => (
+                              <li
+                                key={device}
+                                className="p-2 bg-amber-50 text-amber-800 rounded font-mono text-sm"
+                              >
+                                {device}
+                              </li>
+                            ))}
+                          </ul>
+                        </Disclosure.Panel>
+                      </>
+                    )}
+                  </Disclosure>
                 </div>
               )}
               <ul className="h-48 overflow-y-auto mt-2 space-y-1 px-2">
@@ -552,71 +586,42 @@ export default function ScannerPage() {
       )}
 
       {step === "peripherals" && (
-        <div className="bg-white p-6 rounded-lg shadow-md space-y-6">
+        <div className="bg-white p-6 rounded-lg shadow-md space-y-8">
           <h3 className="font-bold text-lg text-gray-800 text-center">
             3. Informe a Quantidade de Periféricos
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-8">
             {expectedPeripherals.includes("mouse") && (
-              <div className="relative">
-                <label
-                  htmlFor="mice"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Mouses
+              // CORRIGIDO: Removida a classe 'block' redundante
+              <div className="flex flex-col items-center">
+                <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
+                  <Mouse className="h-5 w-5 mr-2 text-slate-500" /> Mouses
                 </label>
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none pt-6">
-                  <Mouse className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="number"
-                  id="mice"
-                  value={miceCount}
-                  onChange={handleNumericInputChange(setMiceCount)}
-                  min="0"
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md"
-                />
+                <NumberInput value={miceCount} onChange={setMiceCount} />
               </div>
             )}
             {expectedPeripherals.includes("carregador") && (
-              <div className="relative">
-                <label
-                  htmlFor="chargers"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Carregadores
+              // CORRIGIDO: Removida a classe 'block' redundante
+              <div className="flex flex-col items-center">
+                <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
+                  <Power className="h-5 w-5 mr-2 text-slate-500" /> Carregadores
                 </label>
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none pt-6">
-                  <Power className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="number"
-                  id="chargers"
+                <NumberInput
                   value={chargersCount}
-                  onChange={handleNumericInputChange(setChargersCount)}
-                  min="0"
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md"
+                  onChange={setChargersCount}
                 />
               </div>
             )}
             {expectedPeripherals.includes("fone") && (
-              <div className="relative">
-                <label
-                  htmlFor="headsets"
-                  className="block text-sm font-medium text-gray-700 mb-1"
-                >
-                  Fones de Ouvido
+              // CORRIGIDO: Removida a classe 'block' redundante
+              <div className="flex flex-col items-center">
+                <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
+                  <Headphones className="h-5 w-5 mr-2 text-slate-500" /> Fones
+                  de Ouvido
                 </label>
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none pt-6">
-                  <Headphones className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  type="number"
-                  id="headsets"
+                <NumberInput
                   value={headsetsCount}
-                  onChange={handleNumericInputChange(setHeadsetsCount)}
-                  min="0"
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md"
+                  onChange={setHeadsetsCount}
                 />
               </div>
             )}
@@ -656,15 +661,19 @@ export default function ScannerPage() {
             </p>
             <p>
               <span className="font-semibold">Horário:</span>{" "}
-              {summaryData.startTime.toDate().toLocaleTimeString("pt-BR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+              {summaryData.startTime
+                .toDate()
+                .toLocaleTimeString("pt-BR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
               {" às "}
-              {summaryData.endTime.toDate().toLocaleTimeString("pt-BR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+              {summaryData.endTime
+                .toDate()
+                .toLocaleTimeString("pt-BR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
             </p>
             {(summaryData.miceCount !== undefined ||
               summaryData.chargersCount !== undefined ||

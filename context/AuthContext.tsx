@@ -34,8 +34,10 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const unsubscribe = onIdTokenChanged(auth, async (currentUser) => {
       setAuthError(null);
+
       if (currentUser) {
         setUser(currentUser);
+        // Cria a sessão no servidor ao logar ou ao recarregar a página com um usuário válido
         const idToken = await currentUser.getIdToken();
         fetch("/api/auth", {
           method: "POST",
@@ -46,6 +48,7 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
         try {
           const userDocRef = doc(db, "users", currentUser.uid);
           const userDocSnap = await getDoc(userDocRef);
+
           if (userDocSnap.exists()) {
             setUserProfile({
               uid: currentUser.uid,
@@ -63,9 +66,11 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
           await auth.signOut();
         }
       } else {
+        // CORREÇÃO: Quando o usuário faz logout, apenas limpamos o estado local.
+        // A chamada fetch para a API de logout (`DELETE /api/auth`) é de responsabilidade
+        // da função handleLogout na Navbar, que é acionada por uma ação explícita.
         setUser(null);
         setUserProfile(null);
-        // A chamada fetch para DELETE foi REMOVIDA daqui.
       }
       setLoading(false);
     });

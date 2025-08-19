@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useEffect, useCallback } from "react";
 import { db } from "@/lib/firebase/config";
 import {
@@ -18,6 +17,7 @@ import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
 import { Plus, Edit, Trash2 } from "lucide-react";
 import { SketchPicker, ColorResult } from "react-color";
 import toast from "react-hot-toast";
+import { Field, Label, Input } from "@headlessui/react";
 
 interface Project {
   id: string;
@@ -125,16 +125,13 @@ export default function ProjectsPage() {
 
   const handleDelete = async () => {
     if (!projectToDelete) return;
-
     try {
-      // VERIFICAÇÃO DE DEPENDÊNCIA
       const umsQuery = query(
         collection(db, "ums"),
         where("projectId", "==", projectToDelete.id),
         limit(1)
       );
       const umsSnapshot = await getDocs(umsQuery);
-
       if (!umsSnapshot.empty) {
         toast.error(
           "Não é possível excluir. Existem UMs associadas a este projeto.",
@@ -143,8 +140,6 @@ export default function ProjectsPage() {
         closeModals();
         return;
       }
-
-      // EXCLUSÃO
       const projectRef = doc(db, "projects", projectToDelete.id);
       await deleteDoc(projectRef);
       toast.success(`Projeto "${projectToDelete.name}" excluído com sucesso!`, {
@@ -223,32 +218,29 @@ export default function ProjectsPage() {
       </div>
       <Modal isOpen={isFormModalOpen} onClose={closeModals} title={modalTitle}>
         <div className="space-y-4">
-          <div>
-            <label
-              htmlFor="projectName"
-              className="block text-sm font-medium text-gray-700"
-            >
+          <Field>
+            <Label className="block text-sm font-medium text-gray-700">
               Nome do Projeto
-            </label>
-            <input
+            </Label>
+            <Input
               type="text"
-              id="projectName"
               value={projectName}
-              onChange={(event) => setProjectName(event.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+              onChange={(e) => setProjectName(e.target.value)}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 data-[hover]:border-teal-400"
             />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
+          </Field>
+          {/* CORREÇÃO: Envolvendo a seção da paleta de cores com o componente Field */}
+          <Field>
+            <Label className="block text-sm font-medium text-gray-700">
               Cor de Associação
-            </label>
+            </Label>
             <div className="mt-2 flex justify-center">
               <SketchPicker
                 color={projectColor}
                 onChangeComplete={handleColorChange}
               />
             </div>
-          </div>
+          </Field>
           <div className="flex justify-end pt-4">
             <button
               onClick={handleSave}

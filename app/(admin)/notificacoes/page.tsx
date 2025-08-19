@@ -1,11 +1,19 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Fragment } from "react";
 import { db } from "@/lib/firebase/config";
 import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
 import { UserProfile } from "@/types";
 import toast from "react-hot-toast";
-import { Send, Users, User } from "lucide-react";
+import { Send, Users, User, Check, ChevronsUpDown } from "lucide-react";
+import {
+  Field,
+  Label,
+  Input,
+  Listbox,
+  Transition,
+  Textarea,
+} from "@headlessui/react";
 
 export default function NotificacoesPage() {
   const [technicians, setTechnicians] = useState<UserProfile[]>([]);
@@ -15,7 +23,6 @@ export default function NotificacoesPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    // Busca a lista de técnicos para preencher o dropdown
     const fetchTechnicians = async () => {
       try {
         const techQuery = query(
@@ -55,15 +62,14 @@ export default function NotificacoesPage() {
           },
         }),
       });
-
       const result = await response.json();
       if (!response.ok) {
         throw new Error(result.message || "Falha ao enviar notificação.");
       }
-
       toast.success(result.message);
       setTitle("");
       setMessage("");
+      setTarget("all");
     } catch (error) {
       console.error("Erro ao enviar notificação:", error);
       if (error instanceof Error) {
@@ -76,6 +82,14 @@ export default function NotificacoesPage() {
     }
   };
 
+  const getTargetName = (targetId: string) => {
+    if (targetId === "all") return "Todos os Técnicos";
+    return (
+      technicians.find((t) => t.uid === targetId)?.nome ||
+      "Selecione um técnico"
+    );
+  };
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold text-gray-800">
@@ -83,68 +97,120 @@ export default function NotificacoesPage() {
       </h1>
       <div className="bg-white p-6 md:p-8 rounded-lg shadow-md max-w-2xl mx-auto">
         <form onSubmit={handleSendNotification} className="space-y-6">
-          <div>
-            <label
-              htmlFor="target"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Enviar Para
-            </label>
-            <div className="flex items-center">
-              <span className="mr-3">
-                {target === "all" ? (
-                  <Users className="h-5 w-5 text-gray-500" />
-                ) : (
-                  <User className="h-5 w-5 text-gray-500" />
-                )}
-              </span>
-              <select
-                id="target"
-                value={target}
-                onChange={(e) => setTarget(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-md bg-white shadow-sm"
+          <Listbox value={target} onChange={setTarget}>
+            <div className="relative">
+              <Listbox.Label className="block text-sm font-medium text-gray-700 mb-1">
+                Enviar Para
+              </Listbox.Label>
+              <Listbox.Button className="relative w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-teal-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-teal-300 sm:text-sm">
+                <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                  {target === "all" ? (
+                    <Users className="h-5 w-5 text-gray-500" />
+                  ) : (
+                    <User className="h-5 w-5 text-gray-500" />
+                  )}
+                </span>
+                <span className="block truncate pl-8">
+                  {getTargetName(target)}
+                </span>
+                <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                  <ChevronsUpDown
+                    className="h-5 w-5 text-gray-400"
+                    aria-hidden="true"
+                  />
+                </span>
+              </Listbox.Button>
+              <Transition
+                as={Fragment}
+                leave="transition ease-in duration-100"
+                leaveFrom="opacity-100"
+                leaveTo="opacity-0"
               >
-                <option value="all">Todos os Técnicos</option>
-                {technicians.map((tech) => (
-                  <option key={tech.uid} value={tech.uid}>
-                    {tech.nome}
-                  </option>
-                ))}
-              </select>
+                <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-10">
+                  <Listbox.Option
+                    value="all"
+                    className={({ active }) =>
+                      `relative cursor-default select-none py-2 pl-10 pr-4 ${
+                        active ? "bg-teal-100 text-teal-900" : "text-gray-900"
+                      }`
+                    }
+                  >
+                    {({ selected }) => (
+                      <>
+                        <span
+                          className={`block truncate ${
+                            selected ? "font-medium" : "font-normal"
+                          }`}
+                        >
+                          Todos os Técnicos
+                        </span>
+                        {selected ? (
+                          <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-teal-600">
+                            <Check className="h-5 w-5" aria-hidden="true" />
+                          </span>
+                        ) : null}
+                      </>
+                    )}
+                  </Listbox.Option>
+                  {technicians.map((tech) => (
+                    <Listbox.Option
+                      key={tech.uid}
+                      value={tech.uid}
+                      className={({ active }) =>
+                        `relative cursor-default select-none py-2 pl-10 pr-4 ${
+                          active ? "bg-teal-100 text-teal-900" : "text-gray-900"
+                        }`
+                      }
+                    >
+                      {({ selected }) => (
+                        <>
+                          <span
+                            className={`block truncate ${
+                              selected ? "font-medium" : "font-normal"
+                            }`}
+                          >
+                            {tech.nome}
+                          </span>
+                          {selected ? (
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-teal-600">
+                              <Check className="h-5 w-5" aria-hidden="true" />
+                            </span>
+                          ) : null}
+                        </>
+                      )}
+                    </Listbox.Option>
+                  ))}
+                </Listbox.Options>
+              </Transition>
             </div>
-          </div>
-          <div>
-            <label
-              htmlFor="title"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
+          </Listbox>
+
+          <Field>
+            <Label className="block text-sm font-medium text-gray-700 mb-1">
               Título da Notificação
-            </label>
-            <input
+            </Label>
+            <Input
               type="text"
-              id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md shadow-sm"
+              className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
               placeholder="Ex: Lembrete Importante"
             />
-          </div>
-          <div>
-            <label
-              htmlFor="message"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
+          </Field>
+
+          <Field>
+            <Label className="block text-sm font-medium text-gray-700 mb-1">
               Mensagem
-            </label>
-            <textarea
-              id="message"
+            </Label>
+            <Textarea
               rows={4}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md shadow-sm"
+              className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
               placeholder="Digite sua mensagem aqui..."
             />
-          </div>
+          </Field>
+
           <div className="flex justify-end">
             <button
               type="submit"

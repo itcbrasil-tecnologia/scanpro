@@ -1,6 +1,5 @@
 "use client";
-
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, Fragment } from "react";
 import { db } from "@/lib/firebase/config";
 import {
   collection,
@@ -15,33 +14,14 @@ import {
   DocumentData,
   Timestamp,
 } from "firebase/firestore";
-import { Download, Eye, Filter, X } from "lucide-react";
+import { Download, Eye, X, Check, ChevronsUpDown } from "lucide-react";
 import Papa from "papaparse";
 import toast from "react-hot-toast";
 import { PeripheralsModal } from "@/components/ui/PeripheralsModal";
 import { PaginationControls } from "@/components/ui/PaginationControls";
+import { ConferenceData } from "@/types";
+import { Listbox, Transition } from "@headlessui/react";
 
-// Interfaces de Dados
-interface Conference {
-  id: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  projectName: string;
-  umName: string;
-  userName: string;
-  expectedCount: number;
-  scannedCount: number;
-  missingCount: number;
-  miceCount?: number;
-  chargersCount?: number;
-  headsetsCount?: number;
-}
-interface PeripheralsData {
-  miceCount?: number;
-  chargersCount?: number;
-  headsetsCount?: number;
-}
 interface Project {
   id: string;
   name: string;
@@ -66,20 +46,15 @@ interface Filters {
 const ITEMS_PER_PAGE = 15;
 
 export default function ReportsPage() {
-  // Estados de dados e UI
-  const [conferences, setConferences] = useState<Conference[]>([]);
+  const [conferences, setConferences] = useState<ConferenceData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPeripheralsModalOpen, setIsPeripheralsModalOpen] = useState(false);
   const [selectedPeripherals, setSelectedPeripherals] =
-    useState<PeripheralsData | null>(null);
-
-  // Estados para Paginação
+    useState<Partial<ConferenceData> | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [lastVisible, setLastVisible] =
     useState<QueryDocumentSnapshot<DocumentData> | null>(null);
-
-  // Estados para Filtros
   const [projects, setProjects] = useState<Project[]>([]);
   const [ums, setUms] = useState<UM[]>([]);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
@@ -91,109 +66,81 @@ export default function ReportsPage() {
     endDate: "",
   });
 
-  // Carrega dados para preencher os menus de filtro
-  useEffect(() => {
-    const fetchFilterData = async () => {
-      try {
-        const [projectsSnap, umsSnap, techniciansSnap] = await Promise.all([
-          getDocs(query(collection(db, "projects"), orderBy("name"))),
-          getDocs(query(collection(db, "ums"), orderBy("name"))),
-          getDocs(
-            query(
-              collection(db, "users"),
-              where("role", "==", "USER"),
-              orderBy("nome")
-            )
-          ),
-        ]);
-        setProjects(
-          projectsSnap.docs.map(
-            (doc) => ({ id: doc.id, ...doc.data() } as Project)
+  const fetchFilterData = useCallback(async () => {
+    try {
+      const [projectsSnap, umsSnap, techniciansSnap] = await Promise.all([
+        getDocs(query(collection(db, "projects"), orderBy("name"))),
+        getDocs(query(collection(db, "ums"), orderBy("name"))),
+        getDocs(
+          query(
+            collection(db, "users"),
+            where("role", "==", "USER"),
+            orderBy("nome")
           )
-        );
-        setUms(
-          umsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as UM))
-        );
-        setTechnicians(
-          techniciansSnap.docs.map(
-            (doc) =>
-              ({
-                uid: doc.id,
-                nome: doc.data().nome,
-              } as Technician)
-          )
-        );
-      } catch (error) {
-        console.error("Erro ao buscar dados para filtros:", error);
-        toast.error("Não foi possível carregar as opções de filtro.");
-      }
-    };
-    fetchFilterData();
+        ),
+      ]);
+      setProjects(
+        projectsSnap.docs.map(
+          (doc) => ({ id: doc.id, ...doc.data() } as Project)
+        )
+      );
+      setUms(umsSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as UM)));
+      setTechnicians(
+        techniciansSnap.docs.map(
+          (doc) => ({ uid: doc.id, nome: doc.data().nome } as Technician)
+        )
+      );
+    } catch (error) {
+      console.error("Erro ao buscar dados para filtros:", error);
+      toast.error("Não foi possível carregar as opções de filtro.");
+    }
   }, []);
 
-  const mapDocToConference = (
-    doc: QueryDocumentSnapshot<DocumentData>
-  ): Conference => {
-    const data = doc.data();
-    return {
-      id: doc.id,
-      date: data.endTime.toDate().toLocaleDateString("pt-BR"),
-      startTime: data.startTime
-        .toDate()
-        .toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
-      endTime: data.endTime
-        .toDate()
-        .toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
-      projectName: data.projectName,
-      umName: data.umName,
-      userName: data.userName,
-      expectedCount: data.expectedCount,
-      scannedCount: data.scannedCount,
-      missingCount: data.missingCount,
-      miceCount: data.miceCount,
-      chargersCount: data.chargersCount,
-      headsetsCount: data.headsetsCount,
-    };
-  };
+  useEffect(() => {
+    fetchFilterData();
+  }, [fetchFilterData]);
 
   const fetchConferences = useCallback(
     async (
       page: number,
-      startingAfter?: QueryDocumentSnapshot<DocumentData>
+      startingAfter?: QueryDocumentSnapshot<DocumentData> | null,
+      currentFilters?: Filters
     ) => {
       setIsLoading(true);
+      // Usa os filtros passados como argumento ou o estado atual
+      const activeFilters = currentFilters || filters;
+
       try {
         const conferencesRef = collection(db, "conferences");
         const queryConstraints: QueryConstraint[] = [];
 
-        if (filters.projectId) {
-          const selectedProject = projects.find(
-            (p) => p.id === filters.projectId
+        if (activeFilters.projectId) {
+          const projectDoc = projects.find(
+            (p) => p.id === activeFilters.projectId
           );
-          if (selectedProject)
-            queryConstraints.push(
-              where("projectName", "==", selectedProject.name)
-            );
+          if (projectDoc)
+            queryConstraints.push(where("projectName", "==", projectDoc.name));
         }
-        if (filters.umId) {
-          const selectedUm = ums.find((u) => u.id === filters.umId);
-          if (selectedUm)
-            queryConstraints.push(where("umName", "==", selectedUm.name));
+        if (activeFilters.umId) {
+          const umDoc = ums.find((u) => u.id === activeFilters.umId);
+          if (umDoc) queryConstraints.push(where("umName", "==", umDoc.name));
         }
-        if (filters.technicianId) {
-          queryConstraints.push(where("userId", "==", filters.technicianId));
+        if (activeFilters.technicianId) {
+          queryConstraints.push(
+            where("userId", "==", activeFilters.technicianId)
+          );
         }
-        if (filters.startDate) {
+        if (activeFilters.startDate) {
           queryConstraints.push(
             where(
               "endTime",
               ">=",
-              Timestamp.fromDate(new Date(filters.startDate))
+              Timestamp.fromDate(new Date(activeFilters.startDate))
             )
           );
         }
-        if (filters.endDate) {
-          const endOfDay = new Date(filters.endDate);
+        if (activeFilters.endDate) {
+          const endOfDay = new Date(activeFilters.endDate);
           endOfDay.setHours(23, 59, 59, 999);
           queryConstraints.push(
             where("endTime", "<=", Timestamp.fromDate(endOfDay))
@@ -204,7 +151,7 @@ export default function ReportsPage() {
         const countSnapshot = await getDocs(countQuery);
         setTotalPages(Math.ceil(countSnapshot.size / ITEMS_PER_PAGE));
 
-        const dataQueryConstraints = [
+        const dataQueryConstraints: QueryConstraint[] = [
           ...queryConstraints,
           orderBy("endTime", "desc"),
           limit(ITEMS_PER_PAGE),
@@ -212,11 +159,18 @@ export default function ReportsPage() {
         if (page > 1 && startingAfter) {
           dataQueryConstraints.push(startAfter(startingAfter));
         }
-
         const dataQuery = query(conferencesRef, ...dataQueryConstraints);
         const documentSnapshots = await getDocs(dataQuery);
 
-        setConferences(documentSnapshots.docs.map(mapDocToConference));
+        const conferenceData = documentSnapshots.docs.map(
+          (doc) =>
+            ({
+              id: doc.id,
+              ...doc.data(),
+            } as ConferenceData)
+        );
+
+        setConferences(conferenceData);
         setLastVisible(
           documentSnapshots.docs[documentSnapshots.docs.length - 1] || null
         );
@@ -231,12 +185,40 @@ export default function ReportsPage() {
         setIsLoading(false);
       }
     },
-    [filters, projects, ums]
+    [projects, ums, filters] // 'filters' foi adicionado aqui para garantir que a função tenha o estado mais recente
   );
 
-  const handleApplyFilters = () => {
-    fetchConferences(1);
+  // ADICIONADO: useEffect para aplicar os filtros automaticamente
+  useEffect(() => {
+    // Evita a busca inicial antes que os dados dos filtros (projetos, ums) sejam carregados
+    if (projects.length > 0 && ums.length > 0) {
+      // Reinicia a paginação e busca os dados da primeira página
+      setCurrentPage(1);
+      setLastVisible(null);
+      fetchConferences(1, null, filters);
+    }
+    // A dependência 'fetchConferences' foi removida para evitar loops,
+    // controlamos a chamada pelo 'filters'.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters, projects, ums]);
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage > currentPage && lastVisible) {
+      fetchConferences(newPage, lastVisible);
+    } else if (newPage < currentPage) {
+      fetchConferences(1, null);
+    }
   };
+
+  const handleFilterChange = (name: keyof Filters, value: string) => {
+    setFilters((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFilters((prev) => ({ ...prev, [name]: value }));
+  };
+
   const handleClearFilters = () => {
     setFilters({
       projectId: "",
@@ -245,58 +227,23 @@ export default function ReportsPage() {
       startDate: "",
       endDate: "",
     });
+    // A busca será acionada automaticamente pelo useEffect que observa 'filters'
   };
-
-  useEffect(() => {
-    if (Object.values(filters).every((val) => val === "")) {
-      fetchConferences(1);
-    }
-  }, [filters, fetchConferences]);
-
-  const handleFilterChange = (
-    e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>
-  ) => {
-    const { name, value } = e.target;
-    setFilters((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handlePageChange = (newPage: number) => {
-    if (newPage > currentPage && lastVisible) {
-      fetchConferences(newPage, lastVisible);
-    } else if (newPage < currentPage) {
-      fetchConferences(1);
-    }
-  };
-
-  const openPeripheralsModal = (data: PeripheralsData) => {
-    setSelectedPeripherals(data);
-    setIsPeripheralsModalOpen(true);
-  };
-
-  const filteredUms = filters.projectId
-    ? ums.filter((um) => um.projectId === filters.projectId)
-    : ums;
 
   const handleExportCSV = async () => {
-    toast.loading("Exportando dados...", { id: "global-toast" });
+    toast.loading("Exportando dados...", { id: "export-toast" });
     try {
       const conferencesRef = collection(db, "conferences");
       const queryConstraints: QueryConstraint[] = [];
 
-      // 1. Constrói a consulta com os filtros atuais, igual a `fetchConferences`
       if (filters.projectId) {
-        const selectedProject = projects.find(
-          (p) => p.id === filters.projectId
-        );
-        if (selectedProject)
-          queryConstraints.push(
-            where("projectName", "==", selectedProject.name)
-          );
+        const projectDoc = projects.find((p) => p.id === filters.projectId);
+        if (projectDoc)
+          queryConstraints.push(where("projectName", "==", projectDoc.name));
       }
       if (filters.umId) {
-        const selectedUm = ums.find((u) => u.id === filters.umId);
-        if (selectedUm)
-          queryConstraints.push(where("umName", "==", selectedUm.name));
+        const umDoc = ums.find((u) => u.id === filters.umId);
+        if (umDoc) queryConstraints.push(where("umName", "==", umDoc.name));
       }
       if (filters.technicianId) {
         queryConstraints.push(where("userId", "==", filters.technicianId));
@@ -318,44 +265,39 @@ export default function ReportsPage() {
         );
       }
 
-      // 2. Cria a query final para exportação (sem limit)
       const exportQuery = query(
         conferencesRef,
         ...queryConstraints,
         orderBy("endTime", "desc")
       );
       const dataToExportSnapshot = await getDocs(exportQuery);
-      const dataToExport = dataToExportSnapshot.docs.map((doc) =>
-        mapDocToConference(doc as QueryDocumentSnapshot<DocumentData>)
-      );
 
-      if (dataToExport.length === 0) {
+      if (dataToExportSnapshot.empty) {
         toast.error("Nenhum dado para exportar com os filtros atuais.", {
-          id: "global-toast",
+          id: "export-toast",
         });
         return;
       }
 
-      // 3. Usa PapaParse para converter os dados filtrados para CSV
-      const csvData = Papa.unparse(
-        dataToExport.map((c) => ({
-          Data: c.date,
-          Inicio: c.startTime,
-          Fim: c.endTime,
-          Projeto: c.projectName,
-          UM: c.umName,
-          Tecnico: c.userName,
-          Esperados: c.expectedCount,
-          Escaneados: c.scannedCount,
-          Faltantes: c.missingCount,
-          Mouses: c.miceCount ?? 0,
-          Carregadores: c.chargersCount ?? 0,
-          "Fones de Ouvido": c.headsetsCount ?? 0,
-        })),
-        { header: true }
-      );
+      const dataToExport = dataToExportSnapshot.docs.map((doc) => {
+        const data = doc.data() as ConferenceData;
+        return {
+          Data: data.endTime.toDate().toLocaleDateString("pt-BR"),
+          Inicio: data.startTime.toDate().toLocaleTimeString("pt-BR"),
+          Fim: data.endTime.toDate().toLocaleTimeString("pt-BR"),
+          Projeto: data.projectName,
+          UM: data.umName,
+          Tecnico: data.userName,
+          Esperados: data.expectedCount,
+          Escaneados: data.scannedCount,
+          Faltantes: data.missingCount,
+          Mouses: data.miceCount ?? 0,
+          Carregadores: data.chargersCount ?? 0,
+          "Fones de Ouvido": data.headsetsCount ?? 0,
+        };
+      });
 
-      // 4. Lógica para criar e baixar o arquivo blob
+      const csvData = Papa.unparse(dataToExport);
       const blob = new Blob([`\uFEFF${csvData}`], {
         type: "text/csv;charset=utf-8;",
       });
@@ -367,22 +309,39 @@ export default function ReportsPage() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      toast.success("Relatório exportado com sucesso!", { id: "global-toast" });
+
+      toast.success("Relatório exportado com sucesso!", { id: "export-toast" });
     } catch (error) {
       console.error("Erro ao exportar CSV:", error);
-      toast.error("Falha ao exportar relatório.", { id: "global-toast" });
+      toast.error("Falha ao exportar relatório.", { id: "export-toast" });
     }
   };
 
+  const openPeripheralsModal = (data: Partial<ConferenceData>) => {
+    setSelectedPeripherals(data);
+    setIsPeripheralsModalOpen(true);
+  };
+
+  const filteredUms = filters.projectId
+    ? ums.filter((um) => um.projectId === filters.projectId)
+    : ums;
+
+  const getProjectName = (id: string) =>
+    projects.find((p) => p.id === id)?.name || "Todos os Projetos";
+  const getUmName = (id: string) =>
+    ums.find((u) => u.id === id)?.name || "Todas as UMs";
+  const getTechnicianName = (id: string) =>
+    technicians.find((t) => t.uid === id)?.nome || "Todos os Técnicos";
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
         <h1 className="text-3xl font-bold text-gray-800">
           Relatórios de Conferências
         </h1>
         <button
           onClick={handleExportCSV}
-          className="flex items-center text-sm bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 transition-colors"
+          className="flex items-center text-sm bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 transition-colors mt-4 sm:mt-0"
         >
           <Download size={16} className="mr-2" /> Exportar CSV
         </button>
@@ -390,57 +349,216 @@ export default function ReportsPage() {
 
       <div className="bg-white p-4 rounded-lg shadow-md space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <select
-            name="projectId"
+          <Listbox
             value={filters.projectId}
-            onChange={handleFilterChange}
-            className="w-full p-2 border border-gray-300 rounded-md bg-white"
+            onChange={(value) => handleFilterChange("projectId", value)}
           >
-            <option value="">Todos os Projetos</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-          <select
-            name="umId"
+            <div className="relative">
+              <Listbox.Button className="relative w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-teal-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-teal-300 sm:text-sm">
+                <span className="block truncate">
+                  {getProjectName(filters.projectId)}
+                </span>
+                <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                  <ChevronsUpDown
+                    className="h-5 w-5 text-gray-400"
+                    aria-hidden="true"
+                  />
+                </span>
+              </Listbox.Button>
+              <Transition
+                as={Fragment}
+                leave="transition ease-in duration-100"
+                leaveFrom="opacity-100"
+                leaveTo="opacity-0"
+              >
+                <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-10">
+                  <Listbox.Option
+                    value=""
+                    className={({ active }) =>
+                      `relative cursor-default select-none py-2 pl-10 pr-4 ${
+                        active ? "bg-teal-100 text-teal-900" : "text-gray-900"
+                      }`
+                    }
+                  >
+                    Todos os Projetos
+                  </Listbox.Option>
+                  {projects.map((p) => (
+                    <Listbox.Option
+                      key={p.id}
+                      value={p.id}
+                      className={({ active }) =>
+                        `relative cursor-default select-none py-2 pl-10 pr-4 ${
+                          active ? "bg-teal-100 text-teal-900" : "text-gray-900"
+                        }`
+                      }
+                    >
+                      {({ selected }) => (
+                        <>
+                          <span
+                            className={`block truncate ${
+                              selected ? "font-medium" : "font-normal"
+                            }`}
+                          >
+                            {p.name}
+                          </span>
+                          {selected ? (
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-teal-600">
+                              <Check className="h-5 w-5" aria-hidden="true" />
+                            </span>
+                          ) : null}
+                        </>
+                      )}
+                    </Listbox.Option>
+                  ))}
+                </Listbox.Options>
+              </Transition>
+            </div>
+          </Listbox>
+
+          <Listbox
             value={filters.umId}
-            onChange={handleFilterChange}
-            className="w-full p-2 border border-gray-300 rounded-md bg-white"
+            onChange={(value) => handleFilterChange("umId", value)}
           >
-            <option value="">Todas as UMs</option>
-            {filteredUms.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name}
-              </option>
-            ))}
-          </select>
-          <select
-            name="technicianId"
+            <div className="relative">
+              <Listbox.Button className="relative w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-teal-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-teal-300 sm:text-sm">
+                <span className="block truncate">
+                  {getUmName(filters.umId)}
+                </span>
+                <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                  <ChevronsUpDown
+                    className="h-5 w-5 text-gray-400"
+                    aria-hidden="true"
+                  />
+                </span>
+              </Listbox.Button>
+              <Transition
+                as={Fragment}
+                leave="transition ease-in duration-100"
+                leaveFrom="opacity-100"
+                leaveTo="opacity-0"
+              >
+                <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-10">
+                  <Listbox.Option
+                    value=""
+                    className={({ active }) =>
+                      `relative cursor-default select-none py-2 pl-10 pr-4 ${
+                        active ? "bg-teal-100 text-teal-900" : "text-gray-900"
+                      }`
+                    }
+                  >
+                    Todas as UMs
+                  </Listbox.Option>
+                  {filteredUms.map((u) => (
+                    <Listbox.Option
+                      key={u.id}
+                      value={u.id}
+                      className={({ active }) =>
+                        `relative cursor-default select-none py-2 pl-10 pr-4 ${
+                          active ? "bg-teal-100 text-teal-900" : "text-gray-900"
+                        }`
+                      }
+                    >
+                      {({ selected }) => (
+                        <>
+                          <span
+                            className={`block truncate ${
+                              selected ? "font-medium" : "font-normal"
+                            }`}
+                          >
+                            {u.name}
+                          </span>
+                          {selected ? (
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-teal-600">
+                              <Check className="h-5 w-5" aria-hidden="true" />
+                            </span>
+                          ) : null}
+                        </>
+                      )}
+                    </Listbox.Option>
+                  ))}
+                </Listbox.Options>
+              </Transition>
+            </div>
+          </Listbox>
+
+          <Listbox
             value={filters.technicianId}
-            onChange={handleFilterChange}
-            className="w-full p-2 border border-gray-300 rounded-md bg-white"
+            onChange={(value) => handleFilterChange("technicianId", value)}
           >
-            <option value="">Todos os Técnicos</option>
-            {technicians.map((t) => (
-              <option key={t.uid} value={t.uid}>
-                {t.nome}
-              </option>
-            ))}
-          </select>
+            <div className="relative">
+              <Listbox.Button className="relative w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-teal-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-teal-300 sm:text-sm">
+                <span className="block truncate">
+                  {getTechnicianName(filters.technicianId)}
+                </span>
+                <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                  <ChevronsUpDown
+                    className="h-5 w-5 text-gray-400"
+                    aria-hidden="true"
+                  />
+                </span>
+              </Listbox.Button>
+              <Transition
+                as={Fragment}
+                leave="transition ease-in duration-100"
+                leaveFrom="opacity-100"
+                leaveTo="opacity-0"
+              >
+                <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-10">
+                  <Listbox.Option
+                    value=""
+                    className={({ active }) =>
+                      `relative cursor-default select-none py-2 pl-10 pr-4 ${
+                        active ? "bg-teal-100 text-teal-900" : "text-gray-900"
+                      }`
+                    }
+                  >
+                    Todos os Técnicos
+                  </Listbox.Option>
+                  {technicians.map((t) => (
+                    <Listbox.Option
+                      key={t.uid}
+                      value={t.uid}
+                      className={({ active }) =>
+                        `relative cursor-default select-none py-2 pl-10 pr-4 ${
+                          active ? "bg-teal-100 text-teal-900" : "text-gray-900"
+                        }`
+                      }
+                    >
+                      {({ selected }) => (
+                        <>
+                          <span
+                            className={`block truncate ${
+                              selected ? "font-medium" : "font-normal"
+                            }`}
+                          >
+                            {t.nome}
+                          </span>
+                          {selected ? (
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-teal-600">
+                              <Check className="h-5 w-5" aria-hidden="true" />
+                            </span>
+                          ) : null}
+                        </>
+                      )}
+                    </Listbox.Option>
+                  ))}
+                </Listbox.Options>
+              </Transition>
+            </div>
+          </Listbox>
+
           <input
             type="date"
             name="startDate"
             value={filters.startDate}
-            onChange={handleFilterChange}
+            onChange={handleDateChange}
             className="w-full p-2 border border-gray-300 rounded-md"
           />
           <input
             type="date"
             name="endDate"
             value={filters.endDate}
-            onChange={handleFilterChange}
+            onChange={handleDateChange}
             className="w-full p-2 border border-gray-300 rounded-md"
           />
         </div>
@@ -451,12 +569,7 @@ export default function ReportsPage() {
           >
             <X size={16} className="mr-2" /> Limpar Filtros
           </button>
-          <button
-            onClick={handleApplyFilters}
-            className="flex items-center text-sm bg-teal-600 text-white px-4 py-2 rounded-lg shadow hover:bg-teal-700 transition-colors"
-          >
-            <Filter size={16} className="mr-2" /> Aplicar Filtros
-          </button>
+          {/* REMOVIDO: O botão de Aplicar Filtros não é mais necessário */}
         </div>
       </div>
 
@@ -504,14 +617,28 @@ export default function ReportsPage() {
                     key={conference.id}
                     className="border-b hover:bg-slate-50"
                   >
-                    <td className="p-3">{conference.date}</td>
-                    <td className="p-3">
-                      {conference.startTime} - {conference.endTime}
+                    <td className="p-3 text-sm">
+                      {conference.endTime.toDate().toLocaleDateString("pt-BR")}
                     </td>
-                    <td className="p-3">
+                    <td className="p-3 text-sm">
+                      {conference.startTime
+                        .toDate()
+                        .toLocaleTimeString("pt-BR", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      {" - "}
+                      {conference.endTime
+                        .toDate()
+                        .toLocaleTimeString("pt-BR", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                    </td>
+                    <td className="p-3 text-sm">
                       {conference.projectName} / {conference.umName}
                     </td>
-                    <td className="p-3">{conference.userName}</td>
+                    <td className="p-3 text-sm">{conference.userName}</td>
                     <td className="p-3 text-center text-green-600 font-semibold">
                       {conference.scannedCount}
                     </td>
@@ -523,11 +650,10 @@ export default function ReportsPage() {
                         conference.chargersCount !== undefined ||
                         conference.headsetsCount !== undefined) && (
                         <button
-                          className="flex items-center justify-center mx-auto text-xs font-semibold text-teal-800 bg-teal-100 hover:bg-teal-200 px-3 py-1 rounded-full transition-colors"
                           onClick={() => openPeripheralsModal(conference)}
+                          className="flex items-center justify-center mx-auto text-xs font-semibold text-teal-800 bg-teal-100 hover:bg-teal-200 px-3 py-1 rounded-full transition-colors"
                         >
-                          <Eye size={14} className="mr-1.5" />
-                          Visualizar
+                          <Eye size={14} className="mr-1.5" /> Visualizar
                         </button>
                       )}
                     </td>

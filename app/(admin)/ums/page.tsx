@@ -1,6 +1,11 @@
 "use client";
-
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useMemo,
+  useCallback,
+  Fragment,
+} from "react";
 import { db } from "@/lib/firebase/config";
 import {
   collection,
@@ -15,8 +20,25 @@ import {
 } from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
-import { Plus, Edit, Trash2, ChevronDown } from "lucide-react";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  ChevronDown,
+  Check,
+  ChevronsUpDown,
+} from "lucide-react";
 import toast from "react-hot-toast";
+import {
+  Disclosure,
+  Transition,
+  Switch,
+  Listbox,
+  Field,
+  Label,
+  Input,
+} from "@headlessui/react";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 interface Project {
   id: string;
@@ -33,6 +55,7 @@ interface UM {
 }
 
 const AVAILABLE_PERIPHERALS = ["mouse", "carregador", "fone"];
+
 const PERIPHERAL_LABELS: { [key: string]: string } = {
   mouse: "Mouse",
   carregador: "Carregador",
@@ -50,14 +73,13 @@ function UMListItem({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
   return (
     <div className="bg-slate-50 rounded-md">
       <div className="hidden sm:grid grid-cols-4 gap-4 items-center p-3">
         <div className="col-span-1 flex items-center">
           <div
             className="w-4 h-4 rounded-full mr-4 flex-shrink-0"
-            style={{ backgroundColor: project?.color }}
+            style={{ backgroundColor: project?.color || "#ccc" }}
           ></div>
           <span className="font-semibold text-gray-700">{um.name}</span>
         </div>
@@ -81,45 +103,56 @@ function UMListItem({
         </div>
       </div>
       <div className="sm:hidden">
-        <button
-          onClick={() => setIsMobileOpen(!isMobileOpen)}
-          className="w-full flex items-center justify-between p-3 text-left"
-        >
-          <div>
-            <span className="font-semibold text-gray-800">{um.name}</span>
-            <p className="text-sm text-gray-500">{project?.name}</p>
-          </div>
-          <ChevronDown
-            size={20}
-            className={`transition-transform ${
-              isMobileOpen ? "rotate-180" : ""
-            }`}
-          />
-        </button>
-        {isMobileOpen && (
-          <div className="p-4 border-t border-slate-200">
-            <div className="flex justify-between items-center mb-4">
-              <span className="text-sm text-gray-600">
-                Notebooks Esperados:
-              </span>
-              <span className="font-semibold">{um.expectedNotebooks}</span>
-            </div>
-            <div className="flex justify-end space-x-4">
-              <button
-                onClick={onEdit}
-                className="flex items-center text-sm p-2 rounded-md bg-slate-200 hover:bg-slate-300"
+        <Disclosure as="div">
+          {({ open }) => (
+            <>
+              <Disclosure.Button className="w-full flex items-center justify-between p-3 text-left">
+                <div>
+                  <span className="font-semibold text-gray-800">{um.name}</span>
+                  <p className="text-sm text-gray-500">{project?.name}</p>
+                </div>
+                <ChevronDown
+                  size={20}
+                  className={`transition-transform ${open ? "rotate-180" : ""}`}
+                />
+              </Disclosure.Button>
+              <Transition
+                as={Fragment}
+                enter="transition ease-out duration-100"
+                enterFrom="transform opacity-0 -translate-y-1"
+                enterTo="transform opacity-100 translate-y-0"
+                leave="transition ease-in duration-75"
+                leaveFrom="transform opacity-100 translate-y-0"
+                leaveTo="transform opacity-0 -translate-y-1"
               >
-                <Edit size={16} className="mr-1" /> Editar
-              </button>
-              <button
-                onClick={onDelete}
-                className="flex items-center text-sm p-2 rounded-md bg-red-100 text-red-700 hover:bg-red-200"
-              >
-                <Trash2 size={16} className="mr-1" /> Excluir
-              </button>
-            </div>
-          </div>
-        )}
+                <Disclosure.Panel className="p-4 border-t border-slate-200">
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-sm text-gray-600">
+                      Notebooks Esperados:
+                    </span>
+                    <span className="font-semibold">
+                      {um.expectedNotebooks}
+                    </span>
+                  </div>
+                  <div className="flex justify-end space-x-4">
+                    <button
+                      onClick={onEdit}
+                      className="flex items-center text-sm p-2 rounded-md bg-slate-200 hover:bg-slate-300"
+                    >
+                      <Edit size={16} className="mr-1" /> Editar
+                    </button>
+                    <button
+                      onClick={onDelete}
+                      className="flex items-center text-sm p-2 rounded-md bg-red-100 text-red-700 hover:bg-red-200"
+                    >
+                      <Trash2 size={16} className="mr-1" /> Excluir
+                    </button>
+                  </div>
+                </Disclosure.Panel>
+              </Transition>
+            </>
+          )}
+        </Disclosure>
       </div>
     </div>
   );
@@ -133,7 +166,6 @@ export default function UMsPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [currentUm, setCurrentUm] = useState<UM | null>(null);
   const [umToDelete, setUmToDelete] = useState<UM | null>(null);
-
   const [formState, setFormState] = useState({
     name: "",
     projectId: "",
@@ -153,7 +185,6 @@ export default function UMsPage() {
         (doc) => ({ id: doc.id, ...doc.data() } as Project)
       );
       setProjects(projectsList);
-
       const umsCollection = collection(db, "ums");
       const umSnapshot = await getDocs(umsCollection);
       const umsList = umSnapshot.docs.map(
@@ -183,22 +214,27 @@ export default function UMsPage() {
       .filter((project) => project.ums.length > 0);
   }, [projects, ums]);
 
-  const handleFormChange = (
-    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value, type } = event.target;
-    if (type === "checkbox") {
-      const { checked } = event.target as HTMLInputElement;
-      setFormState((prevState) => ({
-        ...prevState,
-        peripherals: {
-          ...prevState.peripherals,
-          [name]: checked,
-        },
-      }));
-    } else {
-      setFormState((prevState) => ({ ...prevState, [name]: value }));
-    }
+  const handleFormInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormState((prevState) => ({ ...prevState, [name]: value }));
+  };
+
+  const handleSwitchChange = (peripheralName: string, checked: boolean) => {
+    setFormState((prevState) => ({
+      ...prevState,
+      peripherals: {
+        ...prevState.peripherals,
+        [peripheralName]: checked,
+      },
+    }));
+  };
+
+  const handleListBoxChange = (value: string) => {
+    setFormState((prevState) => ({ ...prevState, projectId: value }));
+  };
+
+  const handleNumberInputChange = (value: number) => {
+    setFormState((prevState) => ({ ...prevState, expectedNotebooks: value }));
   };
 
   const openAddModal = () => {
@@ -295,7 +331,9 @@ export default function UMsPage() {
       if (!notebooksSnapshot.empty) {
         toast.error(
           "Não é possível excluir. Existem notebooks associados a esta UM.",
-          { id: "global-toast" }
+          {
+            id: "global-toast",
+          }
         );
         closeModals();
         return;
@@ -309,7 +347,9 @@ export default function UMsPage() {
       closeModals();
     } catch (error) {
       console.error("Erro ao excluir UM:", error);
-      toast.error("Ocorreu um erro ao excluir a UM.", { id: "global-toast" });
+      toast.error("Ocorreu um erro ao excluir a UM.", {
+        id: "global-toast",
+      });
     }
   };
 
@@ -366,84 +406,131 @@ export default function UMsPage() {
       )}
       <Modal isOpen={isFormModalOpen} onClose={closeModals} title={modalTitle}>
         <div className="space-y-4">
-          <div>
-            <label
-              htmlFor="name"
-              className="block text-sm font-medium text-gray-700"
-            >
+          <Field>
+            <Label className="block text-sm font-medium text-gray-700">
               Nome da UM
-            </label>
-            <input
+            </Label>
+            <Input
               type="text"
-              id="name"
               name="name"
               value={formState.name}
-              onChange={handleFormChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+              onChange={handleFormInputChange}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md data-[hover]:border-teal-400 focus:ring-teal-500 focus:border-teal-500"
             />
-          </div>
-          <div>
-            <label
-              htmlFor="projectId"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Projeto
-            </label>
-            <select
-              id="projectId"
-              name="projectId"
-              value={formState.projectId}
-              onChange={handleFormChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
-            >
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label
-              htmlFor="expectedNotebooks"
-              className="block text-sm font-medium text-gray-700"
-            >
+          </Field>
+
+          <Field>
+            <Listbox value={formState.projectId} onChange={handleListBoxChange}>
+              <div className="relative">
+                <Listbox.Label className="block text-sm font-medium text-gray-700">
+                  Projeto
+                </Listbox.Label>
+                <Listbox.Button className="relative mt-1 w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-teal-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-teal-300 sm:text-sm">
+                  <span className="block truncate">
+                    {projects.find((p) => p.id === formState.projectId)?.name}
+                  </span>
+                  <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                    <ChevronsUpDown
+                      className="h-5 w-5 text-gray-400"
+                      aria-hidden="true"
+                    />
+                  </span>
+                </Listbox.Button>
+                <Transition
+                  as={Fragment}
+                  leave="transition ease-in duration-100"
+                  leaveFrom="opacity-100"
+                  leaveTo="opacity-0"
+                >
+                  <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-10">
+                    {projects.map((project) => (
+                      <Listbox.Option
+                        key={project.id}
+                        value={project.id}
+                        className={({ active }) =>
+                          `relative cursor-default select-none py-2 pl-10 pr-4 ${
+                            active
+                              ? "bg-teal-100 text-teal-900"
+                              : "text-gray-900"
+                          }`
+                        }
+                      >
+                        {({ selected }) => (
+                          <>
+                            <span
+                              className={`block truncate ${
+                                selected ? "font-medium" : "font-normal"
+                              }`}
+                            >
+                              {project.name}
+                            </span>
+                            {selected ? (
+                              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-teal-600">
+                                <Check className="h-5 w-5" aria-hidden="true" />
+                              </span>
+                            ) : null}
+                          </>
+                        )}
+                      </Listbox.Option>
+                    ))}
+                  </Listbox.Options>
+                </Transition>
+              </div>
+            </Listbox>
+          </Field>
+
+          {/* CORRIGIDO: Envolvendo o NumberInput com Field */}
+          <Field>
+            <Label className="block text-sm font-medium text-gray-700">
               Quantidade de Notebooks Esperados
-            </label>
-            <input
-              type="number"
-              id="expectedNotebooks"
-              name="expectedNotebooks"
-              value={formState.expectedNotebooks}
-              onChange={handleFormChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
+            </Label>
+            <div className="mt-1">
+              <NumberInput
+                value={formState.expectedNotebooks}
+                onChange={handleNumberInputChange}
+              />
+            </div>
+          </Field>
+
+          {/* CORRIGIDO: Envolvendo o grupo de Switches com Field */}
+          <Field>
+            <Label className="block text-sm font-medium text-gray-700">
               Periféricos Esperados
-            </label>
-            <div className="mt-2 space-y-2 sm:space-y-0 sm:flex sm:space-x-6">
+            </Label>
+            <div className="mt-2 space-y-3">
               {AVAILABLE_PERIPHERALS.map((peripheral) => (
-                <div key={peripheral} className="flex items-center">
-                  <input
-                    id={peripheral}
-                    name={peripheral}
-                    type="checkbox"
-                    checked={formState.peripherals[peripheral]}
-                    onChange={handleFormChange}
-                    className="h-4 w-4 text-teal-600 border-gray-300 rounded"
-                  />
-                  <label
-                    htmlFor={peripheral}
-                    className="ml-2 block text-sm text-gray-900"
-                  >
+                <Switch.Group
+                  key={peripheral}
+                  as="div"
+                  className="flex items-center justify-between"
+                >
+                  <Switch.Label className="text-sm text-gray-900 cursor-pointer">
                     {PERIPHERAL_LABELS[peripheral]}
-                  </label>
-                </div>
+                  </Switch.Label>
+                  <Switch
+                    checked={formState.peripherals[peripheral]}
+                    onChange={(checked) =>
+                      handleSwitchChange(peripheral, checked)
+                    }
+                    className={`${
+                      formState.peripherals[peripheral]
+                        ? "bg-teal-600"
+                        : "bg-gray-200"
+                    } relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2`}
+                  >
+                    <span
+                      className={`${
+                        formState.peripherals[peripheral]
+                          ? "translate-x-6"
+                          : "translate-x-1"
+                      } inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
+                    />
+                  </Switch>
+                </Switch.Group>
               ))}
             </div>
-          </div>
+          </Field>
+
           <div className="flex justify-end pt-4">
             <button
               onClick={handleSave}
@@ -454,6 +541,7 @@ export default function UMsPage() {
           </div>
         </div>
       </Modal>
+
       <ConfirmationModal
         isOpen={isDeleteModalOpen}
         onClose={closeModals}

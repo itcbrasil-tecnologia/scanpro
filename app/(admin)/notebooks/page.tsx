@@ -1,6 +1,5 @@
 "use client";
-
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, Fragment } from "react";
 import { db } from "@/lib/firebase/config";
 import {
   collection,
@@ -21,6 +20,14 @@ import { QrCodePrintModal } from "@/components/ui/QrCodePrintModal";
 import { AssetLifecycleModal } from "@/components/ui/AssetLifecycleModal";
 import { useAuth } from "@/context/AuthContext";
 import {
+  Disclosure,
+  Transition,
+  Listbox,
+  Field,
+  Label,
+  Input,
+} from "@headlessui/react";
+import {
   Layers,
   Sheet,
   Trash2,
@@ -32,22 +39,23 @@ import {
   CircleDot,
   FileUp,
   History,
+  Check,
+  ChevronsUpDown,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import Papa from "papaparse";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 interface Project {
   id: string;
   name: string;
   color: string;
 }
-
 interface UM {
   id: string;
   name: string;
   projectId: string;
 }
-
 interface Notebook {
   id: string;
   hostname: string;
@@ -57,7 +65,6 @@ interface Notebook {
   status?: "Ativo" | "Em Manutenção";
   maintenanceStartDate?: Timestamp;
 }
-
 interface CsvData {
   hostname: string;
   serialNumber: string;
@@ -80,6 +87,7 @@ function NotebookListItem({
   onViewHistory: () => void;
 }) {
   const isMaintenance = notebook.status === "Em Manutenção";
+
   return (
     <li className="flex items-center justify-between py-2 px-3 hover:bg-slate-50 rounded-md">
       <div className="flex items-center min-w-0">
@@ -108,7 +116,7 @@ function NotebookListItem({
         </button>
         <button
           onClick={onToggleMaintenance}
-          className={`text-gray-400 hover:text-amber-600`}
+          className="text-gray-400 hover:text-amber-600"
           title={
             isMaintenance ? "Retornar da Manutenção" : "Enviar para Manutenção"
           }
@@ -157,7 +165,6 @@ export default function NotebooksPage() {
   const [isLifecycleModalOpen, setIsLifecycleModalOpen] = useState(false);
   const [selectedNotebookForHistory, setSelectedNotebookForHistory] =
     useState<Notebook | null>(null);
-  const [openItems, setOpenItems] = useState<Record<string, boolean>>({});
   const [currentNotebook, setCurrentNotebook] = useState<Notebook | null>(null);
   const [notebookToDelete, setNotebookToDelete] = useState<Notebook | null>(
     null
@@ -253,9 +260,7 @@ export default function NotebooksPage() {
     }
   };
 
-  const handleFormChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
+  const handleFormInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormState((prev) => ({
       ...prev,
@@ -263,24 +268,31 @@ export default function NotebooksPage() {
     }));
   };
 
-  const handleBatchFormChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
+  const handleFormListboxChange = (value: string) => {
+    setFormState((prev) => ({ ...prev, selectedUmId: value }));
+  };
+
+  const handleBatchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    const isNumeric = name === "startNumber" || name === "endNumber";
     setBatchFormState((prev) => ({
       ...prev,
-      [name]: isNumeric
-        ? Number(value)
-        : name === "prefix"
-        ? value.toUpperCase()
-        : value,
+      [name]: name === "prefix" ? value.toUpperCase() : value,
     }));
+  };
+
+  const handleBatchListboxChange = (value: string) => {
+    setBatchFormState((prev) => ({ ...prev, batchSelectedUmId: value }));
+  };
+
+  const handleBatchNumberInputChange = (
+    name: "startNumber" | "endNumber",
+    value: number
+  ) => {
+    setBatchFormState((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleDownloadTemplate = () => {
     const headers = ["hostname", "serialNumber", "assetTag"];
-    // CORREÇÃO: Usa ponto e vírgula como delimitador para compatibilidade com Excel (Brasil/Europa)
     const delimiter = ";";
     const csvContent = `${headers.join(delimiter)}\n`;
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -310,7 +322,7 @@ export default function NotebooksPage() {
     Papa.parse(selectedFile, {
       header: true,
       skipEmptyLines: true,
-      delimiter: ";", // Informa ao parser para também usar o ponto e vírgula
+      delimiter: ";",
       complete: (results) => {
         const requiredHeaders = ["hostname", "serialNumber", "assetTag"];
         const actualHeaders = results.meta.fields || [];
@@ -354,7 +366,6 @@ export default function NotebooksPage() {
     const notebooksCollection = collection(db, "notebooks");
     const umName = ums.find((um) => um.id === importUmId)?.name || "N/A";
     const newNotebooksWithIds: { id: string; name: string }[] = [];
-
     parsedCsvData.forEach((notebook) => {
       if (notebook.hostname) {
         const newNotebookRef = doc(notebooksCollection);
@@ -371,6 +382,7 @@ export default function NotebooksPage() {
         });
       }
     });
+
     try {
       await batch.commit();
       for (const nb of newNotebooksWithIds) {
@@ -394,10 +406,6 @@ export default function NotebooksPage() {
         id: "global-toast",
       });
     }
-  };
-
-  const toggleDropdown = (id: string) => {
-    setOpenItems((prevState) => ({ ...prevState, [id]: !prevState[id] }));
   };
 
   const handleViewSingleQrCode = (hostname: string) => {
@@ -460,16 +468,16 @@ export default function NotebooksPage() {
     }
     const notebookData: Partial<Notebook> = {
       hostname: formState.hostname,
-      umId: formState.selectedUmId,
       serialNumber: formState.serialNumber,
       assetTag: formState.assetTag,
+      umId: formState.selectedUmId,
     };
     try {
       if (currentNotebook) {
         const notebookRef = doc(db, "notebooks", currentNotebook.id);
         await updateDoc(notebookRef, notebookData);
         toast.success(
-          `Notebook "${notebookData.hostname}" atualizado com sucesso!`,
+          `Notebook &quot;${notebookData.hostname}&quot; atualizado com sucesso!`,
           { id: "global-toast" }
         );
       } else {
@@ -486,7 +494,7 @@ export default function NotebooksPage() {
           `Ativo cadastrado na UM: ${umName}`
         );
         toast.success(
-          `Notebook "${formState.hostname}" adicionado com sucesso!`,
+          `Notebook &quot;${formState.hostname}&quot; adicionado com sucesso!`,
           { id: "global-toast" }
         );
       }
@@ -505,7 +513,7 @@ export default function NotebooksPage() {
     try {
       await deleteDoc(doc(db, "notebooks", notebookToDelete.id));
       toast.success(
-        `Notebook "${notebookToDelete.hostname}" excluído com sucesso!`,
+        `Notebook &quot;${notebookToDelete.hostname}&quot; excluído com sucesso!`,
         { id: "global-toast" }
       );
       fetchData();
@@ -544,7 +552,7 @@ export default function NotebooksPage() {
           : "Ativo retornou à operação.";
       await logLifecycleEvent(id, eventType, details);
       toast.success(
-        `Status do notebook "${hostname}" alterado para ${newStatus}.`,
+        `Status do notebook &quot;${hostname}&quot; alterado para ${newStatus}.`,
         { id: "global-toast" }
       );
       fetchData();
@@ -570,7 +578,7 @@ export default function NotebooksPage() {
       i <= batchFormState.endNumber;
       i++
     ) {
-      const numberString = i < 10 ? String(i).padStart(2, "0") : String(i);
+      const numberString = i < 100 ? String(i).padStart(2, "0") : String(i);
       names.push(`${batchFormState.prefix}${numberString}`);
     }
     setGeneratedNames(names);
@@ -642,7 +650,7 @@ export default function NotebooksPage() {
       snapshot.docs.forEach((doc) => batch.delete(doc.ref));
       await batch.commit();
       toast.success(
-        `Todos os notebooks da UM "${umToDeleteFrom.name}" foram excluídos.`,
+        `Todos os notebooks da UM &quot;${umToDeleteFrom.name}&quot; foram excluídos.`,
         { id: "global-toast" }
       );
       fetchData();
@@ -658,6 +666,9 @@ export default function NotebooksPage() {
   const formModalTitle = currentNotebook
     ? "Editar Notebook"
     : "Adicionar Notebook";
+
+  const getUmName = (umId: string) =>
+    ums.find((um) => um.id === umId)?.name || "Selecione uma UM";
 
   return (
     <div className="space-y-6">
@@ -689,190 +700,257 @@ export default function NotebooksPage() {
           </button>
         </div>
       </div>
+
       {isLoading ? (
         <p className="text-center text-gray-500 py-8">Carregando dados...</p>
       ) : (
         <div className="space-y-4">
           {projects.map((project) => (
-            <div key={project.id}>
-              <button
-                onClick={() => toggleDropdown(project.id)}
-                className="w-full flex items-center p-3 bg-white rounded-lg shadow-md text-left"
-                style={{ borderColor: project.color, borderLeftWidth: "4px" }}
-              >
-                <ChevronDown
-                  size={20}
-                  className={`mr-3 transition-transform ${
-                    openItems[project.id] ? "rotate-180" : ""
-                  }`}
-                />
-                <span className="text-xl font-bold text-gray-800">
-                  {project.name}
-                </span>
-              </button>
-              {openItems[project.id] && (
-                <div className="pl-4 mt-2 space-y-2">
-                  {ums
-                    .filter((um) => um.projectId === project.id)
-                    .map((um) => {
-                      const umNotebooks = notebooks.filter(
-                        (n) => n.umId === um.id
-                      );
-                      return (
-                        <div key={um.id}>
-                          <button
-                            onClick={() => toggleDropdown(um.id)}
-                            className="w-full flex items-center p-3 bg-slate-50 rounded-lg text-left hover:bg-slate-100 text-gray-700"
-                          >
-                            <ChevronDown
-                              size={18}
-                              className={`mr-2 transition-transform ${
-                                openItems[um.id] ? "rotate-180" : ""
-                              }`}
-                            />
-                            <span className="font-semibold">{um.name}</span>
-                          </button>
-                          {openItems[um.id] && (
-                            <div className="pl-6 py-2">
-                              {umNotebooks.length > 0 ? (
+            <Disclosure key={project.id} as="div">
+              {({ open }) => (
+                <>
+                  <Disclosure.Button
+                    className="w-full flex items-center p-3 bg-white rounded-lg shadow-md text-left"
+                    style={{
+                      borderColor: project.color,
+                      borderLeftWidth: "4px",
+                    }}
+                  >
+                    <ChevronDown
+                      size={20}
+                      className={`mr-3 transition-transform ${
+                        open ? "rotate-180" : ""
+                      }`}
+                    />
+                    <span className="text-xl font-bold text-gray-800">
+                      {project.name}
+                    </span>
+                  </Disclosure.Button>
+                  <Transition
+                    as={Fragment}
+                    enter="transition ease-out duration-100"
+                    enterFrom="transform opacity-0 -translate-y-2"
+                    enterTo="transform opacity-100 translate-y-0"
+                    leave="transition ease-in duration-75"
+                    leaveFrom="transform opacity-100 translate-y-0"
+                    leaveTo="transform opacity-0 -translate-y-2"
+                  >
+                    <Disclosure.Panel className="pl-4 mt-2 space-y-2">
+                      {ums
+                        .filter((um) => um.projectId === project.id)
+                        .map((um) => {
+                          const umNotebooks = notebooks.filter(
+                            (n) => n.umId === um.id
+                          );
+                          return (
+                            <Disclosure key={um.id} as="div">
+                              {({ open: umOpen }) => (
                                 <>
-                                  <div className="flex items-center space-x-4 mb-3 ml-2">
-                                    <button
-                                      onClick={() =>
-                                        handleViewBatchQrCodes(umNotebooks)
-                                      }
-                                      className="flex items-center text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 px-3 py-1 rounded-md"
-                                    >
-                                      <Printer size={16} className="mr-1.5" />
-                                      Gerar QR Codes
-                                    </button>
-                                    <button
-                                      onClick={() => openDeleteBatchModal(um)}
-                                      className="flex items-center text-sm font-semibold text-white bg-red-500 hover:bg-red-600 px-3 py-1 rounded-md"
-                                    >
-                                      <Trash2 size={16} className="mr-1.5" />
-                                      Excluir Todos
-                                    </button>
-                                  </div>
-                                  <ul className="space-y-1 bg-white p-3 rounded-md">
-                                    {umNotebooks
-                                      .sort((a, b) =>
-                                        a.hostname.localeCompare(b.hostname)
-                                      )
-                                      .map((notebook) => (
-                                        <NotebookListItem
-                                          key={notebook.id}
-                                          notebook={notebook}
-                                          onEdit={() => openEditModal(notebook)}
-                                          onDelete={() =>
-                                            openDeleteSingleModal(notebook)
-                                          }
-                                          onViewQrCode={() =>
-                                            handleViewSingleQrCode(
-                                              notebook.hostname
-                                            )
-                                          }
-                                          onToggleMaintenance={() =>
-                                            openMaintenanceModal(notebook)
-                                          }
-                                          onViewHistory={() =>
-                                            openHistoryModal(notebook)
-                                          }
-                                        />
-                                      ))}
-                                  </ul>
+                                  <Disclosure.Button className="w-full flex items-center p-3 bg-slate-50 rounded-lg text-left hover:bg-slate-100 text-gray-700">
+                                    <ChevronDown
+                                      size={18}
+                                      className={`mr-2 transition-transform ${
+                                        umOpen ? "rotate-180" : ""
+                                      }`}
+                                    />
+                                    <span className="font-semibold">
+                                      {um.name}
+                                    </span>
+                                  </Disclosure.Button>
+                                  <Transition
+                                    as={Fragment}
+                                    enter="transition ease-out duration-100"
+                                    enterFrom="transform opacity-0 -translate-y-2"
+                                    enterTo="transform opacity-100 translate-y-0"
+                                    leave="transition ease-in duration-75"
+                                    leaveFrom="transform opacity-100 translate-y-0"
+                                    leaveTo="transform opacity-0 -translate-y-2"
+                                  >
+                                    <Disclosure.Panel className="pl-6 py-2">
+                                      {umNotebooks.length > 0 ? (
+                                        <>
+                                          <div className="flex items-center space-x-2 mb-3 ml-2">
+                                            <button
+                                              onClick={() =>
+                                                handleViewBatchQrCodes(
+                                                  umNotebooks
+                                                )
+                                              }
+                                              className="flex items-center text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 px-3 py-1 rounded-md"
+                                            >
+                                              <Printer
+                                                size={16}
+                                                className="mr-1.5"
+                                              />
+                                              Gerar QR Codes
+                                            </button>
+                                            <button
+                                              onClick={() =>
+                                                openDeleteBatchModal(um)
+                                              }
+                                              className="flex items-center text-sm font-semibold text-white bg-red-500 hover:bg-red-600 px-3 py-1 rounded-md"
+                                            >
+                                              <Trash2
+                                                size={16}
+                                                className="mr-1.5"
+                                              />
+                                              Excluir Todos
+                                            </button>
+                                          </div>
+                                          <ul className="space-y-1 bg-white p-3 rounded-md">
+                                            {umNotebooks
+                                              .sort((a, b) =>
+                                                a.hostname.localeCompare(
+                                                  b.hostname
+                                                )
+                                              )
+                                              .map((notebook) => (
+                                                <NotebookListItem
+                                                  key={notebook.id}
+                                                  notebook={notebook}
+                                                  onEdit={() =>
+                                                    openEditModal(notebook)
+                                                  }
+                                                  onDelete={() =>
+                                                    openDeleteSingleModal(
+                                                      notebook
+                                                    )
+                                                  }
+                                                  onViewQrCode={() =>
+                                                    handleViewSingleQrCode(
+                                                      notebook.hostname
+                                                    )
+                                                  }
+                                                  onToggleMaintenance={() =>
+                                                    openMaintenanceModal(
+                                                      notebook
+                                                    )
+                                                  }
+                                                  onViewHistory={() =>
+                                                    openHistoryModal(notebook)
+                                                  }
+                                                />
+                                              ))}
+                                          </ul>
+                                        </>
+                                      ) : (
+                                        <p className="text-sm text-gray-500 italic px-3 py-2">
+                                          Nenhum notebook cadastrado nesta UM.
+                                        </p>
+                                      )}
+                                    </Disclosure.Panel>
+                                  </Transition>
                                 </>
-                              ) : (
-                                <p className="text-sm text-gray-500 italic px-3 py-2">
-                                  Nenhum notebook cadastrado nesta UM.
-                                </p>
                               )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                </div>
+                            </Disclosure>
+                          );
+                        })}
+                    </Disclosure.Panel>
+                  </Transition>
+                </>
               )}
-            </div>
+            </Disclosure>
           ))}
         </div>
       )}
+
       <Modal
         isOpen={isFormModalOpen}
         onClose={() => setIsFormModalOpen(false)}
         title={formModalTitle}
       >
         <div className="space-y-4">
-          <div>
-            <label
-              htmlFor="hostname"
-              className="block text-sm font-medium text-gray-700"
-            >
+          <Field>
+            <Label className="block text-sm font-medium text-gray-700">
               Hostname
-            </label>
-            <input
-              type="text"
-              id="hostname"
+            </Label>
+            <Input
               name="hostname"
+              type="text"
               value={formState.hostname}
-              onChange={handleFormChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+              onChange={handleFormInputChange}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
             />
-          </div>
-          <div>
-            <label
-              htmlFor="serialNumber"
-              className="block text-sm font-medium text-gray-700"
-            >
+          </Field>
+          <Field>
+            <Label className="block text-sm font-medium text-gray-700">
               Número de Série (SN)
-            </label>
-            <input
-              type="text"
-              id="serialNumber"
+            </Label>
+            <Input
               name="serialNumber"
-              value={formState.serialNumber}
-              onChange={handleFormChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="assetTag"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Patrimônio
-            </label>
-            <input
               type="text"
-              id="assetTag"
-              name="assetTag"
-              value={formState.assetTag}
-              onChange={handleFormChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+              value={formState.serialNumber}
+              onChange={handleFormInputChange}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
             />
-          </div>
-          <div>
-            <label
-              htmlFor="selectedUmId"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Unidade Móvel (UM)
-            </label>
-            <select
-              id="selectedUmId"
-              name="selectedUmId"
-              value={formState.selectedUmId}
-              onChange={handleFormChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
-            >
-              {ums.map((um) => (
-                <option key={um.id} value={um.id}>
-                  {um.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          </Field>
+          <Field>
+            <Label className="block text-sm font-medium text-gray-700">
+              Patrimônio
+            </Label>
+            <Input
+              name="assetTag"
+              type="text"
+              value={formState.assetTag}
+              onChange={handleFormInputChange}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
+            />
+          </Field>
+          <Listbox
+            value={formState.selectedUmId}
+            onChange={handleFormListboxChange}
+          >
+            <div className="relative">
+              <Listbox.Label className="block text-sm font-medium text-gray-700">
+                Unidade Móvel (UM)
+              </Listbox.Label>
+              <Listbox.Button className="relative mt-1 w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-teal-500 focus-visible:ring-2 focus-visible:ring-offset-2">
+                <span className="block truncate">
+                  {getUmName(formState.selectedUmId)}
+                </span>
+                <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                  <ChevronsUpDown className="h-5 w-5 text-gray-400" />
+                </span>
+              </Listbox.Button>
+              <Transition
+                as={Fragment}
+                leave="transition ease-in duration-100"
+                leaveFrom="opacity-100"
+                leaveTo="opacity-0"
+              >
+                <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 z-10">
+                  {ums.map((um) => (
+                    <Listbox.Option
+                      key={um.id}
+                      value={um.id}
+                      className={({ active }) =>
+                        `relative cursor-default select-none py-2 pl-10 pr-4 ${
+                          active ? "bg-teal-100" : "text-gray-900"
+                        }`
+                      }
+                    >
+                      {({ selected }) => (
+                        <>
+                          <span
+                            className={`block truncate ${
+                              selected ? "font-medium" : "font-normal"
+                            }`}
+                          >
+                            {um.name}
+                          </span>
+                          {selected ? (
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-teal-600">
+                              <Check className="h-5 w-5" />
+                            </span>
+                          ) : null}
+                        </>
+                      )}
+                    </Listbox.Option>
+                  ))}
+                </Listbox.Options>
+              </Transition>
+            </div>
+          </Listbox>
           <div className="flex justify-end pt-2">
             <button
               onClick={handleSaveSingle}
@@ -883,83 +961,104 @@ export default function NotebooksPage() {
           </div>
         </div>
       </Modal>
+
       <Modal
         isOpen={isBatchModalOpen}
         onClose={() => setIsBatchModalOpen(false)}
         title="Adicionar Notebooks em Lote"
       >
         <div className="space-y-4">
-          <div>
-            <label
-              htmlFor="batchSelectedUmId"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Unidade Móvel (UM)
-            </label>
-            <select
-              id="batchSelectedUmId"
-              name="batchSelectedUmId"
-              value={batchFormState.batchSelectedUmId}
-              onChange={handleBatchFormChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
-            >
-              {ums.map((um) => (
-                <option key={um.id} value={um.id}>
-                  {um.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label
-              htmlFor="prefix"
-              className="block text-sm font-medium text-gray-700"
-            >
+          <Listbox
+            value={batchFormState.batchSelectedUmId}
+            onChange={handleBatchListboxChange}
+          >
+            <div className="relative">
+              <Listbox.Label className="block text-sm font-medium text-gray-700">
+                Unidade Móvel (UM)
+              </Listbox.Label>
+              <Listbox.Button className="relative mt-1 w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-teal-500 focus-visible:ring-2 focus-visible:ring-offset-2">
+                <span className="block truncate">
+                  {getUmName(batchFormState.batchSelectedUmId)}
+                </span>
+                <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                  <ChevronsUpDown className="h-5 w-5 text-gray-400" />
+                </span>
+              </Listbox.Button>
+              <Transition
+                as={Fragment}
+                leave="transition ease-in duration-100"
+                leaveFrom="opacity-100"
+                leaveTo="opacity-0"
+              >
+                <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 z-10">
+                  {ums.map((um) => (
+                    <Listbox.Option
+                      key={um.id}
+                      value={um.id}
+                      className={({ active }) =>
+                        `relative cursor-default select-none py-2 pl-10 pr-4 ${
+                          active ? "bg-teal-100" : "text-gray-900"
+                        }`
+                      }
+                    >
+                      {({ selected }) => (
+                        <>
+                          <span
+                            className={`block truncate ${
+                              selected ? "font-medium" : "font-normal"
+                            }`}
+                          >
+                            {um.name}
+                          </span>
+                          {selected ? (
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-teal-600">
+                              <Check className="h-5 w-5" />
+                            </span>
+                          ) : null}
+                        </>
+                      )}
+                    </Listbox.Option>
+                  ))}
+                </Listbox.Options>
+              </Transition>
+            </div>
+          </Listbox>
+          <Field>
+            <Label className="block text-sm font-medium text-gray-700">
               Prefixo do Hostname
-            </label>
-            <input
-              type="text"
-              id="prefix"
+            </Label>
+            <Input
               name="prefix"
+              type="text"
               placeholder="Ex: BSBIA01-EST"
               value={batchFormState.prefix}
-              onChange={handleBatchFormChange}
+              onChange={handleBatchInputChange}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
             />
-          </div>
+          </Field>
           <div className="flex space-x-4">
-            <div className="flex-1">
-              <label
-                htmlFor="startNumber"
-                className="block text-sm font-medium text-gray-700"
-              >
+            <Field className="flex-1">
+              <Label className="block text-sm font-medium text-gray-700">
                 Número Inicial
-              </label>
-              <input
-                type="number"
-                id="startNumber"
-                name="startNumber"
+              </Label>
+              <NumberInput
                 value={batchFormState.startNumber}
-                onChange={handleBatchFormChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                onChange={(value) =>
+                  handleBatchNumberInputChange("startNumber", value)
+                }
               />
-            </div>
-            <div className="flex-1">
-              <label
-                htmlFor="endNumber"
-                className="block text-sm font-medium text-gray-700"
-              >
+            </Field>
+            <Field className="flex-1">
+              <Label className="block text-sm font-medium text-gray-700">
                 Número Final
-              </label>
-              <input
-                type="number"
-                id="endNumber"
-                name="endNumber"
+              </Label>
+              <NumberInput
                 value={batchFormState.endNumber}
-                onChange={handleBatchFormChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+                onChange={(value) =>
+                  handleBatchNumberInputChange("endNumber", value)
+                }
               />
-            </div>
+            </Field>
           </div>
           <div className="flex justify-center pt-2">
             <button
@@ -989,6 +1088,7 @@ export default function NotebooksPage() {
           )}
         </div>
       </Modal>
+
       <Modal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
@@ -1018,43 +1118,73 @@ export default function NotebooksPage() {
             Baixar modelo de planilha (.csv)
           </button>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label
-                htmlFor="importUmId"
-                className="block text-sm font-medium text-gray-700"
-              >
-                UM de Destino
-              </label>
-              <select
-                id="importUmId"
-                name="importUmId"
-                value={importUmId}
-                onChange={(e) => setImportUmId(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
-              >
-                {ums.map((um) => (
-                  <option key={um.id} value={um.id}>
-                    {um.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label
-                htmlFor="csvFile"
-                className="block text-sm font-medium text-gray-700"
-              >
+            <Listbox value={importUmId} onChange={setImportUmId}>
+              <div className="relative">
+                <Listbox.Label className="block text-sm font-medium text-gray-700">
+                  UM de Destino
+                </Listbox.Label>
+                <Listbox.Button className="relative mt-1 w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-teal-500 focus-visible:ring-2 focus-visible:ring-offset-2">
+                  <span className="block truncate">
+                    {getUmName(importUmId)}
+                  </span>
+                  <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                    <ChevronsUpDown className="h-5 w-5 text-gray-400" />
+                  </span>
+                </Listbox.Button>
+                <Transition
+                  as={Fragment}
+                  leave="transition ease-in duration-100"
+                  leaveFrom="opacity-100"
+                  leaveTo="opacity-0"
+                >
+                  <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 z-10">
+                    {ums.map((um) => (
+                      <Listbox.Option
+                        key={um.id}
+                        value={um.id}
+                        className={({ active }) =>
+                          `relative cursor-default select-none py-2 pl-10 pr-4 ${
+                            active ? "bg-teal-100" : "text-gray-900"
+                          }`
+                        }
+                      >
+                        {({ selected }) => (
+                          <>
+                            <span
+                              className={`block truncate ${
+                                selected ? "font-medium" : "font-normal"
+                              }`}
+                            >
+                              {um.name}
+                            </span>
+                            {selected ? (
+                              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-teal-600">
+                                <Check className="h-5 w-5" />
+                              </span>
+                            ) : null}
+                          </>
+                        )}
+                      </Listbox.Option>
+                    ))}
+                  </Listbox.Options>
+                </Transition>
+              </div>
+            </Listbox>
+            <Field>
+              <Label className="block text-sm font-medium text-gray-700">
                 Arquivo CSV
-              </label>
-              <input
-                type="file"
-                id="csvFile"
-                name="csvFile"
-                accept=".csv"
-                onChange={handleFileChange}
-                className="mt-1 block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
-              />
-            </div>
+              </Label>
+              <div className="mt-1">
+                <input
+                  type="file"
+                  id="csvFile"
+                  name="csvFile"
+                  accept=".csv"
+                  onChange={handleFileChange}
+                  className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
+                />
+              </div>
+            </Field>
           </div>
           <div className="flex justify-center pt-2">
             <button
@@ -1101,19 +1231,7 @@ export default function NotebooksPage() {
           )}
         </div>
       </Modal>
-      <ConfirmationModal
-        isOpen={isMaintenanceModalOpen}
-        onClose={() => setIsMaintenanceModalOpen(false)}
-        onConfirm={handleToggleMaintenanceStatus}
-        title="Confirmar Alteração de Status"
-        message={`Tem certeza que deseja ${
-          notebookForMaintenance?.status === "Em Manutenção"
-            ? "retornar o notebook da manutenção"
-            : "enviar o notebook para manutenção"
-        }: "${notebookForMaintenance?.hostname}"?`}
-        confirmButtonText="Confirmar"
-        confirmButtonVariant="primary"
-      />
+
       <ConfirmationModal
         isOpen={isDeleteSingleModalOpen}
         onClose={() => setIsDeleteSingleModalOpen(false)}
@@ -1131,6 +1249,19 @@ export default function NotebooksPage() {
         message={`Tem certeza que deseja excluir TODOS os notebooks da UM "${umToDeleteFrom?.name}"?`}
         confirmButtonText="Confirmar Exclusão"
         confirmButtonVariant="danger"
+      />
+      <ConfirmationModal
+        isOpen={isMaintenanceModalOpen}
+        onClose={() => setIsMaintenanceModalOpen(false)}
+        onConfirm={handleToggleMaintenanceStatus}
+        title="Confirmar Alteração de Status"
+        message={`Tem certeza que deseja ${
+          notebookForMaintenance?.status === "Em Manutenção"
+            ? "retornar o notebook da manutenção"
+            : "enviar o notebook para manutenção"
+        }: "${notebookForMaintenance?.hostname}"?`}
+        confirmButtonText="Confirmar"
+        confirmButtonVariant="primary"
       />
       <QrCodePrintModal
         isOpen={isQrModalOpen}

@@ -10,6 +10,7 @@ import {
 } from "firebase/auth";
 import toast from "react-hot-toast";
 import { KeyRound, ArrowLeft } from "lucide-react";
+import { Field, Label, Input } from "@headlessui/react"; // ADICIONADO: Importação do Headless UI
 
 export default function AlterarSenhaPage() {
   const { user } = useAuth();
@@ -47,23 +48,16 @@ export default function AlterarSenhaPage() {
     }
 
     try {
-      // Passo 1: Reautenticar o usuário com a senha atual para segurança.
       const credential = EmailAuthProvider.credential(
         user.email!,
         currentPassword
       );
       await reauthenticateWithCredential(user, credential);
-
-      // Passo 2: Se a reautenticação for bem-sucedida, atualizar a senha.
       await updatePassword(user, newPassword);
-
       toast.success("Senha alterada com sucesso!", { id: "global-toast" });
-      router.back(); // Volta para a página anterior
+      router.back();
     } catch (error: unknown) {
-      // CORREÇÃO: Trocado 'any' por 'unknown'
       console.error("Erro ao alterar a senha:", error);
-
-      // Verificação de tipo para tratar o erro de forma segura
       if (typeof error === "object" && error !== null && "code" in error) {
         const firebaseError = error as { code: string };
         if (firebaseError.code === "auth/wrong-password") {
@@ -79,7 +73,6 @@ export default function AlterarSenhaPage() {
           });
         }
       } else {
-        // Fallback para erros que não seguem o padrão esperado
         toast.error("Ocorreu um erro inesperado ao alterar a senha.", {
           id: "global-toast",
         });
@@ -104,58 +97,54 @@ export default function AlterarSenhaPage() {
             nova.
           </p>
         </div>
+
+        {/* REFATORADO: Formulário agora usa os componentes Field, Label e Input do Headless UI */}
         <form className="space-y-6" onSubmit={handlePasswordChange}>
-          <div>
-            <label
-              htmlFor="currentPassword"
-              className="block text-sm font-medium text-gray-700"
-            >
+          <Field>
+            <Label className="block text-sm font-medium text-gray-700">
               Senha Atual
-            </label>
-            <input
+            </Label>
+            <Input
               id="currentPassword"
               name="currentPassword"
               type="password"
               required
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 data-[hover]:border-teal-400"
             />
-          </div>
-          <div>
-            <label
-              htmlFor="newPassword"
-              className="block text-sm font-medium text-gray-700"
-            >
+          </Field>
+
+          <Field>
+            <Label className="block text-sm font-medium text-gray-700">
               Nova Senha
-            </label>
-            <input
+            </Label>
+            <Input
               id="newPassword"
               name="newPassword"
               type="password"
               required
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 data-[hover]:border-teal-400"
             />
-          </div>
-          <div>
-            <label
-              htmlFor="confirmPassword"
-              className="block text-sm font-medium text-gray-700"
-            >
+          </Field>
+
+          <Field>
+            <Label className="block text-sm font-medium text-gray-700">
               Confirmar Nova Senha
-            </label>
-            <input
+            </Label>
+            <Input
               id="confirmPassword"
               name="confirmPassword"
               type="password"
               required
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 data-[hover]:border-teal-400"
             />
-          </div>
+          </Field>
+
           <div>
             <button
               type="submit"
@@ -166,6 +155,7 @@ export default function AlterarSenhaPage() {
             </button>
           </div>
         </form>
+
         <div className="text-center">
           <button
             onClick={() => router.back()}

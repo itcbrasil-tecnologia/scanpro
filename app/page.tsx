@@ -8,6 +8,7 @@ import { FirebaseError } from "firebase/app";
 import { auth } from "@/lib/firebase/config";
 import toast from "react-hot-toast";
 import { Eye, EyeOff } from "lucide-react";
+import { Field, Label, Input } from "@headlessui/react"; // ADICIONADO: Importação do Headless UI
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -27,30 +28,24 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // Passo 1: Autentica o usuário no cliente
       const userCredential: UserCredential = await signInWithEmailAndPassword(
         auth,
         email,
         password
       );
       const user = userCredential.user;
-
-      // Passo 2: Obtém o ID Token do usuário
       const idToken = await user.getIdToken();
 
-      // Passo 3: Envia o token para a API para criar o cookie de sessão e ESPERA a resposta
       const response = await fetch("/api/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ idToken }),
       });
 
-      // Se a criação da sessão no servidor falhar, interrompe o processo
       if (!response.ok) {
         throw new Error("Falha ao criar sessão no servidor.");
       }
 
-      // Passo 4: SOMENTE APÓS o cookie ser criado com sucesso, redireciona o usuário
       router.push("/inicio");
     } catch (error) {
       if (
@@ -86,42 +81,37 @@ export default function LoginPage() {
             Acesse sua conta para continuar
           </p>
         </div>
+
+        {/* REFATORADO: Formulário agora usa os componentes Field, Label e Input do Headless UI */}
         <form className="space-y-6" onSubmit={handleLogin}>
-          <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-gray-700"
-            >
+          <Field>
+            <Label className="block text-sm font-medium text-gray-700">
               E-mail
-            </label>
-            <input
-              id="email"
-              name="email"
+            </Label>
+            <Input
               type="email"
+              name="email"
               autoComplete="email"
               required
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              className="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+              onChange={(e) => setEmail(e.target.value)}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 data-[hover]:border-teal-400"
             />
-          </div>
-          <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-gray-700"
-            >
+          </Field>
+
+          <Field>
+            <Label className="block text-sm font-medium text-gray-700">
               Senha
-            </label>
+            </Label>
             <div className="relative mt-1">
-              <input
-                id="password"
-                name="password"
+              <Input
                 type={showPassword ? "text" : "password"}
+                name="password"
                 autoComplete="current-password"
                 required
                 value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500"
+                onChange={(e) => setPassword(e.target.value)}
+                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 data-[hover]:border-teal-400"
               />
               <button
                 type="button"
@@ -132,7 +122,8 @@ export default function LoginPage() {
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
-          </div>
+          </Field>
+
           <div>
             <button
               type="submit"

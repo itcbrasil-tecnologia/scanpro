@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { db } from "@/lib/firebase/config";
@@ -14,9 +14,25 @@ import {
 } from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
-import { Plus, Edit, Trash2, ChevronDown } from "lucide-react";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  ChevronDown,
+  Check,
+  ChevronsUpDown,
+} from "lucide-react";
 import { UserProfile, UserRole } from "@/types";
 import toast from "react-hot-toast";
+import {
+  Field,
+  Label,
+  Input,
+  Listbox,
+  Transition,
+  Button,
+} from "@headlessui/react";
+import { NumberInput } from "@/components/ui/NumberInput";
 
 function UserListItem({
   user,
@@ -51,18 +67,18 @@ function UserListItem({
           </span>
         </div>
         <div className="col-span-1 flex items-center justify-end space-x-3">
-          <button
+          <Button
             onClick={onEdit}
-            className="text-gray-500 hover:text-teal-600"
+            className="text-gray-500 data-[hover]:text-teal-600"
           >
             <Edit size={20} />
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={onDelete}
-            className="text-gray-500 hover:text-red-600"
+            className="text-gray-500 data-[hover]:text-red-600"
           >
             <Trash2 size={20} />
-          </button>
+          </Button>
         </div>
       </div>
       <div className="sm:hidden">
@@ -98,18 +114,18 @@ function UserListItem({
               <p>{user.whatsapp}</p>
             </div>
             <div className="flex justify-end space-x-4 pt-2">
-              <button
+              <Button
                 onClick={onEdit}
-                className="flex items-center text-sm p-2 rounded-md bg-slate-200 hover:bg-slate-300"
+                className="flex items-center text-sm p-2 rounded-md bg-slate-200 data-[hover]:bg-slate-300"
               >
                 <Edit size={16} className="mr-1" /> Editar
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={onDelete}
-                className="flex items-center text-sm p-2 rounded-md bg-red-100 text-red-700 hover:bg-red-200"
+                className="flex items-center text-sm p-2 rounded-md bg-red-100 text-red-700 data-[hover]:bg-red-200"
               >
                 <Trash2 size={16} className="mr-1" /> Excluir
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -136,6 +152,12 @@ export default function UsersPage() {
     role: "USER" as UserRole,
     dailyConferenceGoal: 2,
   });
+
+  const userRoles: { value: UserRole; label: string }[] = [
+    { value: "USER", label: "Técnico (USER)" },
+    { value: "ADMIN", label: "Administrador (ADMIN)" },
+    { value: "MASTER", label: "Master (MASTER)" },
+  ];
 
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
@@ -197,14 +219,17 @@ export default function UsersPage() {
     setIsDeleteModalOpen(true);
   };
 
-  const handleFormChange = (
-    event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value, type } = event.target;
-    setFormState((prev) => ({
-      ...prev,
-      [name]: type === "number" ? Number(value) : value,
-    }));
+  const handleFormChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = event.target;
+    setFormState((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleRoleChange = (value: UserRole) => {
+    setFormState((prev) => ({ ...prev, role: value }));
+  };
+
+  const handleGoalChange = (value: number) => {
+    setFormState((prev) => ({ ...prev, dailyConferenceGoal: value }));
   };
 
   const handleSave = async () => {
@@ -282,14 +307,14 @@ export default function UsersPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
         <h1 className="text-3xl font-bold text-gray-800">Gerenciar Usuários</h1>
-        <button
+        <Button
           onClick={openAddModal}
-          className="mt-4 sm:mt-0 flex items-center justify-center bg-teal-600 text-white px-4 py-2 rounded-lg shadow hover:bg-teal-700 transition-colors"
+          className="mt-4 sm:mt-0 flex items-center justify-center bg-teal-600 text-white px-4 py-2 rounded-lg shadow data-[hover]:bg-teal-700 transition-colors"
         >
           <Plus size={20} className="mr-2" />
-          <span className="hidden sm:inline">Adicionar Usuários</span>
-          <span className="sm:hidden">Usuários</span>
-        </button>
+          <span className="hidden sm:inline">Adicionar Usuário</span>
+          <span className="sm:hidden">Usuário</span>
+        </Button>
       </div>
       <div className="bg-white p-4 rounded-lg shadow-md">
         {isLoading ? (
@@ -324,47 +349,47 @@ export default function UsersPage() {
         title={modalTitle}
       >
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
+          <Field>
+            <Label className="block text-sm font-medium text-gray-700">
               Nome
-            </label>
-            <input
+            </Label>
+            <Input
               type="text"
               name="nome"
               value={formState.nome}
               onChange={handleFormChange}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
             />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
+          </Field>
+          <Field>
+            <Label className="block text-sm font-medium text-gray-700">
               Email
-            </label>
-            <input
+            </Label>
+            <Input
               type="email"
               name="email"
               value={formState.email}
               onChange={handleFormChange}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
             />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
+          </Field>
+          <Field>
+            <Label className="block text-sm font-medium text-gray-700">
               Whatsapp
-            </label>
-            <input
+            </Label>
+            <Input
               type="tel"
               name="whatsapp"
               value={formState.whatsapp}
               onChange={handleFormChange}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
             />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
+          </Field>
+          <Field>
+            <Label className="block text-sm font-medium text-gray-700">
               Senha
-            </label>
-            <input
+            </Label>
+            <Input
               type="password"
               name="senha"
               value={formState.senha}
@@ -374,44 +399,82 @@ export default function UsersPage() {
               }
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
             />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Perfil
-            </label>
-            <select
-              name="role"
-              value={formState.role}
-              onChange={handleFormChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-white"
-            >
-              <option value="USER">Técnico (USER)</option>
-              <option value="ADMIN">Administrador (ADMIN)</option>
-              <option value="MASTER">Master (MASTER)</option>
-            </select>
-          </div>
-          {formState.role === "USER" && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Meta de Conferências Diárias
-              </label>
-              <input
-                type="number"
-                name="dailyConferenceGoal"
-                value={formState.dailyConferenceGoal}
-                onChange={handleFormChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
-                min="0"
-              />
+          </Field>
+
+          <Listbox value={formState.role} onChange={handleRoleChange}>
+            <div className="relative">
+              <Listbox.Label className="block text-sm font-medium text-gray-700">
+                Perfil
+              </Listbox.Label>
+              <Listbox.Button className="relative mt-1 w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-teal-500 focus-visible:ring-2 focus-visible:ring-white">
+                <span className="block truncate">
+                  {userRoles.find((r) => r.value === formState.role)?.label}
+                </span>
+                <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                  <ChevronsUpDown className="h-5 w-5 text-gray-400" />
+                </span>
+              </Listbox.Button>
+              <Transition
+                as={Fragment}
+                leave="transition ease-in duration-100"
+                leaveFrom="opacity-100"
+                leaveTo="opacity-0"
+              >
+                <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 z-10">
+                  {userRoles.map((role) => (
+                    <Listbox.Option
+                      key={role.value}
+                      value={role.value}
+                      className={({ active }) =>
+                        `relative cursor-default select-none py-2 pl-10 pr-4 ${
+                          active ? "bg-teal-100" : "text-gray-900"
+                        }`
+                      }
+                    >
+                      {({ selected }) => (
+                        <>
+                          <span
+                            className={`block truncate ${
+                              selected ? "font-medium" : "font-normal"
+                            }`}
+                          >
+                            {role.label}
+                          </span>
+                          {selected ? (
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-teal-600">
+                              <Check className="h-5 w-5" />
+                            </span>
+                          ) : null}
+                        </>
+                      )}
+                    </Listbox.Option>
+                  ))}
+                </Listbox.Options>
+              </Transition>
             </div>
+          </Listbox>
+
+          {formState.role === "USER" && (
+            <Field>
+              <Label className="block text-sm font-medium text-gray-700">
+                Meta de Conferências Diárias
+              </Label>
+              <div className="mt-1">
+                <NumberInput
+                  value={formState.dailyConferenceGoal}
+                  onChange={handleGoalChange}
+                />
+              </div>
+            </Field>
           )}
+
           <div className="flex justify-end pt-4">
-            <button
+            <Button
               onClick={handleSave}
-              className="bg-teal-600 text-white px-6 py-2 rounded-lg hover:bg-teal-700"
+              className="bg-teal-600 text-white px-6 py-2 rounded-lg data-[hover]:bg-teal-700"
             >
               Salvar
-            </button>
+            </Button>
           </div>
         </div>
       </Modal>
