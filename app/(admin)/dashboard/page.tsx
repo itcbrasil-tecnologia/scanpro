@@ -1,5 +1,4 @@
 "use client";
-
 import React, { useState, useEffect } from "react";
 import { db } from "@/lib/firebase/config";
 import {
@@ -30,14 +29,11 @@ import { ConferenceData } from "@/types";
 
 type ModalListItem = { name: string; whatsapp?: string };
 
-interface Conference extends ConferenceData {
+interface ConferenceForTable extends ConferenceData {
   id: string;
-  project: string;
-  um: string;
-  technician: string;
-  expected: number;
-  scanned: number;
-  missing: number;
+  date: string;
+  startTimeFormatted: string;
+  endTimeFormatted: string;
 }
 
 interface MaintenanceNotebook {
@@ -56,7 +52,7 @@ export default function DashboardPage() {
     notebooks: 0,
     maintenance: 0,
   });
-  const [conferences, setConferences] = useState<Conference[]>([]);
+  const [conferences, setConferences] = useState<ConferenceForTable[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [detailsModalContent, setDetailsModalContent] = useState<{
@@ -72,7 +68,6 @@ export default function DashboardPage() {
     useState<MaintenanceNotebook | null>(null);
   const [techniciansList, setTechniciansList] = useState<ModalListItem[]>([]);
   const [projectsList, setProjectsList] = useState<ModalListItem[]>([]);
-
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
   const [selectedConferenceForSummary, setSelectedConferenceForSummary] =
     useState<ConferenceData | null>(null);
@@ -90,7 +85,6 @@ export default function DashboardPage() {
           orderBy("endTime", "desc"),
           limit(10)
         );
-
         const [
           projectsSnapshot,
           umsSnapshot,
@@ -106,23 +100,19 @@ export default function DashboardPage() {
           getDocs(maintenanceQuery),
           getDocs(conferencesQuery),
         ]);
-
         const projectsData = projectsSnapshot.docs.map((doc) => ({
           name: doc.data().name,
         }));
         setProjectsList(projectsData);
-
         const techniciansData = techniciansSnapshot.docs.map((doc) => ({
           name: doc.data().nome,
           whatsapp: doc.data().whatsapp,
         }));
         setTechniciansList(techniciansData);
-
         const maintenanceData = maintenanceSnapshot.docs.map(
           (doc) => ({ id: doc.id, ...doc.data() } as MaintenanceNotebook)
         );
         setMaintenanceNotebooks(maintenanceData);
-
         setSummaryData({
           technicians: techniciansSnapshot.size,
           projects: projectsSnapshot.size,
@@ -130,40 +120,25 @@ export default function DashboardPage() {
           notebooks: notebooksSnapshot.size,
           maintenance: maintenanceSnapshot.size,
         });
-
         const conferencesList = conferencesSnapshot.docs.map((doc) => {
-          const data = doc.data();
-          // CORREÇÃO: Removido o `...data` que causava o erro de renderização do Timestamp
+          const data = doc.data() as ConferenceData;
           return {
+            ...data,
             id: doc.id,
             date: data.endTime.toDate().toLocaleDateString("pt-BR"),
-            startTime: data.startTime
+            startTimeFormatted: data.startTime
               .toDate()
               .toLocaleTimeString("pt-BR", {
                 hour: "2-digit",
                 minute: "2-digit",
               }),
-            endTime: data.endTime
+            endTimeFormatted: data.endTime
               .toDate()
               .toLocaleTimeString("pt-BR", {
                 hour: "2-digit",
                 minute: "2-digit",
               }),
-            project: data.projectName,
-            um: data.umName,
-            technician: data.userName,
-            expected: data.expectedCount,
-            scanned: data.scannedCount,
-            missing: data.missingCount,
-            missingDevices: data.missingDevices || [],
-            maintenanceDevices: data.maintenanceDevices || [],
-            miceCount: data.miceCount,
-            chargersCount: data.chargersCount,
-            headsetsCount: data.headsetsCount,
-            latitude: data.latitude,
-            longitude: data.longitude,
-            // Adicione outros campos da ConferenceData aqui se necessário
-          } as Conference;
+          } as ConferenceForTable;
         });
         setConferences(conferencesList);
       } catch (error) {
@@ -175,7 +150,6 @@ export default function DashboardPage() {
         setIsLoading(false);
       }
     };
-
     fetchData();
   }, []);
 
@@ -214,7 +188,6 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
-
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
         <DashboardCard
           title="Técnicos Cadastrados"
@@ -247,7 +220,6 @@ export default function DashboardPage() {
           onDetailsClick={() => setIsMaintenanceModalOpen(true)}
         />
       </div>
-
       <div className="bg-white p-6 rounded-lg shadow-md overflow-hidden">
         <h2 className="text-xl font-bold text-gray-800 mb-4">
           Últimas Conferências
@@ -296,23 +268,27 @@ export default function DashboardPage() {
                       {conference.date}
                       <br />
                       <span className="text-xs text-gray-500">
-                        {conference.startTime} - {conference.endTime}
+                        {conference.startTimeFormatted} -{" "}
+                        {conference.endTimeFormatted}
                       </span>
                     </td>
                     <td className="p-3">
-                      {conference.project} / {conference.um}
+                      {conference.projectName} / {conference.umName}
                     </td>
-                    <td className="p-3">{conference.technician}</td>
+                    <td className="p-3">{conference.userName}</td>
                     <td className="p-3 text-center">
-                      {conference.scanned} / {conference.expected}
+                      {conference.scannedCount} / {conference.expectedCount}
                     </td>
                     <td className="p-3 text-center">
-                      {renderStatus(conference.scanned, conference.expected)}
+                      {renderStatus(
+                        conference.scannedCount,
+                        conference.expectedCount
+                      )}
                     </td>
                     <td className="p-3 text-center">
                       {conference.latitude && conference.longitude && (
                         <a
-                          href={`https://maps.google.com/?q=${conference.latitude},${conference.longitude}`}
+                          href={`http://googleusercontent.com/maps.google.com/?q=${conference.latitude},${conference.longitude}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-teal-600 hover:underline font-semibold flex items-center justify-center"
@@ -374,7 +350,7 @@ export default function DashboardPage() {
                 <tr>
                   <th className="p-2 font-semibold text-slate-600">Hostname</th>
                   <th className="p-2 font-semibold text-slate-600">S/N</th>
-                  <th className="p-2 font-semibold text-slate-600">
+                  <th className="p-2 font-semibold text-slate-600 text-center">
                     Patrimônio
                   </th>
                   <th className="p-2 font-semibold text-slate-600">
