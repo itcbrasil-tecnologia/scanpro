@@ -29,14 +29,15 @@ import {
   TriangleAlert,
   FileText,
   Eye,
-  Bell,
-  BellOff,
-  Check,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { ConferenceData } from "@/types"; // Importação já existente e correta
+import { ConferenceData } from "@/types";
 
-// A interface local 'Conference' foi REMOVIDA.
+interface ConferenceForHistory extends ConferenceData {
+  date: string;
+  startTimeFormatted: string;
+  endTimeFormatted: string;
+}
 
 interface PeripheralsData {
   miceCount?: number;
@@ -44,17 +45,16 @@ interface PeripheralsData {
   headsetsCount?: number;
 }
 
-const ITEMS_PER_PAGE = 20;
+// ADICIONADO: Constante para definir a quantidade de itens por página
+const ITEMS_PER_PAGE = 10;
 
 export default function InicioPage() {
   const { userProfile } = useAuth();
   const router = useRouter();
-  const [conferences, setConferences] = useState<ConferenceData[]>([]); // CORRIGIDO para usar ConferenceData
+  const [conferences, setConferences] = useState<ConferenceForHistory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const [notificationPermission, setNotificationPermission] =
-    useState<NotificationPermission>("default");
-
+  // Estado para a paginação
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [lastVisible, setLastVisible] =
@@ -67,18 +67,12 @@ export default function InicioPage() {
     useState<PeripheralsData | null>(null);
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
   const [selectedConferenceForSummary, setSelectedConferenceForSummary] =
-    useState<ConferenceData | null>(null); // CORRIGIDO para usar ConferenceData
+    useState<ConferenceData | null>(null);
 
   const [dailyCounts, setDailyCounts] = useState({
     completed: 0,
     total: 2,
   });
-
-  useEffect(() => {
-    if ("Notification" in window) {
-      setNotificationPermission(Notification.permission);
-    }
-  }, []);
 
   const fetchConferences = useCallback(
     async (
@@ -91,7 +85,8 @@ export default function InicioPage() {
         const conferencesRef = collection(db, "conferences");
         const userConferencesQuery = where("userId", "==", userProfile.uid);
 
-        if (totalPages === 0) {
+        // ADICIONADO: Lógica para contar o total de documentos e definir o total de páginas na primeira carga
+        if (page === 1) {
           const countQuery = query(conferencesRef, userConferencesQuery);
           const countSnapshot = await getDocs(countQuery);
           setTotalPages(Math.ceil(countSnapshot.size / ITEMS_PER_PAGE));
@@ -111,41 +106,26 @@ export default function InicioPage() {
         const historySnapshot = await getDocs(historyQuery);
 
         const userConferences = historySnapshot.docs.map((document) => {
-          const data = document.data();
+          const data = document.data() as ConferenceData;
           return {
+            ...data,
             id: document.id,
-            userName: data.userName,
-            projectName: data.projectName,
-            umName: data.umName,
-            userId: data.userId,
-            conferenceStartTime: data.startTime?.toDate(),
             date: data.endTime.toDate().toLocaleDateString("pt-BR"),
-            startTime: data.startTime
+            startTimeFormatted: data.startTime
               .toDate()
               .toLocaleTimeString("pt-BR", {
                 hour: "2-digit",
                 minute: "2-digit",
               }),
-            endTime: data.endTime
+            endTimeFormatted: data.endTime
               .toDate()
               .toLocaleTimeString("pt-BR", {
                 hour: "2-digit",
                 minute: "2-digit",
               }),
-            expectedCount: data.expectedCount,
-            scannedCount: data.scannedCount,
-            missingCount: data.missingCount,
-            scannedDevices: data.scannedDevices || [],
-            missingDevices: data.missingDevices || [],
-            maintenanceDevices: data.maintenanceDevices || [],
-            maintenanceCount: data.maintenanceCount,
-            miceCount: data.miceCount,
-            chargersCount: data.chargersCount,
-            headsetsCount: data.headsetsCount,
-            latitude: data.latitude,
-            longitude: data.longitude,
-          } as ConferenceData;
+          } as ConferenceForHistory;
         });
+
         setConferences(userConferences);
         setLastVisible(
           historySnapshot.docs[historySnapshot.docs.length - 1] || null
@@ -158,7 +138,7 @@ export default function InicioPage() {
         setIsLoading(false);
       }
     },
-    [userProfile, totalPages]
+    [userProfile] // totalPages foi removido para evitar recargas desnecessárias
   );
 
   useEffect(() => {
@@ -196,6 +176,7 @@ export default function InicioPage() {
         total: userProfile.dailyConferenceGoal || 2,
       });
 
+      // Inicia a busca pela primeira página
       fetchConferences(1);
     };
 
@@ -206,52 +187,10 @@ export default function InicioPage() {
     if (newPage > currentPage && lastVisible) {
       fetchConferences(newPage, lastVisible);
     } else if (newPage < currentPage) {
+      // Para voltar, reiniciamos a busca da primeira página.
+      // Uma implementação mais complexa para "voltar" não é necessária aqui e
+      // este modelo simples é eficiente e funcional.
       fetchConferences(1);
-    }
-  };
-
-  const handleSubscribeToNotifications = async () => {
-    if (
-      !("serviceWorker" in navigator) ||
-      !("PushManager" in window) ||
-      !userProfile
-    ) {
-      toast.error("Seu navegador não suporta notificações push.");
-      return;
-    }
-    try {
-      const sw = await navigator.serviceWorker.ready;
-      const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-      if (!vapidPublicKey) {
-        console.error("Chave VAPID pública não configurada.");
-        toast.error("Erro de configuração para notificações.");
-        return;
-      }
-      const subscription = await sw.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: vapidPublicKey,
-      });
-      await fetch("/api/notifications/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          uid: userProfile.uid,
-          subscription: subscription,
-        }),
-      });
-      toast.success("Notificações ativadas com sucesso!");
-      setNotificationPermission("granted");
-      await fetch("/api/notifications/send-welcome", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uid: userProfile.uid }),
-      });
-    } catch (error) {
-      console.error("Erro ao se inscrever para notificações:", error);
-      setNotificationPermission(Notification.permission);
-      toast.error(
-        "Não foi possível ativar as notificações. Você precisa dar permissão no pop-up do navegador."
-      );
     }
   };
 
@@ -264,12 +203,10 @@ export default function InicioPage() {
     setIsPeripheralsModalOpen(true);
   };
   const openSummaryModal = (conference: ConferenceData) => {
-    // CORRIGIDO
     setSelectedConferenceForSummary(conference);
     setIsSummaryModalOpen(true);
   };
   const renderStatus = (conference: ConferenceData) => {
-    // CORRIGIDO
     const isComplete = conference.scannedCount === conference.expectedCount;
     const style = isComplete
       ? "bg-green-100 text-green-800"
@@ -279,38 +216,6 @@ export default function InicioPage() {
         {isComplete ? "CONCLUÍDO" : "INCOMPLETO"}
       </span>
     );
-  };
-
-  const renderNotificationCard = () => {
-    switch (notificationPermission) {
-      case "granted":
-        return (
-          <div className="flex items-center justify-center text-green-600">
-            <Check size={18} className="mr-2" />
-            <span className="font-bold">Notificações Ativadas</span>
-          </div>
-        );
-      case "denied":
-        return (
-          <div className="flex items-center text-xs text-center text-amber-700">
-            <BellOff size={28} className="mr-2 flex-shrink-0" />
-            <span>
-              Notificações bloqueadas. Habilite nas configurações do seu
-              navegador.
-            </span>
-          </div>
-        );
-      case "default":
-      default:
-        return (
-          <button
-            onClick={handleSubscribeToNotifications}
-            className="w-full flex items-center justify-center bg-slate-600 text-white px-4 py-2 rounded-lg shadow hover:bg-slate-700 transition-colors font-bold text-base"
-          >
-            <Bell size={18} className="mr-2" /> Ativar Notificações
-          </button>
-        );
-    }
   };
 
   if (!userProfile || userProfile.role !== "USER") {
@@ -341,12 +246,6 @@ export default function InicioPage() {
               </p>
             </div>
           </div>
-
-          <div className="bg-white p-4 rounded-lg shadow-md text-center">
-            <h3 className="font-bold text-gray-700 mb-2">Notificações</h3>
-            {renderNotificationCard()}
-          </div>
-
           <div className="sm:hidden">
             {allDailyCountsCompleted ? (
               <div className="w-full flex items-center justify-center bg-gray-200 text-gray-500 px-4 py-3 rounded-lg font-bold text-lg">
@@ -408,7 +307,8 @@ export default function InicioPage() {
                       <td className="p-3 text-sm">
                         <p>{conference.date}</p>
                         <p className="text-xs text-gray-500">
-                          {conference.startTime} - {conference.endTime}
+                          {conference.startTimeFormatted} -{" "}
+                          {conference.endTimeFormatted}
                         </p>
                       </td>
                       <td className="p-3 text-sm font-medium">

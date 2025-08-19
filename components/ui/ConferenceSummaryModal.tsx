@@ -23,10 +23,20 @@ export function ConferenceSummaryModal({
     conferenceData.chargersCount !== undefined ||
     conferenceData.headsetsCount !== undefined;
 
-  // Calcula o total de dispositivos cadastrados
   const totalCadastrados =
     (conferenceData.expectedCount || 0) +
     (conferenceData.maintenanceCount || 0);
+
+  // ADICIONADO: Variáveis formatadas para uso no JSX
+  const formattedDate = conferenceData.endTime
+    .toDate()
+    .toLocaleDateString("pt-BR");
+  const formattedStartTime = conferenceData.startTime
+    .toDate()
+    .toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  const formattedEndTime = conferenceData.endTime
+    .toDate()
+    .toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
   return (
     <Modal
@@ -43,11 +53,13 @@ export function ConferenceSummaryModal({
               {conferenceData.userName}
             </p>
             <p>
-              <span className="font-semibold">Data:</span> {conferenceData.date}
+              {/* ALTERADO: Usando a variável formatada */}
+              <span className="font-semibold">Data:</span> {formattedDate}
             </p>
             <p>
               <span className="font-semibold">Horário:</span>{" "}
-              {conferenceData.startTime} às {conferenceData.endTime}
+              {/* ALTERADO: Usando as variáveis formatadas */}
+              {formattedStartTime} às {formattedEndTime}
             </p>
           </div>
           <div className="space-y-1">
@@ -95,7 +107,7 @@ export function ConferenceSummaryModal({
                 <MapPin size={14} className="mr-2" /> Localização Registrada:
               </p>
               <a
-                href={`https://maps.google.com/?q=${conferenceData.latitude},${conferenceData.longitude}`}
+                href={`http://googleusercontent.com/maps.google.com/?q=${conferenceData.latitude},${conferenceData.longitude}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-teal-600 hover:underline text-sm font-medium"
@@ -166,7 +178,6 @@ export function ConferenceSummaryModal({
             </div>
           )}
       </div>
-
       <div className="flex justify-end pt-4 mt-4 border-t">
         <button
           onClick={onClose}

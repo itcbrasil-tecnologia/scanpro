@@ -1,4 +1,4 @@
-import { Timestamp } from "firebase/firestore"; // ADICIONADO: Importação do tipo Timestamp
+import { Timestamp } from "firebase/firestore";
 
 export type UserRole = "USER" | "ADMIN" | "MASTER";
 
@@ -18,7 +18,8 @@ export interface ConferenceData {
   projectName: string;
   umName?: string;
   userId?: string;
-  // CORREÇÃO: Tipos ajustados para refletir o schema do Firestore
+  // ADICIONADO DE VOLTA: Este campo é essencial para a lógica de salvamento
+  conferenceStartTime?: Date;
   startTime: Timestamp;
   endTime: Timestamp;
   expectedCount: number;
@@ -33,7 +34,4 @@ export interface ConferenceData {
   headsetsCount?: number;
   latitude?: number;
   longitude?: number;
-
-  // REMOVIDO: O campo 'date' era derivado e não pertence ao modelo de dados principal.
-  // REMOVIDO: As versões string de startTime e endTime também eram derivadas.
 }

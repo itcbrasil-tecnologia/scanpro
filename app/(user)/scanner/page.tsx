@@ -53,8 +53,6 @@ interface Notebook {
   status?: "Ativo" | "Em Manutenção";
 }
 
-// A interface SummaryData foi removida.
-
 const AVAILABLE_PERIPHERALS = ["mouse", "carregador", "fone"];
 
 const getCurrentPosition = (): Promise<GeolocationPosition> => {
@@ -89,7 +87,7 @@ export default function ScannerPage() {
   const [chargersCount, setChargersCount] = useState(0);
   const [headsetsCount, setHeadsetsCount] = useState(0);
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
-  const [summaryData, setSummaryData] = useState<ConferenceData | null>(null); // CORRIGIDO
+  const [summaryData, setSummaryData] = useState<ConferenceData | null>(null);
   const [isMaintenanceListOpen, setIsMaintenanceListOpen] = useState(false);
 
   useEffect(() => {
@@ -224,28 +222,20 @@ export default function ScannerPage() {
   };
 
   const handleFinalizeConference = async () => {
-    const endTime = new Date();
+    const endTimeValue = new Date();
     const selectedUM = ums.find((um) => um.id === selectedUmId);
     const selectedProject = projects.find(
       (project) => project.id === selectedUM?.projectId
     );
 
-    const data: Partial<ConferenceData> = {
-      // CORRIGIDO
+    const data: ConferenceData = {
       userName: userProfile?.nome,
       projectName: selectedProject?.name || "N/A",
       umName: selectedUM?.name,
       userId: userProfile?.uid,
       conferenceStartTime: conferenceStartTime!,
-      date: endTime.toLocaleDateString("pt-BR"),
-      startTime: conferenceStartTime?.toLocaleTimeString("pt-BR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      endTime: endTime.toLocaleTimeString("pt-BR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
+      startTime: Timestamp.fromDate(conferenceStartTime!),
+      endTime: Timestamp.fromDate(endTimeValue),
       expectedCount: devicesToScan.length + scannedDevices.length,
       scannedCount: scannedDevices.length,
       missingCount: devicesToScan.length,
@@ -279,12 +269,11 @@ export default function ScannerPage() {
       }
     }
 
-    setSummaryData(data as ConferenceData); // CORRIGIDO
+    setSummaryData(data);
     setIsSummaryModalOpen(true);
   };
 
   const logConferenceLifecycleEvents = async (data: ConferenceData) => {
-    // CORRIGIDO
     try {
       const allHostnames = [...data.scannedDevices, ...data.missingDevices];
       if (allHostnames.length === 0) return;
@@ -314,7 +303,6 @@ export default function ScannerPage() {
       const timestamp = Timestamp.now();
       const user = userProfile?.nome || "Sistema";
       const details = `Na conferência da UM: ${data.umName}`;
-
       data.scannedDevices.forEach((hostname: string) => {
         const notebookId = hostnameToIdMap.get(hostname);
         if (notebookId) {
@@ -356,7 +344,6 @@ export default function ScannerPage() {
   };
 
   const saveConferenceOffline = async (data: ConferenceData) => {
-    // CORRIGIDO
     try {
       await dexieDB.conferencesOutbox.add({
         conferenceData: data,
@@ -381,7 +368,6 @@ export default function ScannerPage() {
   const handleConcludeAndSend = async () => {
     if (!summaryData) return;
     setIsSummaryModalOpen(false);
-
     if (!navigator.onLine) {
       await saveConferenceOffline(summaryData);
       return;
@@ -390,10 +376,7 @@ export default function ScannerPage() {
     try {
       await addDoc(collection(firestoreDB, "conferences"), {
         ...summaryData,
-        startTime: Timestamp.fromDate(summaryData.conferenceStartTime!),
-        endTime: Timestamp.now(),
       });
-
       fetch("/api/notify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -401,7 +384,9 @@ export default function ScannerPage() {
       });
 
       logConferenceLifecycleEvents(summaryData);
-      toast.success("CONFERÊNCIA ENVIADA COM SUCESSO", { id: "global-toast" });
+      toast.success("CONFERÊNCIA ENVIADA COM SUCESSO", {
+        id: "global-toast",
+      });
       router.push("/inicio");
     } catch (error) {
       console.error(
@@ -666,11 +651,20 @@ export default function ScannerPage() {
               <span className="font-semibold">UM:</span> {summaryData.umName}
             </p>
             <p>
-              <span className="font-semibold">Data:</span> {summaryData.date}
+              <span className="font-semibold">Data:</span>{" "}
+              {summaryData.endTime.toDate().toLocaleDateString("pt-BR")}
             </p>
             <p>
               <span className="font-semibold">Horário:</span>{" "}
-              {summaryData.startTime} às {summaryData.endTime}
+              {summaryData.startTime.toDate().toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+              {" às "}
+              {summaryData.endTime.toDate().toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </p>
             {(summaryData.miceCount !== undefined ||
               summaryData.chargersCount !== undefined ||
