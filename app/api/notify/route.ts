@@ -1,23 +1,12 @@
 import { NextResponse } from "next/server";
+import { ConferenceData } from "@/types";
+import { Timestamp } from "firebase-admin/firestore";
 
-interface SummaryData {
-  userName?: string;
-  projectName: string;
-  umName?: string;
-  date: string;
-  startTime?: string;
-  endTime: string;
-  expectedCount: number;
-  scannedCount: number;
-  missingCount: number;
-  missingDevices: string[];
-  maintenanceDevices?: string[];
-  maintenanceCount?: number;
-  miceCount?: number;
-  chargersCount?: number;
-  headsetsCount?: number;
-  latitude?: number;
-  longitude?: number;
+// ADICIONADO: Interface que representa a estrutura de um Timestamp após ser convertido para JSON.
+// Isso nos permite fazer um cast seguro sem usar 'any'.
+interface JsonTimestamp {
+  _seconds: number;
+  _nanoseconds: number;
 }
 
 export async function POST(request: Request) {
@@ -35,22 +24,45 @@ export async function POST(request: Request) {
   }
 
   try {
-    const summary: SummaryData = await request.json();
+    const summary: ConferenceData = await request.json();
 
-    let message = `*Resumo da Conferência - ScanPRO*\n\n`;
-    message += `*Técnico:* ${summary.userName || "N/A"}\n`;
-    message += `*Projeto:* ${summary.projectName}\n`;
-    message += `*UM:* ${summary.umName || "N/A"}\n`;
-    message += `*Data:* ${summary.date}\n`;
-    message += `*Horário:* ${summary.startTime} às ${summary.endTime}\n`;
+    // CORREÇÃO: Usando a interface JsonTimestamp para um cast de tipo seguro.
+    const startTimeJson = summary.startTime as unknown as JsonTimestamp;
+    const endTimeJson = summary.endTime as unknown as JsonTimestamp;
 
-    // Adiciona o link de geolocalização se existir
+    const startTimeDate = new Timestamp(
+      startTimeJson._seconds,
+      startTimeJson._nanoseconds
+    ).toDate();
+
+    const endTimeDate = new Timestamp(
+      endTimeJson._seconds,
+      endTimeJson._nanoseconds
+    ).toDate();
+
+    const formattedDate = endTimeDate.toLocaleDateString("pt-BR");
+    const formattedStartTime = startTimeDate.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const formattedEndTime = endTimeDate.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    let message = `*✅ Resumo da Conferência - ScanPRO*\n\n`;
+    message += `👤 *Técnico:* ${summary.userName || "N/A"}\n`;
+    message += `📂 *Projeto:* ${summary.projectName}\n`;
+    message += `🚚 *UM:* ${summary.umName || "N/A"}\n`;
+    message += `📅 *Data:* ${formattedDate}\n`;
+    message += `🕒 *Horário:* ${formattedStartTime} às ${formattedEndTime}\n`;
+
     if (summary.latitude && summary.longitude) {
-      const mapUrl = `https://maps.google.com/?q=${summary.latitude},${summary.longitude}`;
-      message += `*Localização:* [Ver no Mapa](${mapUrl})\n`;
+      const mapUrl = `http://googleusercontent.com/maps.google.com/?q=${summary.latitude},${summary.longitude}`;
+      message += `📍 *Localização:* [Ver no Mapa](${mapUrl})\n`;
     }
 
-    message += `------------------------------------\n\n`;
+    message += `\n------------------------------------\n\n`;
 
     const hasPeripherals =
       summary.miceCount !== undefined ||
@@ -58,7 +70,7 @@ export async function POST(request: Request) {
       summary.headsetsCount !== undefined;
 
     if (hasPeripherals) {
-      message += `*Periféricos:*\n`;
+      message += `*🖱️ Periféricos:*\n`;
       if (summary.miceCount !== undefined)
         message += `- Mouses: *${summary.miceCount}*\n`;
       if (summary.chargersCount !== undefined)
@@ -68,14 +80,18 @@ export async function POST(request: Request) {
       message += `\n------------------------------------\n\n`;
     }
 
-    message += `*Dispositivos Ativos (Esperados):* ${summary.expectedCount}\n`;
-    message += `*Dispositivos Escaneados:* ${summary.scannedCount}\n`;
-    message += `*Dispositivos Faltantes:* ${summary.missingCount}\n`;
+    message += `*💻 Dispositivos Ativos (Esperados):* ${summary.expectedCount}\n`;
+    message += `*👍 Dispositivos Escaneados:* ${summary.scannedCount}\n`;
+
+    const missingEmoji = summary.missingCount > 0 ? "❗️" : "👍";
+    message += `${missingEmoji} *Dispositivos Faltantes:* ${summary.missingCount}\n`;
+
     if (summary.maintenanceCount && summary.maintenanceCount > 0) {
-      message += `*Dispositivos em Manutenção:* ${summary.maintenanceCount}\n\n`;
+      message += `*🔧 Dispositivos em Manutenção:* ${summary.maintenanceCount}\n\n`;
     } else {
       message += `\n`;
     }
+
     if (summary.missingCount > 0) {
       message += `*Lista de Faltantes:*\n`;
       summary.missingDevices.forEach((device) => {
@@ -83,6 +99,7 @@ export async function POST(request: Request) {
       });
       message += `\n`;
     }
+
     if (
       summary.maintenanceCount &&
       summary.maintenanceCount > 0 &&
@@ -106,6 +123,7 @@ export async function POST(request: Request) {
     });
 
     const result = await response.json();
+
     if (!result.ok) {
       console.error(
         "[ERRO TELEGRAM] A API do Telegram retornou um erro:",
