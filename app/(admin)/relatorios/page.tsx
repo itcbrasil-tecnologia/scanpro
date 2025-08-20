@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useState, useEffect, useCallback, Fragment } from "react";
 import { db } from "@/lib/firebase/config";
 import {
@@ -14,7 +15,7 @@ import {
   DocumentData,
   Timestamp,
 } from "firebase/firestore";
-import { Download, Eye, X, Check, ChevronsUpDown } from "lucide-react";
+import { Download, X, Check, ChevronsUpDown } from "lucide-react";
 import Papa from "papaparse";
 import toast from "react-hot-toast";
 import { PeripheralsModal } from "@/components/ui/PeripheralsModal";
@@ -24,6 +25,7 @@ import { Listbox, Transition } from "@headlessui/react";
 import { AppButton } from "@/components/ui/AppButton";
 import { DateRangePicker } from "@/components/ui/DateRangePicker";
 import { DateRange } from "react-day-picker";
+import { TabelaRelatorios } from "@/components/ui/TabelaRelatorios"; // ADICIONADO
 
 interface Project {
   id: string;
@@ -80,6 +82,7 @@ export default function ReportsPage() {
           )
         ),
       ]);
+
       setProjects(
         projectsSnap.docs.map(
           (doc) => ({ id: doc.id, ...doc.data() } as Project)
@@ -109,7 +112,6 @@ export default function ReportsPage() {
     ) => {
       setIsLoading(true);
       const activeFilters = currentFilters || filters;
-
       try {
         const conferencesRef = collection(db, "conferences");
         const queryConstraints: QueryConstraint[] = [];
@@ -156,12 +158,13 @@ export default function ReportsPage() {
           orderBy("endTime", "desc"),
           limit(ITEMS_PER_PAGE),
         ];
+
         if (page > 1 && startingAfter) {
           dataQueryConstraints.push(startAfter(startingAfter));
         }
+
         const dataQuery = query(conferencesRef, ...dataQueryConstraints);
         const documentSnapshots = await getDocs(dataQuery);
-
         const conferenceData = documentSnapshots.docs.map(
           (doc) =>
             ({
@@ -169,7 +172,6 @@ export default function ReportsPage() {
               ...doc.data(),
             } as ConferenceData)
         );
-
         setConferences(conferenceData);
         setLastVisible(
           documentSnapshots.docs[documentSnapshots.docs.length - 1] || null
@@ -201,6 +203,7 @@ export default function ReportsPage() {
     if (newPage > currentPage && lastVisible) {
       fetchConferences(newPage, lastVisible);
     } else if (newPage < currentPage) {
+      // Para voltar, reiniciamos a busca da primeira página.
       fetchConferences(1, null);
     }
   };
@@ -230,7 +233,6 @@ export default function ReportsPage() {
     try {
       const conferencesRef = collection(db, "conferences");
       const queryConstraints: QueryConstraint[] = [];
-
       if (filters.projectId) {
         const projectDoc = projects.find((p) => p.id === filters.projectId);
         if (projectDoc)
@@ -301,7 +303,9 @@ export default function ReportsPage() {
       link.click();
       document.body.removeChild(link);
 
-      toast.success("Relatório exportado com sucesso!", { id: "export-toast" });
+      toast.success("Relatório exportado com sucesso!", {
+        id: "export-toast",
+      });
     } catch (error) {
       console.error("Erro ao exportar CSV:", error);
       toast.error("Falha ao exportar relatório.", { id: "export-toast" });
@@ -407,7 +411,6 @@ export default function ReportsPage() {
               </Transition>
             </div>
           </Listbox>
-
           <Listbox
             value={filters.umId}
             onChange={(value) => handleFilterChange("umId", value)}
@@ -473,7 +476,6 @@ export default function ReportsPage() {
               </Transition>
             </div>
           </Listbox>
-
           <Listbox
             value={filters.technicianId}
             onChange={(value) => handleFilterChange("technicianId", value)}
@@ -539,7 +541,6 @@ export default function ReportsPage() {
               </Transition>
             </div>
           </Listbox>
-
           <div className="lg:col-span-1">
             <DateRangePicker
               range={filters.dateRange}
@@ -555,105 +556,20 @@ export default function ReportsPage() {
       </div>
 
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-slate-200 border-b-2 border-slate-300">
-              <tr>
-                <th className="p-3 text-sm font-semibold text-gray-800">
-                  Data
-                </th>
-                <th className="p-3 text-sm font-semibold text-gray-800">
-                  Horário
-                </th>
-                <th className="p-3 text-sm font-semibold text-gray-800">
-                  Projeto / UM
-                </th>
-                <th className="p-3 text-sm font-semibold text-gray-800">
-                  Técnico
-                </th>
-                <th className="p-3 text-sm font-semibold text-gray-800 text-center">
-                  Escaneados
-                </th>
-                <th className="p-3 text-sm font-semibold text-gray-800 text-center">
-                  Faltantes
-                </th>
-                <th className="p-3 text-sm font-semibold text-gray-800 text-center">
-                  Periféricos
-                </th>
-                <th className="p-3 text-sm font-semibold text-gray-800 text-center">
-                  Total
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={8} className="text-center p-6 text-gray-500">
-                    Carregando relatórios...
-                  </td>
-                </tr>
-              ) : conferences.length > 0 ? (
-                conferences.map((conference) => (
-                  <tr
-                    key={conference.id}
-                    className="border-b hover:bg-slate-50"
-                  >
-                    <td className="p-3 text-sm">
-                      {conference.endTime.toDate().toLocaleDateString("pt-BR")}
-                    </td>
-                    <td className="p-3 text-sm">
-                      {conference.startTime
-                        .toDate()
-                        .toLocaleTimeString("pt-BR", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      {" - "}
-                      {conference.endTime
-                        .toDate()
-                        .toLocaleTimeString("pt-BR", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                    </td>
-                    <td className="p-3 text-sm">
-                      {conference.projectName} / {conference.umName}
-                    </td>
-                    <td className="p-3 text-sm">{conference.userName}</td>
-                    <td className="p-3 text-center text-green-600 font-semibold">
-                      {conference.scannedCount}
-                    </td>
-                    <td className="p-3 text-center text-red-600 font-semibold">
-                      {conference.missingCount}
-                    </td>
-                    <td className="p-3 text-center">
-                      {(conference.miceCount !== undefined ||
-                        conference.chargersCount !== undefined ||
-                        conference.headsetsCount !== undefined) && (
-                        <AppButton
-                          onClick={() => openPeripheralsModal(conference)}
-                          size="sm"
-                          className="!text-xs !font-semibold !text-teal-800 !bg-teal-100 data-[hover]:!bg-teal-200 !px-3 !py-1 !rounded-full !shadow-none"
-                        >
-                          <Eye size={14} className="mr-1.5" /> Visualizar
-                        </AppButton>
-                      )}
-                    </td>
-                    <td className="p-3 text-center font-bold">
-                      {conference.expectedCount}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={8} className="text-center p-6 text-gray-500">
-                    Nenhum resultado encontrado para os filtros selecionados.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        {isLoading ? (
+          <p className="text-center text-gray-500 p-6">
+            Carregando relatórios...
+          </p>
+        ) : conferences.length > 0 ? (
+          <TabelaRelatorios
+            data={conferences}
+            openPeripheralsModal={openPeripheralsModal}
+          />
+        ) : (
+          <p className="text-center text-gray-500 p-6">
+            Nenhum resultado encontrado para os filtros selecionados.
+          </p>
+        )}
         <div className="p-4 border-t">
           <PaginationControls
             currentPage={currentPage}
