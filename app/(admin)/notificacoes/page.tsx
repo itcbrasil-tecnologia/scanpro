@@ -14,10 +14,11 @@ import {
   Transition,
   Textarea,
 } from "@headlessui/react";
+import { AppButton } from "@/components/ui/AppButton";
 
 export default function NotificacoesPage() {
   const [technicians, setTechnicians] = useState<UserProfile[]>([]);
-  const [target, setTarget] = useState("all"); // 'all' ou o UID de um técnico
+  const [target, setTarget] = useState("all");
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -212,14 +213,10 @@ export default function NotificacoesPage() {
           </Field>
 
           <div className="flex justify-end">
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="flex items-center justify-center bg-teal-600 text-white font-bold px-6 py-2 rounded-lg shadow hover:bg-teal-700 transition-colors disabled:bg-teal-400 disabled:cursor-not-allowed"
-            >
+            <AppButton type="submit" disabled={isLoading}>
               <Send size={18} className="mr-2" />
               {isLoading ? "Enviando..." : "Enviar Notificação"}
-            </button>
+            </AppButton>
           </div>
         </form>
       </div>

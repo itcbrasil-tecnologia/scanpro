@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { ConferenceData } from "@/types";
+import { AppButton } from "@/components/ui/AppButton";
 
 interface ConferenceForHistory extends ConferenceData {
   date: string;
@@ -45,7 +46,6 @@ interface PeripheralsData {
   headsetsCount?: number;
 }
 
-// ADICIONADO: Constante para definir a quantidade de itens por página
 const ITEMS_PER_PAGE = 10;
 
 export default function InicioPage() {
@@ -53,13 +53,10 @@ export default function InicioPage() {
   const router = useRouter();
   const [conferences, setConferences] = useState<ConferenceForHistory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Estado para a paginação
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [lastVisible, setLastVisible] =
     useState<QueryDocumentSnapshot<DocumentData> | null>(null);
-
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState<string[]>([]);
   const [isPeripheralsModalOpen, setIsPeripheralsModalOpen] = useState(false);
@@ -68,7 +65,6 @@ export default function InicioPage() {
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
   const [selectedConferenceForSummary, setSelectedConferenceForSummary] =
     useState<ConferenceData | null>(null);
-
   const [dailyCounts, setDailyCounts] = useState({
     completed: 0,
     total: 2,
@@ -85,7 +81,6 @@ export default function InicioPage() {
         const conferencesRef = collection(db, "conferences");
         const userConferencesQuery = where("userId", "==", userProfile.uid);
 
-        // ADICIONADO: Lógica para contar o total de documentos e definir o total de páginas na primeira carga
         if (page === 1) {
           const countQuery = query(conferencesRef, userConferencesQuery);
           const countSnapshot = await getDocs(countQuery);
@@ -138,7 +133,7 @@ export default function InicioPage() {
         setIsLoading(false);
       }
     },
-    [userProfile] // totalPages foi removido para evitar recargas desnecessárias
+    [userProfile]
   );
 
   useEffect(() => {
@@ -175,8 +170,6 @@ export default function InicioPage() {
         completed: dailySnapshot.size,
         total: userProfile.dailyConferenceGoal || 2,
       });
-
-      // Inicia a busca pela primeira página
       fetchConferences(1);
     };
 
@@ -187,9 +180,6 @@ export default function InicioPage() {
     if (newPage > currentPage && lastVisible) {
       fetchConferences(newPage, lastVisible);
     } else if (newPage < currentPage) {
-      // Para voltar, reiniciamos a busca da primeira página.
-      // Uma implementação mais complexa para "voltar" não é necessária aqui e
-      // este modelo simples é eficiente e funcional.
       fetchConferences(1);
     }
   };
@@ -233,6 +223,7 @@ export default function InicioPage() {
       <h1 className="text-3xl font-bold text-gray-800">
         Bem-vindo, {userProfile?.nome?.split(" ")[0]}!
       </h1>
+
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
         <div className="lg:col-span-1 space-y-4">
           <div className="bg-white p-4 rounded-lg shadow-md text-center">
@@ -246,20 +237,23 @@ export default function InicioPage() {
               </p>
             </div>
           </div>
+
           <div className="sm:hidden">
             {allDailyCountsCompleted ? (
               <div className="w-full flex items-center justify-center bg-gray-200 text-gray-500 px-4 py-3 rounded-lg font-bold text-lg">
                 <CheckCircle size={24} className="mr-3" /> CONCLUÍDO
               </div>
             ) : (
-              <Link href="/scanner" passHref>
-                <div className="w-full flex items-center justify-center bg-teal-600 text-white px-4 py-3 rounded-lg shadow-lg hover:bg-teal-700 transition-colors font-bold text-lg">
-                  <Camera size={24} className="mr-3" /> INICIAR CONFERÊNCIA
-                </div>
+              <Link
+                href="/scanner"
+                className="inline-flex items-center justify-center rounded-lg font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-teal-500 disabled:cursor-not-allowed disabled:opacity-80 bg-teal-600 text-white hover:bg-teal-700 w-full text-lg px-6 py-3 shadow-lg"
+              >
+                <Camera size={24} className="mr-3" /> INICIAR CONFERÊNCIA
               </Link>
             )}
           </div>
         </div>
+
         <div className="lg:col-span-3 bg-white p-4 rounded-lg shadow-md overflow-hidden">
           <h2 className="text-xl font-bold text-gray-800 mb-4">
             Seu Histórico de Conferências
@@ -295,7 +289,7 @@ export default function InicioPage() {
                 {isLoading ? (
                   <tr>
                     <td colSpan={7} className="text-center p-6 text-gray-500">
-                      A carregar histórico...
+                      Carregando histórico...
                     </td>
                   </tr>
                 ) : conferences.length > 0 ? (
@@ -321,13 +315,14 @@ export default function InicioPage() {
                         {(conference.miceCount !== undefined ||
                           conference.chargersCount !== undefined ||
                           conference.headsetsCount !== undefined) && (
-                          <button
-                            className="flex items-center justify-center mx-auto text-xs font-semibold text-teal-800 bg-teal-100 hover:bg-teal-200 px-3 py-1 rounded-full transition-colors"
+                          <AppButton
+                            size="sm"
+                            className="!text-xs !bg-teal-100 !text-teal-800 data-[hover]:!bg-teal-200 !rounded-full !px-3 !py-1 !shadow-none !font-semibold"
                             onClick={() => openPeripheralsModal(conference)}
                           >
                             <Eye size={14} className="mr-1.5" />
                             Ver
-                          </button>
+                          </AppButton>
                         )}
                       </td>
                       <td className="p-3 text-center">
@@ -335,25 +330,27 @@ export default function InicioPage() {
                       </td>
                       <td className="p-3 text-center">
                         {conference.missingCount > 0 && (
-                          <button
-                            className="flex items-center justify-center mx-auto text-xs font-semibold text-amber-800 bg-amber-100 hover:bg-amber-200 px-3 py-1 rounded-full transition-colors"
+                          <AppButton
+                            size="sm"
+                            className="!text-xs !bg-amber-100 !text-amber-800 data-[hover]:!bg-amber-200 !rounded-full !px-3 !py-1 !shadow-none !font-semibold"
                             onClick={() =>
                               openDetailsModal(conference.missingDevices)
                             }
                           >
                             <TriangleAlert size={14} className="mr-1.5" />
                             Ver Faltantes
-                          </button>
+                          </AppButton>
                         )}
                       </td>
                       <td className="p-3 text-center">
-                        <button
-                          className="flex items-center justify-center mx-auto text-xs font-semibold text-blue-800 bg-blue-100 hover:bg-blue-200 px-3 py-1 rounded-full transition-colors"
+                        <AppButton
+                          size="sm"
+                          className="!text-xs !bg-blue-100 !text-blue-800 data-[hover]:!bg-blue-200 !rounded-full !px-3 !py-1 !shadow-none !font-semibold"
                           onClick={() => openSummaryModal(conference)}
                         >
                           <FileText size={14} className="mr-1.5" />
                           Ver Resumo
-                        </button>
+                        </AppButton>
                       </td>
                     </tr>
                   ))
@@ -367,6 +364,7 @@ export default function InicioPage() {
               </tbody>
             </table>
           </div>
+
           <div className="p-4 border-t">
             <PaginationControls
               currentPage={currentPage}

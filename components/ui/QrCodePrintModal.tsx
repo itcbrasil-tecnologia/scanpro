@@ -1,18 +1,31 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, Fragment } from "react";
 import { Modal } from "./Modal";
 import { QRCodeSVG } from "qrcode.react";
 import { Printer, X, Download, ArrowDown, ArrowRight } from "lucide-react";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 import toast from "react-hot-toast";
+import { AppButton } from "./AppButton";
+import { RadioGroup, Switch } from "@headlessui/react";
 
 interface QrCodePrintModalProps {
   hostnames: string[];
   isOpen: boolean;
   onClose: () => void;
 }
+
+const sizeOptions = [
+  { name: "P", value: 64 },
+  { name: "M", value: 128 },
+  { name: "G", value: 256 },
+];
+
+const positionOptions = [
+  { name: "Embaixo", value: "bottom", icon: ArrowDown },
+  { name: "Direita", value: "right", icon: ArrowRight },
+];
 
 export function QrCodePrintModal({
   hostnames,
@@ -60,8 +73,8 @@ export function QrCodePrintModal({
         const padding = 10;
         const textFontSize = 10;
         const textMargin = 5;
-
         let textWidth = 0;
+
         if (showHostname) {
           ctx.font = `${textFontSize}px monospace`;
           textWidth = ctx.measureText(name).width;
@@ -90,7 +103,6 @@ export function QrCodePrintModal({
           ctx.font = `${textFontSize}px monospace`;
           ctx.textAlign = "left";
           ctx.textBaseline = "middle";
-
           if (hostnamePosition === "right") {
             ctx.fillText(
               name,
@@ -106,11 +118,9 @@ export function QrCodePrintModal({
             );
           }
         }
-
         const blob = await new Promise<Blob | null>((resolve) =>
           canvas.toBlob(resolve, "image/png")
         );
-
         if (blob) {
           zip.file(`${name}.png`, blob);
         }
@@ -120,7 +130,7 @@ export function QrCodePrintModal({
       toast.success("Download iniciado!", { id: "global-toast" });
     } catch (error) {
       console.error("Erro ao gerar ZIP:", error);
-      toast.error("Ocorreu um erro ao gerar os ficheiros.", {
+      toast.error("Ocorreu um erro ao gerar os arquivos.", {
         id: "global-toast",
       });
     } finally {
@@ -152,102 +162,119 @@ export function QrCodePrintModal({
       `}</style>
       <div className="space-y-4">
         <div className="no-print p-4 bg-slate-100 rounded-lg space-y-4">
-          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-            <div className="flex items-center space-x-4">
-              <span className="font-semibold text-sm text-slate-600">
-                Tamanho:
-              </span>
-              <div className="flex items-center space-x-3">
-                {[64, 128, 256].map((size) => (
-                  <button
-                    key={size}
-                    onClick={() => setQrSize(size)}
-                    className={`px-3 py-1 text-sm rounded-full ${
-                      qrSize === size
-                        ? "bg-teal-600 text-white"
-                        : "bg-white hover:bg-slate-200"
-                    }`}
-                  >
-                    {size === 64 ? "P" : size === 128 ? "M" : "G"}
-                  </button>
-                ))}
-              </div>
+          <RadioGroup
+            value={qrSize}
+            onChange={setQrSize}
+            className="flex justify-between items-center w-full"
+          >
+            <RadioGroup.Label className="font-semibold text-sm text-slate-600">
+              Tamanho:
+            </RadioGroup.Label>
+            <div className="flex items-center space-x-2">
+              {sizeOptions.map((option) => (
+                <RadioGroup.Option
+                  key={option.name}
+                  value={option.value}
+                  as={Fragment}
+                >
+                  {({ checked }) => (
+                    <button
+                      className={`px-3 py-1 text-sm rounded-full transition-colors ${
+                        checked
+                          ? "bg-teal-600 text-white ring-2 ring-offset-2 ring-teal-600"
+                          : "bg-white hover:bg-slate-200"
+                      }`}
+                    >
+                      {option.name}
+                    </button>
+                  )}
+                </RadioGroup.Option>
+              ))}
             </div>
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="showHostname"
-                checked={showHostname}
-                onChange={(e) => setShowHostname(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+          </RadioGroup>
+
+          <Switch.Group as="div" className="flex justify-between items-center">
+            <Switch.Label className="font-semibold text-sm text-slate-700 cursor-pointer">
+              Incluir Hostname
+            </Switch.Label>
+            <Switch
+              checked={showHostname}
+              onChange={setShowHostname}
+              className={`${
+                showHostname ? "bg-teal-600" : "bg-gray-200"
+              } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+            >
+              <span
+                className={`${
+                  showHostname ? "translate-x-6" : "translate-x-1"
+                } inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
               />
-              <label
-                htmlFor="showHostname"
-                className="ml-2 block text-sm text-slate-700"
-              >
-                Incluir Hostname
-              </label>
+            </Switch>
+          </Switch.Group>
+
+          <RadioGroup
+            value={hostnamePosition}
+            onChange={setHostnamePosition}
+            disabled={!showHostname}
+            className="flex justify-between items-center w-full"
+          >
+            <RadioGroup.Label className="font-semibold text-sm text-slate-600 data-[disabled]:opacity-40">
+              Posição:
+            </RadioGroup.Label>
+            <div className="flex items-center space-x-2">
+              {positionOptions.map((option) => (
+                <RadioGroup.Option
+                  key={option.name}
+                  value={option.value}
+                  as={Fragment}
+                >
+                  {({ checked, disabled }) => (
+                    <button
+                      className={`flex items-center px-3 py-1 text-sm rounded-full transition-colors ${
+                        disabled
+                          ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                          : checked
+                          ? "bg-teal-600 text-white ring-2 ring-offset-2 ring-teal-600"
+                          : "bg-white hover:bg-slate-200"
+                      }`}
+                    >
+                      <option.icon size={14} className="mr-1.5" />
+                      {option.name}
+                    </button>
+                  )}
+                </RadioGroup.Option>
+              ))}
             </div>
-          </div>
-          {/* CORREÇÃO: O Bloco abaixo foi movido para fora da condição 'showHostname' */}
-          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-            {showHostname ? (
-              <div className="flex items-center space-x-4">
-                <span className="font-semibold text-sm text-slate-600">
-                  Posição:
-                </span>
-                <div className="flex items-center space-x-3">
-                  <button
-                    onClick={() => setHostnamePosition("bottom")}
-                    className={`flex items-center px-3 py-1 text-sm rounded-full ${
-                      hostnamePosition === "bottom"
-                        ? "bg-teal-600 text-white"
-                        : "bg-white hover:bg-slate-200"
-                    }`}
-                  >
-                    <ArrowDown size={14} className="mr-1.5" /> Embaixo
-                  </button>
-                  <button
-                    onClick={() => setHostnamePosition("right")}
-                    className={`flex items-center px-3 py-1 text-sm rounded-full ${
-                      hostnamePosition === "right"
-                        ? "bg-teal-600 text-white"
-                        : "bg-white hover:bg-slate-200"
-                    }`}
-                  >
-                    <ArrowRight size={14} className="mr-1.5" /> Direita
-                  </button>
-                </div>
-              </div>
-            ) : (
-              // Adiciona um div vazio para manter o alinhamento quando a posição some
-              <div></div>
-            )}
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="transparentBg"
-                checked={transparentBg}
-                onChange={(e) => setTransparentBg(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+          </RadioGroup>
+
+          <Switch.Group as="div" className="flex justify-between items-center">
+            <Switch.Label className="font-semibold text-sm text-slate-700 cursor-pointer">
+              Fundo Transparente
+            </Switch.Label>
+            <Switch
+              checked={transparentBg}
+              onChange={setTransparentBg}
+              className={`${
+                transparentBg ? "bg-teal-600" : "bg-gray-200"
+              } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
+            >
+              <span
+                className={`${
+                  transparentBg ? "translate-x-6" : "translate-x-1"
+                } inline-block h-4 w-4 transform rounded-full bg-white transition-transform`}
               />
-              <label
-                htmlFor="transparentBg"
-                className="ml-2 block text-sm text-slate-700"
-              >
-                Fundo Transparente (PNG)
-              </label>
-            </div>
-          </div>
+            </Switch>
+          </Switch.Group>
         </div>
+
         <div
           id="printable-area"
-          className="flex flex-row flex-wrap justify-start items-start gap-4 p-4 max-h-[50vh] overflow-y-auto border rounded-lg"
+          className="flex flex-row flex-wrap justify-center items-start gap-4 p-4 max-h-[50vh] overflow-y-auto border rounded-lg"
         >
           {hostnames.map((name) => (
             <div
               key={name}
-              className={`inline-flex items-center justify-center p-2 border rounded-md break-inside-avoid ${
+              className={`inline-flex items-center justify-center p-2 border rounded-md break-inside-avoid bg-white ${
                 hostnamePosition === "bottom"
                   ? "flex-col space-y-1"
                   : "flex-row space-x-2"
@@ -259,14 +286,13 @@ export function QrCodePrintModal({
                   value={name}
                   size={qrSize}
                   bgColor={transparentBg ? "transparent" : "#FFFFFF"}
+                  fgColor={"#000000"}
                 />
               </div>
               {showHostname && (
                 <p
-                  className="font-mono text-center"
-                  style={{
-                    fontSize: "10px",
-                  }}
+                  className="font-mono text-center text-black"
+                  style={{ fontSize: "10px" }}
                 >
                   {name}
                 </p>
@@ -274,29 +300,27 @@ export function QrCodePrintModal({
             </div>
           ))}
         </div>
+
         <div className="no-print flex justify-end space-x-3 pt-4">
-          <button
+          <AppButton
             onClick={onClose}
-            className="flex items-center justify-center bg-slate-500 text-white px-4 py-2 rounded-lg shadow hover:bg-slate-600 transition-colors"
+            className="!bg-slate-500 !text-white hover:!bg-slate-600 data-[disabled]:!bg-slate-400"
           >
             <X size={20} className="mr-2" />
             Fechar
-          </button>
-          <button
+          </AppButton>
+          <AppButton
             onClick={handleDownload}
             disabled={isDownloading}
-            className="flex items-center justify-center bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition-colors disabled:bg-blue-400"
+            className="!bg-blue-600 !text-white hover:!bg-blue-700 data-[disabled]:!bg-blue-400"
           >
             <Download size={20} className="mr-2" />
             Baixar PNGs
-          </button>
-          <button
-            onClick={handlePrint}
-            className="flex items-center justify-center bg-teal-600 text-white px-4 py-2 rounded-lg shadow hover:bg-teal-700 transition-colors"
-          >
+          </AppButton>
+          <AppButton onClick={handlePrint} variant="primary">
             <Printer size={20} className="mr-2" />
             Imprimir
-          </button>
+          </AppButton>
         </div>
       </div>
     </Modal>

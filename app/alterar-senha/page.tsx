@@ -10,7 +10,8 @@ import {
 } from "firebase/auth";
 import toast from "react-hot-toast";
 import { KeyRound, ArrowLeft } from "lucide-react";
-import { Field, Label, Input } from "@headlessui/react"; // ADICIONADO: Importação do Headless UI
+import { Field, Label, Input } from "@headlessui/react";
+import { AppButton } from "@/components/ui/AppButton"; // ADICIONADO
 
 export default function AlterarSenhaPage() {
   const { user } = useAuth();
@@ -23,7 +24,6 @@ export default function AlterarSenhaPage() {
   const handlePasswordChange = async (event: React.FormEvent) => {
     event.preventDefault();
     setIsLoading(true);
-
     if (!currentPassword || !newPassword || !confirmPassword) {
       toast.error("Por favor, preencha todos os campos.", {
         id: "global-toast",
@@ -31,7 +31,6 @@ export default function AlterarSenhaPage() {
       setIsLoading(false);
       return;
     }
-
     if (newPassword !== confirmPassword) {
       toast.error("As novas senhas não coincidem.", { id: "global-toast" });
       setIsLoading(false);
@@ -98,7 +97,6 @@ export default function AlterarSenhaPage() {
           </p>
         </div>
 
-        {/* REFATORADO: Formulário agora usa os componentes Field, Label e Input do Headless UI */}
         <form className="space-y-6" onSubmit={handlePasswordChange}>
           <Field>
             <Label className="block text-sm font-medium text-gray-700">
@@ -146,24 +144,27 @@ export default function AlterarSenhaPage() {
           </Field>
 
           <div>
-            <button
+            <AppButton
               type="submit"
               disabled={isLoading}
-              className="w-full px-4 py-2 font-semibold text-white bg-teal-600 rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:bg-teal-400 disabled:cursor-not-allowed"
+              variant="primary"
+              className="w-full"
             >
               {isLoading ? "Salvando..." : "Salvar Nova Senha"}
-            </button>
+            </AppButton>
           </div>
         </form>
 
         <div className="text-center">
-          <button
+          <AppButton
             onClick={() => router.back()}
-            className="text-sm font-medium text-teal-600 hover:text-teal-500 flex items-center justify-center mx-auto"
+            variant="ghost"
+            size="sm"
+            className="!text-teal-600 hover:!text-teal-500"
           >
             <ArrowLeft size={16} className="mr-1" />
             Voltar
-          </button>
+          </AppButton>
         </div>
       </div>
     </div>

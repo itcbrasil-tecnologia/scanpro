@@ -2,6 +2,7 @@
 
 import React from "react";
 import { LucideIcon, Info } from "lucide-react";
+import { AppButton } from "./AppButton"; // ADICIONADO
 
 interface DashboardCardProps {
   title: string;
@@ -29,13 +30,11 @@ export function DashboardCard({
       </div>
       {onDetailsClick && (
         <div className="flex justify-end mt-4">
-          <button
-            onClick={onDetailsClick}
-            className="flex items-center text-sm font-semibold text-white bg-teal-600 hover:bg-teal-700 px-3 py-1 rounded-md transition-colors"
-          >
+          {/* REFATORADO */}
+          <AppButton onClick={onDetailsClick} variant="primary" size="sm">
             <Info size={16} className="mr-1.5" />
             Detalhes
-          </button>
+          </AppButton>
         </div>
       )}
     </div>

@@ -45,6 +45,7 @@ import {
 import toast from "react-hot-toast";
 import Papa from "papaparse";
 import { NumberInput } from "@/components/ui/NumberInput";
+import { AppButton } from "@/components/ui/AppButton";
 
 interface Project {
   id: string;
@@ -107,43 +108,53 @@ function NotebookListItem({
         </span>
       </div>
       <div className="flex items-center space-x-3 flex-shrink-0">
-        <button
+        <AppButton
           onClick={onViewHistory}
-          className="text-gray-400 hover:text-blue-600"
+          variant="ghost"
+          size="icon"
           title="Ver Histórico do Ativo"
+          className="data-[hover]:text-blue-600"
         >
           <History size={16} />
-        </button>
-        <button
+        </AppButton>
+        <AppButton
           onClick={onToggleMaintenance}
-          className="text-gray-400 hover:text-amber-600"
+          variant="ghost"
+          size="icon"
           title={
             isMaintenance ? "Retornar da Manutenção" : "Enviar para Manutenção"
           }
+          className="data-[hover]:text-amber-600"
         >
           <Wrench size={16} />
-        </button>
-        <button
+        </AppButton>
+        <AppButton
           onClick={onViewQrCode}
-          className="text-gray-400 hover:text-teal-600"
+          variant="ghost"
+          size="icon"
           title="Gerar QR Code"
+          className="data-[hover]:text-teal-600"
         >
           <QrCode size={16} />
-        </button>
-        <button
+        </AppButton>
+        <AppButton
           onClick={onEdit}
-          className="text-gray-400 hover:text-teal-600"
+          variant="ghost"
+          size="icon"
           title="Editar"
+          className="data-[hover]:text-teal-600"
         >
           <Edit size={16} />
-        </button>
-        <button
+        </AppButton>
+        <AppButton
           onClick={onDelete}
-          className="text-gray-400 hover:text-red-600"
+          variant="ghost"
+          size="icon"
           title="Excluir"
+          className="data-[hover]:text-red-600"
         >
           <Trash2 size={16} />
-        </button>
+        </AppButton>
       </div>
     </li>
   );
@@ -677,27 +688,24 @@ export default function NotebooksPage() {
           Gerenciar Notebooks
         </h1>
         <div className="flex space-x-2 mt-4 sm:mt-0">
-          <button
+          <AppButton
             onClick={() => setIsImportModalOpen(true)}
-            className="flex items-center justify-center bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 transition-colors"
+            variant="success"
           >
             <FileUp size={20} className="mr-2" />
             <span className="hidden sm:inline">Importar CSV</span>
-          </button>
-          <button
-            onClick={openAddModal}
-            className="flex items-center justify-center bg-teal-600 text-white px-4 py-2 rounded-lg shadow hover:bg-teal-700 transition-colors"
-          >
+          </AppButton>
+          <AppButton onClick={openAddModal}>
             <Sheet size={20} className="mr-2" />
             <span className="hidden sm:inline">Adicionar</span>
-          </button>
-          <button
+          </AppButton>
+          <AppButton
             onClick={() => setIsBatchModalOpen(true)}
-            className="flex items-center justify-center bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition-colors"
+            className="bg-blue-600 data-[hover]:bg-blue-700"
           >
             <Layers size={20} className="mr-2" />
             <span className="hidden sm:inline">Adicionar em Lote</span>
-          </button>
+          </AppButton>
         </div>
       </div>
 
@@ -770,32 +778,34 @@ export default function NotebooksPage() {
                                       {umNotebooks.length > 0 ? (
                                         <>
                                           <div className="flex items-center space-x-2 mb-3 ml-2">
-                                            <button
+                                            <AppButton
                                               onClick={() =>
                                                 handleViewBatchQrCodes(
                                                   umNotebooks
                                                 )
                                               }
-                                              className="flex items-center text-sm font-semibold text-white bg-blue-500 hover:bg-blue-600 px-3 py-1 rounded-md"
+                                              size="sm"
+                                              className="bg-blue-500 data-[hover]:bg-blue-600"
                                             >
                                               <Printer
                                                 size={16}
                                                 className="mr-1.5"
                                               />
                                               Gerar QR Codes
-                                            </button>
-                                            <button
+                                            </AppButton>
+                                            <AppButton
                                               onClick={() =>
                                                 openDeleteBatchModal(um)
                                               }
-                                              className="flex items-center text-sm font-semibold text-white bg-red-500 hover:bg-red-600 px-3 py-1 rounded-md"
+                                              variant="danger"
+                                              size="sm"
                                             >
                                               <Trash2
                                                 size={16}
                                                 className="mr-1.5"
                                               />
                                               Excluir Todos
-                                            </button>
+                                            </AppButton>
                                           </div>
                                           <ul className="space-y-1 bg-white p-3 rounded-md">
                                             {umNotebooks
@@ -952,12 +962,7 @@ export default function NotebooksPage() {
             </div>
           </Listbox>
           <div className="flex justify-end pt-2">
-            <button
-              onClick={handleSaveSingle}
-              className="bg-teal-600 text-white px-6 py-2 rounded-lg hover:bg-teal-700"
-            >
-              Salvar
-            </button>
+            <AppButton onClick={handleSaveSingle}>Salvar</AppButton>
           </div>
         </div>
       </Modal>
@@ -1061,12 +1066,9 @@ export default function NotebooksPage() {
             </Field>
           </div>
           <div className="flex justify-center pt-2">
-            <button
-              onClick={handleGenerateBatchNames}
-              className="bg-slate-600 text-white px-6 py-2 rounded-lg hover:bg-slate-700"
-            >
+            <AppButton onClick={handleGenerateBatchNames} variant="secondary">
               Gerar Pré-visualização
-            </button>
+            </AppButton>
           </div>
           {generatedNames.length > 0 && (
             <div className="pt-4 space-y-3">
@@ -1077,12 +1079,7 @@ export default function NotebooksPage() {
                 {generatedNames.join("\n")}
               </div>
               <div className="flex justify-end pt-2">
-                <button
-                  onClick={handleSaveBatch}
-                  className="bg-teal-600 text-white px-6 py-2 rounded-lg hover:bg-teal-700"
-                >
-                  Salvar Lote
-                </button>
+                <AppButton onClick={handleSaveBatch}>Salvar Lote</AppButton>
               </div>
             </div>
           )}
@@ -1111,12 +1108,13 @@ export default function NotebooksPage() {
               </li>
             </ol>
           </div>
-          <button
+          <AppButton
             onClick={handleDownloadTemplate}
-            className="text-sm font-medium text-teal-600 hover:underline"
+            variant="ghost"
+            className="!text-teal-600 !p-0 data-[hover]:!bg-transparent data-[hover]:underline"
           >
             Baixar modelo de planilha (.csv)
-          </button>
+          </AppButton>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Listbox value={importUmId} onChange={setImportUmId}>
               <div className="relative">
@@ -1187,12 +1185,13 @@ export default function NotebooksPage() {
             </Field>
           </div>
           <div className="flex justify-center pt-2">
-            <button
+            <AppButton
               onClick={handlePreviewCsv}
-              className="bg-slate-600 text-white px-6 py-2 rounded-lg hover:bg-slate-700 w-full"
+              variant="secondary"
+              className="w-full"
             >
               Carregar e Pré-visualizar
-            </button>
+            </AppButton>
           </div>
           {parsedCsvData.length > 0 && (
             <div className="pt-4 space-y-3">
@@ -1220,12 +1219,9 @@ export default function NotebooksPage() {
                 </table>
               </div>
               <div className="flex justify-end pt-2">
-                <button
-                  onClick={handleSaveCsvImport}
-                  className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700"
-                >
+                <AppButton onClick={handleSaveCsvImport} variant="success">
                   Confirmar e Salvar
-                </button>
+                </AppButton>
               </div>
             </div>
           )}

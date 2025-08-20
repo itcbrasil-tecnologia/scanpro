@@ -107,7 +107,7 @@ export function ConferenceSummaryModal({
                 <MapPin size={14} className="mr-2" /> Localização Registrada:
               </p>
               <a
-                href={`http://googleusercontent.com/maps.google.com/?q=${conferenceData.latitude},${conferenceData.longitude}`}
+                href={`https://www.google.com/maps?q=${conferenceData.latitude},${conferenceData.longitude}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-teal-600 hover:underline text-sm font-medium"

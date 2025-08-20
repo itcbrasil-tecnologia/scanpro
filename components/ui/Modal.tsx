@@ -14,10 +14,8 @@ interface ModalProps {
 
 export function Modal({ isOpen, onClose, title, children, icon }: ModalProps) {
   return (
-    // O componente Transition gerencia todas as animações de entrada e saída.
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog as="div" className="relative z-50" onClose={onClose}>
-        {/* O backdrop (fundo escuro) com animação de fade */}
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-300"
@@ -32,7 +30,6 @@ export function Modal({ isOpen, onClose, title, children, icon }: ModalProps) {
 
         <div className="fixed inset-0 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4 text-center">
-            {/* O painel do modal com animação de entrada e saída */}
             <Transition.Child
               as={Fragment}
               enter="ease-out duration-300"
@@ -42,8 +39,8 @@ export function Modal({ isOpen, onClose, title, children, icon }: ModalProps) {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className="w-full max-w-lg transform overflow-hidden rounded-lg bg-white text-left align-middle shadow-xl transition-all">
-                {/* Cabeçalho do Modal */}
+              {/* CORREÇÃO: 'overflow-hidden' foi removido deste painel */}
+              <Dialog.Panel className="w-full max-w-lg transform rounded-lg bg-white text-left align-middle shadow-xl transition-all">
                 <div className="flex justify-between items-center p-4 border-b">
                   <div className="flex items-center">
                     {icon && <div className="mr-3">{icon}</div>}
@@ -63,8 +60,10 @@ export function Modal({ isOpen, onClose, title, children, icon }: ModalProps) {
                   </button>
                 </div>
 
-                {/* Conteúdo do Modal */}
-                <div className="p-6">{children}</div>
+                {/* CORREÇÃO: O controle de scroll agora está neste container interno */}
+                <div className="p-6 max-h-[80vh] overflow-y-auto">
+                  {children}
+                </div>
               </Dialog.Panel>
             </Transition.Child>
           </div>

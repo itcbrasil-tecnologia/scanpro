@@ -2,6 +2,7 @@
 
 import { Minus, Plus } from "lucide-react";
 import React from "react";
+import { AppButton } from "./AppButton"; // ADICIONADO
 
 interface NumberInputProps {
   value: number;
@@ -43,15 +44,17 @@ export const NumberInput: React.FC<NumberInputProps> = ({
 
   return (
     <div className="flex items-center justify-center gap-x-4">
-      <button
+      <AppButton
         type="button"
         onClick={handleDecrement}
         disabled={value <= min}
-        className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-200 text-slate-700 transition-colors hover:bg-slate-300 disabled:cursor-not-allowed disabled:opacity-50"
+        variant="secondary"
+        size="icon"
+        className="!h-12 !w-12 !rounded-full"
         aria-label="Diminuir quantidade"
       >
         <Minus className="h-6 w-6" />
-      </button>
+      </AppButton>
 
       <input
         type="text"
@@ -62,15 +65,17 @@ export const NumberInput: React.FC<NumberInputProps> = ({
         className="h-16 w-24 rounded-lg border-2 border-slate-300 bg-slate-50 text-center text-3xl font-bold text-slate-800 focus:border-teal-500 focus:ring-teal-500"
       />
 
-      <button
+      <AppButton
         type="button"
         onClick={handleIncrement}
         disabled={max !== undefined && value >= max}
-        className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-200 text-slate-700 transition-colors hover:bg-slate-300 disabled:cursor-not-allowed disabled:opacity-50"
+        variant="secondary"
+        size="icon"
+        className="!h-12 !w-12 !rounded-full"
         aria-label="Aumentar quantidade"
       >
         <Plus className="h-6 w-6" />
-      </button>
+      </AppButton>
     </div>
   );
 };

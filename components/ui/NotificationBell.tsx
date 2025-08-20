@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { UserProfile } from "@/types";
 import { Bell, BellOff, BellRing } from "lucide-react";
+import { AppButton } from "./AppButton"; // ADICIONADO
 
 interface NotificationBellProps {
   userProfile: UserProfile;
@@ -36,6 +37,7 @@ export const NotificationBell = ({ userProfile }: NotificationBellProps) => {
         userVisibleOnly: true,
         applicationServerKey: vapidPublicKey,
       });
+
       await fetch("/api/notifications/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -86,13 +88,15 @@ export const NotificationBell = ({ userProfile }: NotificationBellProps) => {
       );
     default:
       return (
-        <button
+        <AppButton
           onClick={handleSubscribeToNotifications}
-          className="flex items-center p-2 text-slate-300 hover:text-white rounded-full transition-colors hover:bg-slate-700"
+          variant="ghost"
+          size="icon"
+          className="!rounded-full !text-slate-300 data-[hover]:!bg-slate-700 data-[hover]:!text-white"
           title="Ativar notificações"
         >
           <Bell size={20} />
-        </button>
+        </AppButton>
       );
   }
 };

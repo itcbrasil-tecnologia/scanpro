@@ -39,6 +39,7 @@ import {
   Input,
 } from "@headlessui/react";
 import { NumberInput } from "@/components/ui/NumberInput";
+import { AppButton } from "@/components/ui/AppButton";
 
 interface Project {
   id: string;
@@ -88,18 +89,17 @@ function UMListItem({
           {um.expectedNotebooks}
         </div>
         <div className="col-span-1 flex items-center justify-end space-x-3">
-          <button
-            onClick={onEdit}
-            className="text-gray-500 hover:text-teal-600"
-          >
+          <AppButton onClick={onEdit} variant="ghost" size="icon">
             <Edit size={20} />
-          </button>
-          <button
+          </AppButton>
+          <AppButton
             onClick={onDelete}
-            className="text-gray-500 hover:text-red-600"
+            variant="ghost"
+            size="icon"
+            className="data-[hover]:text-red-600"
           >
             <Trash2 size={20} />
-          </button>
+          </AppButton>
         </div>
       </div>
       <div className="sm:hidden">
@@ -135,18 +135,22 @@ function UMListItem({
                     </span>
                   </div>
                   <div className="flex justify-end space-x-4">
-                    <button
+                    <AppButton
                       onClick={onEdit}
-                      className="flex items-center text-sm p-2 rounded-md bg-slate-200 hover:bg-slate-300"
+                      variant="secondary"
+                      size="sm"
+                      className="flex items-center"
                     >
                       <Edit size={16} className="mr-1" /> Editar
-                    </button>
-                    <button
+                    </AppButton>
+                    <AppButton
                       onClick={onDelete}
-                      className="flex items-center text-sm p-2 rounded-md bg-red-100 text-red-700 hover:bg-red-200"
+                      variant="danger"
+                      size="sm"
+                      className="flex items-center !bg-red-100 !text-red-700 data-[hover]:!bg-red-200"
                     >
                       <Trash2 size={16} className="mr-1" /> Excluir
-                    </button>
+                    </AppButton>
                   </div>
                 </Disclosure.Panel>
               </Transition>
@@ -359,14 +363,11 @@ export default function UMsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
         <h1 className="text-3xl font-bold text-gray-800">Gerenciar UMs</h1>
-        <button
-          onClick={openAddModal}
-          className="mt-4 sm:mt-0 flex items-center justify-center bg-teal-600 text-white px-4 py-2 rounded-lg shadow hover:bg-teal-700 transition-colors"
-        >
+        <AppButton onClick={openAddModal} className="mt-4 sm:mt-0">
           <Plus size={20} className="mr-2" />
           <span className="hidden sm:inline">Adicionar UM</span>
           <span className="sm:hidden">UM</span>
-        </button>
+        </AppButton>
       </div>
       {isLoading ? (
         <p className="text-center text-gray-500 py-8">Carregando dados...</p>
@@ -479,7 +480,6 @@ export default function UMsPage() {
             </Listbox>
           </Field>
 
-          {/* CORRIGIDO: Envolvendo o NumberInput com Field */}
           <Field>
             <Label className="block text-sm font-medium text-gray-700">
               Quantidade de Notebooks Esperados
@@ -492,7 +492,6 @@ export default function UMsPage() {
             </div>
           </Field>
 
-          {/* CORRIGIDO: Envolvendo o grupo de Switches com Field */}
           <Field>
             <Label className="block text-sm font-medium text-gray-700">
               Periféricos Esperados
@@ -532,12 +531,7 @@ export default function UMsPage() {
           </Field>
 
           <div className="flex justify-end pt-4">
-            <button
-              onClick={handleSave}
-              className="bg-teal-600 text-white px-6 py-2 rounded-lg hover:bg-teal-700"
-            >
-              Salvar
-            </button>
+            <AppButton onClick={handleSave}>Salvar</AppButton>
           </div>
         </div>
       </Modal>

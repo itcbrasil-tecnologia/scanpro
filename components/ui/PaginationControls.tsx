@@ -2,6 +2,7 @@
 
 import React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { AppButton } from "./AppButton"; // ADICIONADO
 
 interface PaginationControlsProps {
   currentPage: number;
@@ -32,25 +33,31 @@ export function PaginationControls({
 
   return (
     <div className="flex justify-end items-center text-sm space-x-2">
-      <button
+      <AppButton
         onClick={handlePrev}
         disabled={currentPage === 1}
-        className="px-3 py-1 border rounded-md flex items-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100"
+        variant="secondary"
+        size="sm"
+        className="!bg-white !border !border-slate-300 !text-slate-700 data-[hover]:!bg-slate-100 !font-normal"
       >
         <ChevronLeft size={16} className="mr-1" />
         Anterior
-      </button>
+      </AppButton>
+
       <span className="px-2 text-slate-600">
         Página {currentPage} de {totalPages}
       </span>
-      <button
+
+      <AppButton
         onClick={handleNext}
         disabled={currentPage === totalPages}
-        className="px-3 py-1 border rounded-md flex items-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-100"
+        variant="secondary"
+        size="sm"
+        className="!bg-white !border !border-slate-300 !text-slate-700 data-[hover]:!bg-slate-100 !font-normal"
       >
         Próximo
         <ChevronRight size={16} className="ml-1" />
-      </button>
+      </AppButton>
     </div>
   );
 }

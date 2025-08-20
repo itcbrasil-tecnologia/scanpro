@@ -8,7 +8,8 @@ import { FirebaseError } from "firebase/app";
 import { auth } from "@/lib/firebase/config";
 import toast from "react-hot-toast";
 import { Eye, EyeOff } from "lucide-react";
-import { Field, Label, Input } from "@headlessui/react"; // ADICIONADO: Importação do Headless UI
+import { Field, Label, Input } from "@headlessui/react";
+import { AppButton } from "@/components/ui/AppButton"; // ADICIONADO
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -82,7 +83,6 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* REFATORADO: Formulário agora usa os componentes Field, Label e Input do Headless UI */}
         <form className="space-y-6" onSubmit={handleLogin}>
           <Field>
             <Label className="block text-sm font-medium text-gray-700">
@@ -113,25 +113,28 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 data-[hover]:border-teal-400"
               />
-              <button
+              <AppButton
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-400 hover:text-gray-600"
+                variant="ghost"
+                size="icon"
+                className="absolute inset-y-0 right-0 !text-gray-400 data-[hover]:!text-gray-600"
                 aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
+              </AppButton>
             </div>
           </Field>
 
           <div>
-            <button
+            <AppButton
               type="submit"
               disabled={isLoading}
-              className="w-full px-4 py-2 font-semibold text-white bg-teal-600 rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:bg-teal-400 disabled:cursor-not-allowed"
+              variant="primary"
+              className="w-full"
             >
               {isLoading ? "Entrando..." : "Entrar"}
-            </button>
+            </AppButton>
           </div>
         </form>
       </div>

@@ -38,8 +38,9 @@ import {
 } from "lucide-react";
 import { db as dexieDB } from "@/lib/dexie/db";
 import { ConferenceData } from "@/types";
-import { Listbox, Transition, Disclosure } from "@headlessui/react"; // ADICIONADO: Disclosure
+import { Listbox, Transition, Disclosure } from "@headlessui/react";
 import { NumberInput } from "@/components/ui/NumberInput";
+import { AppButton } from "@/components/ui/AppButton";
 
 interface Project {
   id: string;
@@ -93,17 +94,18 @@ export default function ScannerPage() {
   const [headsetsCount, setHeadsetsCount] = useState(0);
   const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
   const [summaryData, setSummaryData] = useState<ConferenceData | null>(null);
-  // REMOVIDO: Estado não é mais utilizado após a introdução do Disclosure
-  // const [isMaintenanceListOpen, setIsMaintenanceListOpen] = useState(false);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
+
     if (typeof window !== "undefined") {
       setIsOnline(navigator.onLine);
     }
+
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
+
     return () => {
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
@@ -121,6 +123,7 @@ export default function ScannerPage() {
           (doc) => ({ id: doc.id, ...doc.data() } as UM)
         );
         setUms(umsList);
+
         const projectsSnapshot = await getDocs(
           collection(firestoreDB, "projects")
         );
@@ -135,6 +138,7 @@ export default function ScannerPage() {
         setIsLoading(false);
       }
     };
+
     fetchInitialData();
   }, []);
 
@@ -149,11 +153,13 @@ export default function ScannerPage() {
         setConferenceStartTime(null);
         return;
       }
+
       try {
         const selectedUMData = ums.find((um) => um.id === selectedUmId);
         setExpectedPeripherals(
           selectedUMData?.expectedPeripherals ?? AVAILABLE_PERIPHERALS
         );
+
         const notebooksQuery = query(
           collection(firestoreDB, "notebooks"),
           where("umId", "==", selectedUmId)
@@ -162,14 +168,17 @@ export default function ScannerPage() {
         const notebooksList: Notebook[] = notebooksSnapshot.docs.map(
           (doc) => doc.data() as Notebook
         );
+
         const active = notebooksList
           .filter((n) => n.status !== "Em Manutenção")
           .map((n) => n.hostname)
           .sort();
+
         const maintenance = notebooksList
           .filter((n) => n.status === "Em Manutenção")
           .map((n) => n.hostname)
           .sort();
+
         setDevicesToScan(active);
         setMaintenanceDevices(maintenance);
         setScannedDevices([]);
@@ -182,16 +191,19 @@ export default function ScannerPage() {
         console.error("Erro ao carregar notebooks:", error);
       }
     };
+
     fetchNotebooksForUM();
   }, [selectedUmId, ums]);
 
   const handleScan = (result: IDetectedBarcode[]) => {
     const scannedText = result[0]?.rawValue;
     if (!scannedText) return;
+
     if (scannedDevices.includes(scannedText)) {
       toast.error(`"${scannedText}" já escaneado.`, { id: "global-toast" });
       return;
     }
+
     if (devicesToScan.includes(scannedText)) {
       setDevicesToScan((previousState) =>
         previousState.filter((device) => device !== scannedText)
@@ -234,6 +246,7 @@ export default function ScannerPage() {
     const selectedProject = projects.find(
       (project) => project.id === selectedUM?.projectId
     );
+
     const data: ConferenceData = {
       userName: userProfile?.nome,
       projectName: selectedProject?.name || "N/A",
@@ -282,10 +295,12 @@ export default function ScannerPage() {
     try {
       const allHostnames = [...data.scannedDevices, ...data.missingDevices];
       if (allHostnames.length === 0) return;
+
       const chunks: string[][] = [];
       for (let i = 0; i < allHostnames.length; i += 30) {
         chunks.push(allHostnames.slice(i, i + 30));
       }
+
       const queryPromises: Promise<QuerySnapshot<DocumentData>>[] = chunks.map(
         (chunk) => {
           const notebooksQuery = query(
@@ -296,16 +311,19 @@ export default function ScannerPage() {
         }
       );
       const querySnapshots = await Promise.all(queryPromises);
+
       const hostnameToIdMap = new Map<string, string>();
       querySnapshots.forEach((snapshot) => {
         snapshot.forEach((doc) => {
           hostnameToIdMap.set(doc.data().hostname, doc.id);
         });
       });
+
       const batch = writeBatch(firestoreDB);
       const timestamp = Timestamp.now();
       const user = userProfile?.nome || "Sistema";
       const details = `Na conferência da UM: ${data.umName}`;
+
       data.scannedDevices.forEach((hostname: string) => {
         const notebookId = hostnameToIdMap.get(hostname);
         if (notebookId) {
@@ -320,6 +338,7 @@ export default function ScannerPage() {
           });
         }
       });
+
       data.missingDevices.forEach((hostname: string) => {
         const notebookId = hostnameToIdMap.get(hostname);
         if (notebookId) {
@@ -334,6 +353,7 @@ export default function ScannerPage() {
           });
         }
       });
+
       await batch.commit();
       console.log(
         "Eventos de ciclo de vida da conferência registrados com sucesso."
@@ -352,6 +372,7 @@ export default function ScannerPage() {
         conferenceData: data,
         timestamp: new Date(),
       });
+
       if ("serviceWorker" in navigator && "SyncManager" in window) {
         navigator.serviceWorker.ready.then((sw) => {
           sw.sync.register("sync-conferences");
@@ -371,14 +392,17 @@ export default function ScannerPage() {
   const handleConcludeAndSend = async () => {
     if (!summaryData) return;
     setIsSummaryModalOpen(false);
+
     if (!navigator.onLine) {
       await saveConferenceOffline(summaryData);
       return;
     }
+
     try {
       await addDoc(collection(firestoreDB, "conferences"), {
         ...summaryData,
       });
+
       fetch("/api/notify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -386,6 +410,7 @@ export default function ScannerPage() {
       });
 
       logConferenceLifecycleEvents(summaryData);
+
       toast.success("CONFERÊNCIA ENVIADA COM SUCESSO", {
         id: "global-toast",
       });
@@ -524,14 +549,9 @@ export default function ScannerPage() {
                           <p className="text-xs text-slate-500 mb-2">
                             Estes itens não precisam ser escaneados.
                           </p>
-                          <ul className="h-24 overflow-y-auto space-y-1 pr-2">
+                          <ul className="h-24 overflow-y-auto bg-slate-50 p-2 rounded-md space-y-1 font-mono text-sm">
                             {maintenanceDevices.map((device) => (
-                              <li
-                                key={device}
-                                className="p-2 bg-amber-50 text-amber-800 rounded font-mono text-sm"
-                              >
-                                {device}
-                              </li>
+                              <li key={device}>{device}</li>
                             ))}
                           </ul>
                         </Disclosure.Panel>
@@ -569,18 +589,20 @@ export default function ScannerPage() {
             </div>
           </div>
           <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-md">
-            <button
+            <AppButton
               onClick={handleRestart}
-              className="flex items-center bg-orange-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-orange-600 transition-colors"
+              size="md"
+              className="bg-orange-500 text-white hover:bg-orange-600 data-[disabled]:bg-orange-400"
             >
               <RefreshCcw size={20} className="mr-2" /> REINICIAR
-            </button>
-            <button
+            </AppButton>
+            <AppButton
               onClick={handleProceedToPeripherals}
-              className="flex items-center bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+              size="md"
+              className="bg-blue-600 text-white hover:bg-blue-700 data-[disabled]:bg-blue-400"
             >
               PRÓXIMO <ArrowRight size={20} className="ml-2" />
-            </button>
+            </AppButton>
           </div>
         </>
       )}
@@ -592,7 +614,6 @@ export default function ScannerPage() {
           </h3>
           <div className="grid grid-cols-1 gap-8">
             {expectedPeripherals.includes("mouse") && (
-              // CORRIGIDO: Removida a classe 'block' redundante
               <div className="flex flex-col items-center">
                 <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
                   <Mouse className="h-5 w-5 mr-2 text-slate-500" /> Mouses
@@ -601,7 +622,6 @@ export default function ScannerPage() {
               </div>
             )}
             {expectedPeripherals.includes("carregador") && (
-              // CORRIGIDO: Removida a classe 'block' redundante
               <div className="flex flex-col items-center">
                 <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
                   <Power className="h-5 w-5 mr-2 text-slate-500" /> Carregadores
@@ -613,7 +633,6 @@ export default function ScannerPage() {
               </div>
             )}
             {expectedPeripherals.includes("fone") && (
-              // CORRIGIDO: Removida a classe 'block' redundante
               <div className="flex flex-col items-center">
                 <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
                   <Headphones className="h-5 w-5 mr-2 text-slate-500" /> Fones
@@ -627,12 +646,13 @@ export default function ScannerPage() {
             )}
           </div>
           <div className="flex justify-end pt-4">
-            <button
+            <AppButton
               onClick={handleFinalizeConference}
-              className="flex items-center bg-teal-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-teal-700 transition-colors"
+              variant="primary"
+              size="lg"
             >
               FINALIZAR CONFERÊNCIA <CheckCircle size={20} className="ml-2" />
-            </button>
+            </AppButton>
           </div>
         </div>
       )}
@@ -661,19 +681,15 @@ export default function ScannerPage() {
             </p>
             <p>
               <span className="font-semibold">Horário:</span>{" "}
-              {summaryData.startTime
-                .toDate()
-                .toLocaleTimeString("pt-BR", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              {" às "}
-              {summaryData.endTime
-                .toDate()
-                .toLocaleTimeString("pt-BR", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+              {summaryData.startTime.toDate().toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}{" "}
+              às{" "}
+              {summaryData.endTime.toDate().toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </p>
             {(summaryData.miceCount !== undefined ||
               summaryData.chargersCount !== undefined ||
@@ -735,7 +751,8 @@ export default function ScannerPage() {
               </div>
             )}
             {summaryData.maintenanceCount &&
-              summaryData.maintenanceCount > 0 && (
+              summaryData.maintenanceCount > 0 &&
+              summaryData.maintenanceDevices && (
                 <div>
                   <h4 className="font-semibold mt-2">
                     Dispositivos em Manutenção:
@@ -748,12 +765,14 @@ export default function ScannerPage() {
                 </div>
               )}
             <div className="flex justify-end pt-4">
-              <button
+              <AppButton
                 onClick={handleConcludeAndSend}
-                className="w-full flex items-center justify-center bg-teal-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-teal-700 transition-colors"
+                variant="primary"
+                size="lg"
+                className="w-full"
               >
                 CONCLUIR E ENVIAR <ArrowRight size={20} className="ml-2" />
-              </button>
+              </AppButton>
             </div>
           </div>
         )}

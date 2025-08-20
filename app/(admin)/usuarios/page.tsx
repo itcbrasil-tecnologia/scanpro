@@ -24,15 +24,9 @@ import {
 } from "lucide-react";
 import { UserProfile, UserRole } from "@/types";
 import toast from "react-hot-toast";
-import {
-  Field,
-  Label,
-  Input,
-  Listbox,
-  Transition,
-  Button,
-} from "@headlessui/react";
+import { Field, Label, Input, Listbox, Transition } from "@headlessui/react";
 import { NumberInput } from "@/components/ui/NumberInput";
+import { AppButton } from "@/components/ui/AppButton";
 
 function UserListItem({
   user,
@@ -67,24 +61,25 @@ function UserListItem({
           </span>
         </div>
         <div className="col-span-1 flex items-center justify-end space-x-3">
-          <Button
-            onClick={onEdit}
-            className="text-gray-500 data-[hover]:text-teal-600"
-          >
+          <AppButton onClick={onEdit} variant="ghost" size="icon">
             <Edit size={20} />
-          </Button>
-          <Button
+          </AppButton>
+          <AppButton
             onClick={onDelete}
-            className="text-gray-500 data-[hover]:text-red-600"
+            variant="ghost"
+            size="icon"
+            className="data-[hover]:text-red-600"
           >
             <Trash2 size={20} />
-          </Button>
+          </AppButton>
         </div>
       </div>
       <div className="sm:hidden">
-        <button
+        {/* REFATORADO: O botão de toggle também agora é um AppButton para consistência */}
+        <AppButton
           onClick={() => setIsMobileOpen(!isMobileOpen)}
-          className="w-full flex items-center justify-between p-3 text-left"
+          variant="ghost"
+          className="w-full flex items-center justify-between p-3 text-left !font-normal !shadow-none data-[hover]:bg-slate-100"
         >
           <div>
             <span className="font-semibold text-gray-800">{user.nome}</span>
@@ -102,7 +97,7 @@ function UserListItem({
               isMobileOpen ? "rotate-180" : ""
             }`}
           />
-        </button>
+        </AppButton>
         {isMobileOpen && (
           <div className="p-4 border-t border-slate-200 space-y-3">
             <div>
@@ -114,18 +109,22 @@ function UserListItem({
               <p>{user.whatsapp}</p>
             </div>
             <div className="flex justify-end space-x-4 pt-2">
-              <Button
+              <AppButton
                 onClick={onEdit}
-                className="flex items-center text-sm p-2 rounded-md bg-slate-200 data-[hover]:bg-slate-300"
+                variant="secondary"
+                size="sm"
+                className="flex items-center"
               >
                 <Edit size={16} className="mr-1" /> Editar
-              </Button>
-              <Button
+              </AppButton>
+              <AppButton
                 onClick={onDelete}
-                className="flex items-center text-sm p-2 rounded-md bg-red-100 text-red-700 data-[hover]:bg-red-200"
+                variant="danger"
+                size="sm"
+                className="flex items-center !bg-red-100 !text-red-700 data-[hover]:!bg-red-200"
               >
                 <Trash2 size={16} className="mr-1" /> Excluir
-              </Button>
+              </AppButton>
             </div>
           </div>
         )}
@@ -307,14 +306,11 @@ export default function UsersPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
         <h1 className="text-3xl font-bold text-gray-800">Gerenciar Usuários</h1>
-        <Button
-          onClick={openAddModal}
-          className="mt-4 sm:mt-0 flex items-center justify-center bg-teal-600 text-white px-4 py-2 rounded-lg shadow data-[hover]:bg-teal-700 transition-colors"
-        >
+        <AppButton onClick={openAddModal} className="mt-4 sm:mt-0">
           <Plus size={20} className="mr-2" />
           <span className="hidden sm:inline">Adicionar Usuário</span>
           <span className="sm:hidden">Usuário</span>
-        </Button>
+        </AppButton>
       </div>
       <div className="bg-white p-4 rounded-lg shadow-md">
         {isLoading ? (
@@ -469,12 +465,7 @@ export default function UsersPage() {
           )}
 
           <div className="flex justify-end pt-4">
-            <Button
-              onClick={handleSave}
-              className="bg-teal-600 text-white px-6 py-2 rounded-lg data-[hover]:bg-teal-700"
-            >
-              Salvar
-            </Button>
+            <AppButton onClick={handleSave}>Salvar</AppButton>
           </div>
         </div>
       </Modal>

@@ -26,6 +26,8 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { NotificationBell } from "./NotificationBell";
+import { AppButton } from "./AppButton"; // ADICIONADO
+import clsx from "clsx"; // ADICIONADO
 
 interface NavbarProps {
   userProfile: UserProfile;
@@ -34,7 +36,6 @@ interface NavbarProps {
 export function Navbar({ userProfile }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobileAdminOpen, setIsMobileAdminOpen] = useState(false);
-
   const pathname = usePathname();
   const router = useRouter();
 
@@ -141,7 +142,8 @@ export function Navbar({ userProfile }: NavbarProps) {
                   active ? "bg-slate-100" : ""
                 }`}
               >
-                <Home size={16} className="mr-3 text-slate-500" /> Início
+                <Home size={16} className="mr-3 text-slate-500" />
+                Início
               </Link>
             )}
           </Menu.Item>
@@ -160,14 +162,18 @@ export function Navbar({ userProfile }: NavbarProps) {
           </Menu.Item>
           <Menu.Item>
             {({ active }) => (
-              <button
+              // REFATORADO
+              <AppButton
                 onClick={handleLogout}
-                className={`w-full text-left flex items-center px-4 py-2 text-sm text-red-600 ${
-                  active ? "bg-red-50" : ""
-                }`}
+                variant="ghost"
+                size="sm"
+                className={clsx(
+                  "w-full !justify-start !font-normal !text-red-600 !px-4 !py-2",
+                  active && "!bg-red-50"
+                )}
               >
                 <LogOut size={16} className="mr-3" /> Sair
-              </button>
+              </AppButton>
             )}
           </Menu.Item>
         </Menu.Items>
@@ -182,7 +188,6 @@ export function Navbar({ userProfile }: NavbarProps) {
           <div className="flex-shrink-0">
             <Logo />
           </div>
-          {/* A lógica de navegação principal agora verifica se o usuário é admin/master */}
           {isAdminOrMaster ? (
             <div className="hidden md:flex flex-1 items-center justify-center">
               <div className="flex items-baseline space-x-4">
@@ -238,27 +243,30 @@ export function Navbar({ userProfile }: NavbarProps) {
               </div>
             </div>
           ) : (
-            // Para técnicos, o centro da navbar em desktop fica vazio, criando um layout mais limpo
             <div className="hidden md:flex flex-1 items-center justify-center"></div>
           )}
+
           <div className="hidden md:flex items-center space-x-2">
             <NotificationBell userProfile={userProfile} />
             <UserMenu />
           </div>
+
           <div className="md:hidden flex items-center ml-auto space-x-2">
             <NotificationBell userProfile={userProfile} />
-            <button
+            {/* REFATORADO */}
+            <AppButton
               onClick={() => setIsMobileMenuOpen((prev) => !prev)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-slate-300 hover:text-white focus:outline-none"
+              variant="ghost"
+              size="icon"
+              className="!text-slate-300 data-[hover]:!text-white"
             >
               {isMobileMenuOpen ? <X size={24} /> : <MenuIcon size={24} />}
-            </button>
+            </AppButton>
           </div>
         </div>
       </div>
       {isMobileMenuOpen && (
         <div className="md:hidden bg-slate-800 border-t border-slate-700">
-          {/* A navegação mobile permanece a mesma, pois é a principal para o técnico */}
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
             {isAdminOrMaster ? (
               <>
@@ -273,9 +281,11 @@ export function Navbar({ userProfile }: NavbarProps) {
                     {item.name}
                   </Link>
                 ))}
-                <button
+                {/* REFATORADO */}
+                <AppButton
                   onClick={() => setIsMobileAdminOpen((prev) => !prev)}
-                  className="w-full flex items-center justify-between text-slate-200 hover:bg-slate-700 hover:text-white px-3 py-2 rounded-md text-base font-medium"
+                  variant="ghost"
+                  className="w-full !justify-between !text-slate-200 data-[hover]:!bg-slate-700 data-[hover]:!text-white !px-3 !py-2 !text-base !font-medium"
                 >
                   <div className="flex items-center">
                     <ChevronDown
@@ -289,7 +299,8 @@ export function Navbar({ userProfile }: NavbarProps) {
                     />
                     Administração
                   </div>
-                </button>
+                </AppButton>
+
                 {isMobileAdminOpen && (
                   <div className="pl-8">
                     {adminDropdownItems.map((item) => (

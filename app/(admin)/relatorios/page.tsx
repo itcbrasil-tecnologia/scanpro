@@ -21,6 +21,9 @@ import { PeripheralsModal } from "@/components/ui/PeripheralsModal";
 import { PaginationControls } from "@/components/ui/PaginationControls";
 import { ConferenceData } from "@/types";
 import { Listbox, Transition } from "@headlessui/react";
+import { AppButton } from "@/components/ui/AppButton";
+import { DateRangePicker } from "@/components/ui/DateRangePicker";
+import { DateRange } from "react-day-picker";
 
 interface Project {
   id: string;
@@ -39,8 +42,7 @@ interface Filters {
   projectId: string;
   umId: string;
   technicianId: string;
-  startDate: string;
-  endDate: string;
+  dateRange: DateRange | undefined;
 }
 
 const ITEMS_PER_PAGE = 15;
@@ -62,8 +64,7 @@ export default function ReportsPage() {
     projectId: "",
     umId: "",
     technicianId: "",
-    startDate: "",
-    endDate: "",
+    dateRange: undefined,
   });
 
   const fetchFilterData = useCallback(async () => {
@@ -107,7 +108,6 @@ export default function ReportsPage() {
       currentFilters?: Filters
     ) => {
       setIsLoading(true);
-      // Usa os filtros passados como argumento ou o estado atual
       const activeFilters = currentFilters || filters;
 
       try {
@@ -130,17 +130,17 @@ export default function ReportsPage() {
             where("userId", "==", activeFilters.technicianId)
           );
         }
-        if (activeFilters.startDate) {
+        if (activeFilters.dateRange?.from) {
           queryConstraints.push(
             where(
               "endTime",
               ">=",
-              Timestamp.fromDate(new Date(activeFilters.startDate))
+              Timestamp.fromDate(activeFilters.dateRange.from)
             )
           );
         }
-        if (activeFilters.endDate) {
-          const endOfDay = new Date(activeFilters.endDate);
+        if (activeFilters.dateRange?.to) {
+          const endOfDay = new Date(activeFilters.dateRange.to);
           endOfDay.setHours(23, 59, 59, 999);
           queryConstraints.push(
             where("endTime", "<=", Timestamp.fromDate(endOfDay))
@@ -185,20 +185,15 @@ export default function ReportsPage() {
         setIsLoading(false);
       }
     },
-    [projects, ums, filters] // 'filters' foi adicionado aqui para garantir que a função tenha o estado mais recente
+    [projects, ums, filters]
   );
 
-  // ADICIONADO: useEffect para aplicar os filtros automaticamente
   useEffect(() => {
-    // Evita a busca inicial antes que os dados dos filtros (projetos, ums) sejam carregados
     if (projects.length > 0 && ums.length > 0) {
-      // Reinicia a paginação e busca os dados da primeira página
       setCurrentPage(1);
       setLastVisible(null);
       fetchConferences(1, null, filters);
     }
-    // A dependência 'fetchConferences' foi removida para evitar loops,
-    // controlamos a chamada pelo 'filters'.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, projects, ums]);
 
@@ -210,13 +205,15 @@ export default function ReportsPage() {
     }
   };
 
-  const handleFilterChange = (name: keyof Filters, value: string) => {
+  const handleFilterChange = (
+    name: keyof Omit<Filters, "dateRange">,
+    value: string
+  ) => {
     setFilters((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFilters((prev) => ({ ...prev, [name]: value }));
+  const handleDateRangeChange = (range: DateRange | undefined) => {
+    setFilters((prev) => ({ ...prev, dateRange: range }));
   };
 
   const handleClearFilters = () => {
@@ -224,10 +221,8 @@ export default function ReportsPage() {
       projectId: "",
       umId: "",
       technicianId: "",
-      startDate: "",
-      endDate: "",
+      dateRange: undefined,
     });
-    // A busca será acionada automaticamente pelo useEffect que observa 'filters'
   };
 
   const handleExportCSV = async () => {
@@ -248,17 +243,13 @@ export default function ReportsPage() {
       if (filters.technicianId) {
         queryConstraints.push(where("userId", "==", filters.technicianId));
       }
-      if (filters.startDate) {
+      if (filters.dateRange?.from) {
         queryConstraints.push(
-          where(
-            "endTime",
-            ">=",
-            Timestamp.fromDate(new Date(filters.startDate))
-          )
+          where("endTime", ">=", Timestamp.fromDate(filters.dateRange.from))
         );
       }
-      if (filters.endDate) {
-        const endOfDay = new Date(filters.endDate);
+      if (filters.dateRange?.to) {
+        const endOfDay = new Date(filters.dateRange.to);
         endOfDay.setHours(23, 59, 59, 999);
         queryConstraints.push(
           where("endTime", "<=", Timestamp.fromDate(endOfDay))
@@ -339,16 +330,18 @@ export default function ReportsPage() {
         <h1 className="text-3xl font-bold text-gray-800">
           Relatórios de Conferências
         </h1>
-        <button
+        <AppButton
           onClick={handleExportCSV}
-          className="flex items-center text-sm bg-green-600 text-white px-4 py-2 rounded-lg shadow hover:bg-green-700 transition-colors mt-4 sm:mt-0"
+          variant="success"
+          size="sm"
+          className="mt-4 sm:mt-0"
         >
           <Download size={16} className="mr-2" /> Exportar CSV
-        </button>
+        </AppButton>
       </div>
 
       <div className="bg-white p-4 rounded-lg shadow-md space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Listbox
             value={filters.projectId}
             onChange={(value) => handleFilterChange("projectId", value)}
@@ -547,29 +540,17 @@ export default function ReportsPage() {
             </div>
           </Listbox>
 
-          <input
-            type="date"
-            name="startDate"
-            value={filters.startDate}
-            onChange={handleDateChange}
-            className="w-full p-2 border border-gray-300 rounded-md"
-          />
-          <input
-            type="date"
-            name="endDate"
-            value={filters.endDate}
-            onChange={handleDateChange}
-            className="w-full p-2 border border-gray-300 rounded-md"
-          />
+          <div className="lg:col-span-1">
+            <DateRangePicker
+              range={filters.dateRange}
+              setRange={handleDateRangeChange}
+            />
+          </div>
         </div>
         <div className="flex justify-end space-x-2">
-          <button
-            onClick={handleClearFilters}
-            className="flex items-center text-sm bg-gray-500 text-white px-4 py-2 rounded-lg shadow hover:bg-gray-600 transition-colors"
-          >
+          <AppButton onClick={handleClearFilters} variant="secondary" size="sm">
             <X size={16} className="mr-2" /> Limpar Filtros
-          </button>
-          {/* REMOVIDO: O botão de Aplicar Filtros não é mais necessário */}
+          </AppButton>
         </div>
       </div>
 
@@ -649,12 +630,13 @@ export default function ReportsPage() {
                       {(conference.miceCount !== undefined ||
                         conference.chargersCount !== undefined ||
                         conference.headsetsCount !== undefined) && (
-                        <button
+                        <AppButton
                           onClick={() => openPeripheralsModal(conference)}
-                          className="flex items-center justify-center mx-auto text-xs font-semibold text-teal-800 bg-teal-100 hover:bg-teal-200 px-3 py-1 rounded-full transition-colors"
+                          size="sm"
+                          className="!text-xs !font-semibold !text-teal-800 !bg-teal-100 data-[hover]:!bg-teal-200 !px-3 !py-1 !rounded-full !shadow-none"
                         >
                           <Eye size={14} className="mr-1.5" /> Visualizar
-                        </button>
+                        </AppButton>
                       )}
                     </td>
                     <td className="p-3 text-center font-bold">

@@ -4,3 +4,19 @@
 body {
   font-family: "Inter", sans-serif;
 }
+
+.rdp-root {
+  --rdp-accent-color: #0d9488; /* Cor principal (teal-600) */
+  --rdp-background-color: #f0fdfa; /* Cor de fundo para hover e range (teal-50) */
+  --rdp-accent-color-dark: #115e59; /* Cor mais escura para hover */
+  --rdp-selected-color: #ffffff; /* Cor do texto em dias selecionados */
+
+  --rdp-cell-size: 40px;
+  --rdp-caption-font-size: 1rem;
+  --rdp-nav-button-size: 40px;
+}
+
+.rdp-day_today:not(.rdp-day_outside) {
+  font-weight: bold;
+  color: #0d9488; /* Cor para o dia de hoje */
+}

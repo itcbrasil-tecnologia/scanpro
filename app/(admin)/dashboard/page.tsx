@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useState, useEffect } from "react";
 import { db } from "@/lib/firebase/config";
 import {
@@ -26,6 +27,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { ConferenceData } from "@/types";
+import { AppButton } from "@/components/ui/AppButton"; // ADICIONADO
 
 type ModalListItem = { name: string; whatsapp?: string };
 
@@ -85,6 +87,7 @@ export default function DashboardPage() {
           orderBy("endTime", "desc"),
           limit(10)
         );
+
         const [
           projectsSnapshot,
           umsSnapshot,
@@ -100,19 +103,24 @@ export default function DashboardPage() {
           getDocs(maintenanceQuery),
           getDocs(conferencesQuery),
         ]);
+
         const projectsData = projectsSnapshot.docs.map((doc) => ({
           name: doc.data().name,
         }));
         setProjectsList(projectsData);
+
         const techniciansData = techniciansSnapshot.docs.map((doc) => ({
           name: doc.data().nome,
           whatsapp: doc.data().whatsapp,
         }));
         setTechniciansList(techniciansData);
+
         const maintenanceData = maintenanceSnapshot.docs.map(
-          (doc) => ({ id: doc.id, ...doc.data() } as MaintenanceNotebook)
+          (doc) =>
+            ({ id: doc.id, ...doc.data() } as unknown as MaintenanceNotebook)
         );
         setMaintenanceNotebooks(maintenanceData);
+
         setSummaryData({
           technicians: techniciansSnapshot.size,
           projects: projectsSnapshot.size,
@@ -120,6 +128,7 @@ export default function DashboardPage() {
           notebooks: notebooksSnapshot.size,
           maintenance: maintenanceSnapshot.size,
         });
+
         const conferencesList = conferencesSnapshot.docs.map((doc) => {
           const data = doc.data() as ConferenceData;
           return {
@@ -220,6 +229,7 @@ export default function DashboardPage() {
           onDetailsClick={() => setIsMaintenanceModalOpen(true)}
         />
       </div>
+
       <div className="bg-white p-6 rounded-lg shadow-md overflow-hidden">
         <h2 className="text-xl font-bold text-gray-800 mb-4">
           Últimas Conferências
@@ -288,7 +298,7 @@ export default function DashboardPage() {
                     <td className="p-3 text-center">
                       {conference.latitude && conference.longitude && (
                         <a
-                          href={`http://googleusercontent.com/maps.google.com/?q=${conference.latitude},${conference.longitude}`}
+                          href={`https://www.google.com/maps?q=${conference.latitude},${conference.longitude}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-teal-600 hover:underline font-semibold flex items-center justify-center"
@@ -298,12 +308,14 @@ export default function DashboardPage() {
                       )}
                     </td>
                     <td className="p-3 text-center">
-                      <button
+                      {/* REFATORADO */}
+                      <AppButton
                         onClick={() => openSummaryModal(conference)}
-                        className="flex items-center justify-center mx-auto text-xs font-semibold text-blue-800 bg-blue-100 hover:bg-blue-200 px-3 py-1 rounded-full transition-colors"
+                        size="sm"
+                        className="!text-xs !bg-blue-100 !text-blue-800 data-[hover]:!bg-blue-200 !rounded-full !px-3 !py-1 !shadow-none !font-semibold"
                       >
                         <FileText size={14} className="mr-1.5" /> Ver
-                      </button>
+                      </AppButton>
                     </td>
                   </tr>
                 ))
@@ -350,10 +362,10 @@ export default function DashboardPage() {
                 <tr>
                   <th className="p-2 font-semibold text-slate-600">Hostname</th>
                   <th className="p-2 font-semibold text-slate-600">S/N</th>
-                  <th className="p-2 font-semibold text-slate-600 text-center">
+                  <th className="p-2 font-semibold text-slate-600">
                     Patrimônio
                   </th>
-                  <th className="p-2 font-semibold text-slate-600">
+                  <th className="p-2 font-semibold text-slate-600 text-center">
                     Data de Envio
                   </th>
                   <th className="p-2 font-semibold text-slate-600 text-center">
@@ -367,19 +379,22 @@ export default function DashboardPage() {
                     <td className="p-2 font-mono">{nb.hostname}</td>
                     <td className="p-2">{nb.serialNumber || "-"}</td>
                     <td className="p-2">{nb.assetTag || "-"}</td>
-                    <td className="p-2">
+                    <td className="p-2 text-center">
                       {nb.maintenanceStartDate
                         ?.toDate()
                         .toLocaleDateString("pt-BR") || "-"}
                     </td>
                     <td className="p-2 text-center">
-                      <button
+                      {/* REFATORADO */}
+                      <AppButton
                         onClick={() => openHistoryModal(nb)}
-                        className="text-gray-500 hover:text-blue-600"
+                        variant="ghost"
+                        size="icon"
                         title="Ver Histórico do Ativo"
+                        className="data-[hover]:text-blue-600"
                       >
                         <History size={18} />
-                      </button>
+                      </AppButton>
                     </td>
                   </tr>
                 ))}

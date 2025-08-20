@@ -2,17 +2,14 @@ import { NextResponse } from "next/server";
 import { ConferenceData } from "@/types";
 import { Timestamp } from "firebase-admin/firestore";
 
-// ADICIONADO: Interface que representa a estrutura de um Timestamp após ser convertido para JSON.
-// Isso nos permite fazer um cast seguro sem usar 'any'.
 interface JsonTimestamp {
-  _seconds: number;
-  _nanoseconds: number;
+  seconds: number;
+  nanoseconds: number;
 }
 
 export async function POST(request: Request) {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
-
   if (!botToken || !chatId) {
     console.error(
       "[ERRO FATAL] Variáveis de ambiente do Telegram não configuradas."
@@ -26,18 +23,16 @@ export async function POST(request: Request) {
   try {
     const summary: ConferenceData = await request.json();
 
-    // CORREÇÃO: Usando a interface JsonTimestamp para um cast de tipo seguro.
     const startTimeJson = summary.startTime as unknown as JsonTimestamp;
     const endTimeJson = summary.endTime as unknown as JsonTimestamp;
 
     const startTimeDate = new Timestamp(
-      startTimeJson._seconds,
-      startTimeJson._nanoseconds
+      startTimeJson.seconds,
+      startTimeJson.nanoseconds
     ).toDate();
-
     const endTimeDate = new Timestamp(
-      endTimeJson._seconds,
-      endTimeJson._nanoseconds
+      endTimeJson.seconds,
+      endTimeJson.nanoseconds
     ).toDate();
 
     const formattedDate = endTimeDate.toLocaleDateString("pt-BR");
@@ -58,19 +53,17 @@ export async function POST(request: Request) {
     message += `🕒 *Horário:* ${formattedStartTime} às ${formattedEndTime}\n`;
 
     if (summary.latitude && summary.longitude) {
-      const mapUrl = `http://googleusercontent.com/maps.google.com/?q=${summary.latitude},${summary.longitude}`;
+      const mapUrl = `https://www.google.com/maps?q=${summary.latitude},${summary.longitude}`;
       message += `📍 *Localização:* [Ver no Mapa](${mapUrl})\n`;
     }
 
     message += `\n------------------------------------\n\n`;
-
     const hasPeripherals =
       summary.miceCount !== undefined ||
       summary.chargersCount !== undefined ||
       summary.headsetsCount !== undefined;
-
     if (hasPeripherals) {
-      message += `*🖱️ Periféricos:*\n`;
+      message += `*️ Periféricos:*\n`;
       if (summary.miceCount !== undefined)
         message += `- Mouses: *${summary.miceCount}*\n`;
       if (summary.chargersCount !== undefined)
@@ -82,10 +75,8 @@ export async function POST(request: Request) {
 
     message += `*💻 Dispositivos Ativos (Esperados):* ${summary.expectedCount}\n`;
     message += `*👍 Dispositivos Escaneados:* ${summary.scannedCount}\n`;
-
     const missingEmoji = summary.missingCount > 0 ? "❗️" : "👍";
     message += `${missingEmoji} *Dispositivos Faltantes:* ${summary.missingCount}\n`;
-
     if (summary.maintenanceCount && summary.maintenanceCount > 0) {
       message += `*🔧 Dispositivos em Manutenção:* ${summary.maintenanceCount}\n\n`;
     } else {

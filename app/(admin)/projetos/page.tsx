@@ -18,6 +18,7 @@ import { Plus, Edit, Trash2 } from "lucide-react";
 import { SketchPicker, ColorResult } from "react-color";
 import toast from "react-hot-toast";
 import { Field, Label, Input } from "@headlessui/react";
+import { AppButton } from "@/components/ui/AppButton";
 
 interface Project {
   id: string;
@@ -163,14 +164,11 @@ export default function ProjectsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
         <h1 className="text-3xl font-bold text-gray-800">Gerenciar Projetos</h1>
-        <button
-          onClick={openAddModal}
-          className="mt-4 sm:mt-0 flex items-center justify-center bg-teal-600 text-white px-4 py-2 rounded-lg shadow hover:bg-teal-700 transition-colors"
-        >
+        <AppButton onClick={openAddModal} className="mt-4 sm:mt-0">
           <Plus size={20} className="mr-2" />
           <span className="hidden sm:inline">Adicionar Projeto</span>
           <span className="sm:hidden">Projeto</span>
-        </button>
+        </AppButton>
       </div>
       <div className="bg-white p-4 rounded-lg shadow-md">
         {isLoading ? (
@@ -193,18 +191,21 @@ export default function ProjectsPage() {
                     </span>
                   </div>
                   <div className="flex items-center space-x-3">
-                    <button
+                    <AppButton
                       onClick={() => openEditModal(project)}
-                      className="text-gray-500 hover:text-teal-600"
+                      variant="ghost"
+                      size="icon"
                     >
                       <Edit size={20} />
-                    </button>
-                    <button
+                    </AppButton>
+                    <AppButton
                       onClick={() => openDeleteModal(project)}
-                      className="text-gray-500 hover:text-red-600"
+                      variant="ghost"
+                      size="icon"
+                      className="data-[hover]:text-red-600"
                     >
                       <Trash2 size={20} />
-                    </button>
+                    </AppButton>
                   </div>
                 </li>
               ))
@@ -229,7 +230,6 @@ export default function ProjectsPage() {
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 data-[hover]:border-teal-400"
             />
           </Field>
-          {/* CORREÇÃO: Envolvendo a seção da paleta de cores com o componente Field */}
           <Field>
             <Label className="block text-sm font-medium text-gray-700">
               Cor de Associação
@@ -242,12 +242,7 @@ export default function ProjectsPage() {
             </div>
           </Field>
           <div className="flex justify-end pt-4">
-            <button
-              onClick={handleSave}
-              className="bg-teal-600 text-white px-6 py-2 rounded-lg hover:bg-teal-700"
-            >
-              Salvar
-            </button>
+            <AppButton onClick={handleSave}>Salvar</AppButton>
           </div>
         </div>
       </Modal>
