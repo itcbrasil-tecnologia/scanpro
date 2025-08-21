@@ -1,15 +1,14 @@
 "use client";
 
 import React from "react";
-import { Navbar } from "@/components/ui/Navbar";
-import { AuthGuard } from "./AuthGuard"; // Importa o novo guardião
+// ALTERADO DE "import { Navbar }" PARA "import Navbar"
+import Navbar from "@/components/ui/Navbar";
+import { AuthGuard } from "./AuthGuard";
 
 export function UserLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard allowedRoles={["USER"]} redirectPath="/dashboard">
-      {(
-        userProfile // Recebe o userProfile do AuthGuard
-      ) => (
+      {(userProfile) => (
         <div className="min-h-screen bg-slate-100">
           <Navbar userProfile={userProfile} />
           <main className="p-4">{children}</main>

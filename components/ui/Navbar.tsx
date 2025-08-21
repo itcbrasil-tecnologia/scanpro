@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase/config";
 import { UserProfile } from "@/types";
-import { Menu, Transition } from "@headlessui/react";
+import { Menu, Transition, Dialog } from "@headlessui/react";
 import {
   LogOut,
   User,
@@ -23,17 +23,18 @@ import {
   Truck,
   BriefcaseBusiness,
   MessageSquare,
-} from "lucide-react";
+} from "lucide-react"; // O ícone 'Search' foi removido
 import toast from "react-hot-toast";
 import { NotificationBell } from "./NotificationBell";
-import { AppButton } from "./AppButton"; // ADICIONADO
-import clsx from "clsx"; // ADICIONADO
+import { AppButton } from "./AppButton";
+import clsx from "clsx";
 
 interface NavbarProps {
   userProfile: UserProfile;
+  // A prop 'onOpenCommandPalette' foi removida
 }
 
-export function Navbar({ userProfile }: NavbarProps) {
+export default function Navbar({ userProfile }: NavbarProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobileAdminOpen, setIsMobileAdminOpen] = useState(false);
   const pathname = usePathname();
@@ -162,7 +163,6 @@ export function Navbar({ userProfile }: NavbarProps) {
           </Menu.Item>
           <Menu.Item>
             {({ active }) => (
-              // REFATORADO
               <AppButton
                 onClick={handleLogout}
                 variant="ghost"
@@ -182,186 +182,231 @@ export function Navbar({ userProfile }: NavbarProps) {
   );
 
   return (
-    <nav className="bg-slate-800 sticky top-0 z-40">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex-shrink-0">
-            <Logo />
-          </div>
-          {isAdminOrMaster ? (
-            <div className="hidden md:flex flex-1 items-center justify-center">
-              <div className="flex items-baseline space-x-4">
-                {adminMenuItems.map((item) => (
-                  <NavLink key={item.name} href={item.href}>
-                    {item.name}
-                  </NavLink>
-                ))}
-
-                <Menu as="div" className="relative">
-                  <Menu.Button
-                    className={`px-4 py-2 rounded-md text-base font-medium transition-colors flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 ${
-                      pathname.startsWith("/projetos") ||
-                      pathname.startsWith("/ums") ||
-                      pathname.startsWith("/notebooks") ||
-                      pathname.startsWith("/usuarios") ||
-                      pathname.startsWith("/notificacoes")
-                        ? "bg-slate-700 text-white"
-                        : "text-slate-300 hover:bg-slate-700 hover:text-white"
-                    }`}
-                  >
-                    <span>Administração</span>
-                    <ChevronDown size={16} className="ml-1" />
-                  </Menu.Button>
-                  <Transition
-                    as={Fragment}
-                    enter="transition ease-out duration-100"
-                    enterFrom="transform opacity-0 scale-95"
-                    enterTo="transform opacity-100 scale-100"
-                    leave="transition ease-in duration-75"
-                    leaveFrom="transform opacity-100 scale-100"
-                    leaveTo="transform opacity-0 scale-95"
-                  >
-                    <Menu.Items className="origin-top-center absolute mt-2 w-48 rounded-md shadow-lg py-1 bg-slate-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
-                      {adminDropdownItems.map((item) => (
-                        <Menu.Item key={item.name}>
-                          {({ active }) => (
-                            <Link
-                              href={item.href}
-                              className={`flex items-center w-full px-4 py-2 text-sm text-slate-200 ${
-                                active ? "bg-slate-700 text-white" : ""
-                              }`}
-                            >
-                              <item.icon size={16} className="mr-3" />
-                              {item.name}
-                            </Link>
-                          )}
-                        </Menu.Item>
-                      ))}
-                    </Menu.Items>
-                  </Transition>
-                </Menu>
-              </div>
+    <>
+      <nav className="bg-slate-800 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex-shrink-0">
+              <Logo />
             </div>
-          ) : (
-            <div className="hidden md:flex flex-1 items-center justify-center"></div>
-          )}
+            {isAdminOrMaster ? (
+              <div className="hidden md:flex flex-1 items-center justify-center">
+                <div className="flex items-baseline space-x-4">
+                  {adminMenuItems.map((item) => (
+                    <NavLink key={item.name} href={item.href}>
+                      {item.name}
+                    </NavLink>
+                  ))}
 
-          <div className="hidden md:flex items-center space-x-2">
-            <NotificationBell userProfile={userProfile} />
-            <UserMenu />
-          </div>
+                  <Menu as="div" className="relative">
+                    <Menu.Button
+                      className={`px-4 py-2 rounded-md text-base font-medium transition-colors flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 ${
+                        pathname.startsWith("/projetos") ||
+                        pathname.startsWith("/ums") ||
+                        pathname.startsWith("/notebooks") ||
+                        pathname.startsWith("/usuarios") ||
+                        pathname.startsWith("/notificacoes")
+                          ? "bg-slate-700 text-white"
+                          : "text-slate-300 hover:bg-slate-700 hover:text-white"
+                      }`}
+                    >
+                      <span>Administração</span>
+                      <ChevronDown size={16} className="ml-1" />
+                    </Menu.Button>
+                    <Transition
+                      as={Fragment}
+                      enter="transition ease-out duration-100"
+                      enterFrom="transform opacity-0 scale-95"
+                      enterTo="transform opacity-100 scale-100"
+                      leave="transition ease-in duration-75"
+                      leaveFrom="transform opacity-100 scale-100"
+                      leaveTo="transform opacity-0 scale-95"
+                    >
+                      <Menu.Items className="origin-top-center absolute mt-2 w-48 rounded-md shadow-lg py-1 bg-slate-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
+                        {adminDropdownItems.map((item) => (
+                          <Menu.Item key={item.name}>
+                            {({ active }) => (
+                              <Link
+                                href={item.href}
+                                className={`flex items-center w-full px-4 py-2 text-sm text-slate-200 ${
+                                  active ? "bg-slate-700 text-white" : ""
+                                }`}
+                              >
+                                <item.icon size={16} className="mr-3" />
+                                {item.name}
+                              </Link>
+                            )}
+                          </Menu.Item>
+                        ))}
+                      </Menu.Items>
+                    </Transition>
+                  </Menu>
+                </div>
+              </div>
+            ) : (
+              <div className="hidden md:flex flex-1 items-center justify-center"></div>
+            )}
 
-          <div className="md:hidden flex items-center ml-auto space-x-2">
-            <NotificationBell userProfile={userProfile} />
-            {/* REFATORADO */}
-            <AppButton
-              onClick={() => setIsMobileMenuOpen((prev) => !prev)}
-              variant="ghost"
-              size="icon"
-              className="!text-slate-300 data-[hover]:!text-white"
-            >
-              {isMobileMenuOpen ? <X size={24} /> : <MenuIcon size={24} />}
-            </AppButton>
+            <div className="hidden md:flex items-center space-x-2">
+              <NotificationBell userProfile={userProfile} />
+              <UserMenu />
+            </div>
+
+            <div className="md:hidden flex items-center ml-auto space-x-2">
+              <NotificationBell userProfile={userProfile} />
+              <AppButton
+                onClick={() => setIsMobileMenuOpen(true)}
+                variant="ghost"
+                size="icon"
+                className="!text-slate-300 data-[hover]:!text-white"
+              >
+                <MenuIcon size={24} />
+              </AppButton>
+            </div>
           </div>
         </div>
-      </div>
-      {isMobileMenuOpen && (
-        <div className="md:hidden bg-slate-800 border-t border-slate-700">
-          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-            {isAdminOrMaster ? (
-              <>
-                {adminMenuItems.map((item) => (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    onClick={handleMobileLinkClick}
-                    className="flex items-center text-slate-200 hover:bg-slate-700 hover:text-white px-3 py-2 rounded-md text-base font-medium"
-                  >
-                    <item.icon size={18} className="mr-3" />
-                    {item.name}
-                  </Link>
-                ))}
-                {/* REFATORADO */}
-                <AppButton
-                  onClick={() => setIsMobileAdminOpen((prev) => !prev)}
-                  variant="ghost"
-                  className="w-full !justify-between !text-slate-200 data-[hover]:!bg-slate-700 data-[hover]:!text-white !px-3 !py-2 !text-base !font-medium"
-                >
-                  <div className="flex items-center">
-                    <ChevronDown
-                      size={18}
-                      className="mr-3 transition-transform"
-                      style={{
-                        transform: isMobileAdminOpen
-                          ? "rotate(0deg)"
-                          : "rotate(-90deg)",
-                      }}
-                    />
-                    Administração
-                  </div>
-                </AppButton>
+      </nav>
 
-                {isMobileAdminOpen && (
-                  <div className="pl-8">
-                    {adminDropdownItems.map((item) => (
+      <Transition appear show={isMobileMenuOpen} as={Fragment}>
+        <Dialog
+          as="div"
+          className="relative z-50 md:hidden"
+          onClose={() => setIsMobileMenuOpen(false)}
+        >
+          <Transition.Child
+            as={Fragment}
+            enter="ease-out duration-300"
+            enterFrom="opacity-0"
+            enterTo="opacity-100"
+            leave="ease-in duration-200"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <div className="fixed inset-0 bg-black/40" />
+          </Transition.Child>
+
+          <div className="fixed inset-0 overflow-y-auto">
+            <div className="flex min-h-full">
+              <Transition.Child
+                as={Fragment}
+                enter="ease-out duration-300"
+                enterFrom="-translate-x-full"
+                enterTo="translate-x-0"
+                leave="ease-in duration-200"
+                leaveFrom="translate-x-0"
+                leaveTo="-translate-x-full"
+              >
+                <Dialog.Panel className="w-full max-w-xs transform overflow-hidden bg-slate-800 text-left align-middle shadow-xl transition-all">
+                  <div className="p-4 flex justify-between items-center border-b border-slate-700">
+                    <Logo />
+                    <AppButton
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      variant="ghost"
+                      size="icon"
+                      className="!text-slate-300 data-[hover]:!text-white"
+                    >
+                      <X size={24} />
+                    </AppButton>
+                  </div>
+
+                  <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                    {isAdminOrMaster ? (
+                      <>
+                        {adminMenuItems.map((item) => (
+                          <Link
+                            key={item.name}
+                            href={item.href}
+                            onClick={handleMobileLinkClick}
+                            className="flex items-center text-slate-200 hover:bg-slate-700 hover:text-white px-3 py-2 rounded-md text-base font-medium"
+                          >
+                            <item.icon size={18} className="mr-3" />
+                            {item.name}
+                          </Link>
+                        ))}
+                        <AppButton
+                          onClick={() => setIsMobileAdminOpen((prev) => !prev)}
+                          variant="ghost"
+                          className="w-full !justify-between !text-slate-200 data-[hover]:!bg-slate-700 data-[hover]:!text-white !px-3 !py-2 !text-base !font-medium"
+                        >
+                          <div className="flex items-center">
+                            <ChevronDown
+                              size={18}
+                              className="mr-3 transition-transform"
+                              style={{
+                                transform: isMobileAdminOpen
+                                  ? "rotate(0deg)"
+                                  : "rotate(-90deg)",
+                              }}
+                            />
+                            Administração
+                          </div>
+                        </AppButton>
+
+                        {isMobileAdminOpen && (
+                          <div className="pl-8">
+                            {adminDropdownItems.map((item) => (
+                              <Link
+                                key={item.name}
+                                href={item.href}
+                                onClick={handleMobileLinkClick}
+                                className="flex items-center text-slate-200 hover:bg-slate-700 hover:text-white px-3 py-2 rounded-md text-base font-medium"
+                              >
+                                <item.icon size={18} className="mr-3" />
+                                {item.name}
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    ) : (
                       <Link
-                        key={item.name}
-                        href={item.href}
+                        href="/inicio"
                         onClick={handleMobileLinkClick}
                         className="flex items-center text-slate-200 hover:bg-slate-700 hover:text-white px-3 py-2 rounded-md text-base font-medium"
                       >
-                        <item.icon size={18} className="mr-3" />
-                        {item.name}
+                        <Home size={18} className="mr-3" />
+                        Início
                       </Link>
-                    ))}
+                    )}
                   </div>
-                )}
-              </>
-            ) : (
-              <Link
-                href="/inicio"
-                onClick={handleMobileLinkClick}
-                className="flex items-center text-slate-200 hover:bg-slate-700 hover:text-white px-3 py-2 rounded-md text-base font-medium"
-              >
-                <Home size={18} className="mr-3" />
-                Início
-              </Link>
-            )}
-          </div>
-          <div className="pt-4 pb-3 border-t border-slate-700">
-            <div className="flex items-center px-5">
-              <div className="flex-shrink-0">
-                <User size={24} className="text-slate-300" />
-              </div>
-              <div className="ml-3">
-                <div className="text-base font-medium leading-none text-white">
-                  {userProfile.nome}
-                </div>
-                <div className="text-sm font-medium leading-none text-slate-400">
-                  {userProfile.email}
-                </div>
-              </div>
-            </div>
-            <div className="mt-3 px-2 space-y-1">
-              <Link
-                href="/alterar-senha"
-                onClick={handleMobileLinkClick}
-                className="flex items-center text-slate-200 hover:bg-slate-700 hover:text-white px-3 py-2 rounded-md text-base font-medium"
-              >
-                <KeyRound size={18} className="mr-3" />
-                Alterar Senha
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="w-full text-left flex items-center text-red-400 hover:bg-slate-700 hover:text-red-300 px-3 py-2 rounded-md text-base font-medium"
-              >
-                <LogOut size={18} className="mr-3" />
-                Sair
-              </button>
+                  <div className="pt-4 pb-3 border-t border-slate-700">
+                    <div className="flex items-center px-5">
+                      <div className="flex-shrink-0">
+                        <User size={24} className="text-slate-300" />
+                      </div>
+                      <div className="ml-3">
+                        <div className="text-base font-medium leading-none text-white">
+                          {userProfile.nome}
+                        </div>
+                        <div className="text-sm font-medium leading-none text-slate-400">
+                          {userProfile.email}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-3 px-2 space-y-1">
+                      <Link
+                        href="/alterar-senha"
+                        onClick={handleMobileLinkClick}
+                        className="flex items-center text-slate-200 hover:bg-slate-700 hover:text-white px-3 py-2 rounded-md text-base font-medium"
+                      >
+                        <KeyRound size={18} className="mr-3" />
+                        Alterar Senha
+                      </Link>
+                      <button
+                        onClick={handleLogout}
+                        className="w-full text-left flex items-center text-red-400 hover:bg-slate-700 hover:text-red-300 px-3 py-2 rounded-md text-base font-medium"
+                      >
+                        <LogOut size={18} className="mr-3" />
+                        Sair
+                      </button>
+                    </div>
+                  </div>
+                </Dialog.Panel>
+              </Transition.Child>
             </div>
           </div>
-        </div>
-      )}
-    </nav>
+        </Dialog>
+      </Transition>
+    </>
   );
 }

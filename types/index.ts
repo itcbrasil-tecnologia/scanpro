@@ -35,3 +35,11 @@ export interface ConferenceData {
   latitude?: number;
   longitude?: number;
 }
+
+export interface MaintenanceNotebook {
+  id: string;
+  hostname: string;
+  serialNumber?: string;
+  assetTag?: string;
+  maintenanceStartDate?: Timestamp;
+}

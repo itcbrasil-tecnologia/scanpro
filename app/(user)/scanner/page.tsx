@@ -532,7 +532,8 @@ export default function ScannerPage() {
                   <Disclosure>
                     {({ open }) => (
                       <>
-                        <Disclosure.Button className="w-full flex justify-between items-center text-left text-amber-800">
+                        {/* MUDANÇA 2: Adicionadas classes de estilo ao Disclosure.Button */}
+                        <Disclosure.Button className="w-full flex justify-between items-center text-left text-amber-800 p-2 rounded-md bg-amber-100 hover:bg-amber-200 transition-colors">
                           <div className="flex items-center font-semibold text-sm">
                             <Wrench size={14} className="mr-2" />
                             {maintenanceDevices.length} dispositivo(s) em
@@ -589,17 +590,18 @@ export default function ScannerPage() {
             </div>
           </div>
           <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-md">
+            {/* MUDANÇA 1: Adicionadas classes de cor customizadas */}
             <AppButton
               onClick={handleRestart}
               size="md"
-              className="bg-orange-500 text-white hover:bg-orange-600 data-[disabled]:bg-orange-400"
+              className="!bg-orange-500 !text-white hover:!bg-orange-600 data-[disabled]:!bg-orange-400"
             >
               <RefreshCcw size={20} className="mr-2" /> REINICIAR
             </AppButton>
             <AppButton
               onClick={handleProceedToPeripherals}
               size="md"
-              className="bg-blue-600 text-white hover:bg-blue-700 data-[disabled]:bg-blue-400"
+              className="!bg-blue-600 !text-white hover:!bg-blue-700 data-[disabled]:!bg-blue-400"
             >
               PRÓXIMO <ArrowRight size={20} className="ml-2" />
             </AppButton>

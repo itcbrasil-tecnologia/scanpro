@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useState, useEffect, useCallback, Fragment } from "react";
 import { db } from "@/lib/firebase/config";
 import {
@@ -89,72 +90,125 @@ function NotebookListItem({
 }) {
   const isMaintenance = notebook.status === "Em Manutenção";
 
+  const actionButtons = (
+    <div className="flex items-center space-x-2 flex-shrink-0">
+      <AppButton
+        onClick={onViewHistory}
+        variant="ghost"
+        size="icon"
+        title="Ver Histórico do Ativo"
+        className="data-[hover]:text-blue-600"
+      >
+        <History size={16} />
+      </AppButton>
+      <AppButton
+        onClick={onToggleMaintenance}
+        variant="ghost"
+        size="icon"
+        title={
+          isMaintenance ? "Retornar da Manutenção" : "Enviar para Manutenção"
+        }
+        className="data-[hover]:text-amber-600"
+      >
+        <Wrench size={16} />
+      </AppButton>
+      <AppButton
+        onClick={onViewQrCode}
+        variant="ghost"
+        size="icon"
+        title="Gerar QR Code"
+        className="data-[hover]:text-teal-800"
+      >
+        <QrCode size={16} />
+      </AppButton>
+      <AppButton
+        onClick={onEdit}
+        variant="ghost"
+        size="icon"
+        title="Editar"
+        className="data-[hover]:text-teal-600"
+      >
+        <Edit size={16} />
+      </AppButton>
+      <AppButton
+        onClick={onDelete}
+        variant="ghost"
+        size="icon"
+        title="Excluir"
+        className="data-[hover]:text-red-600"
+      >
+        <Trash2 size={16} />
+      </AppButton>
+    </div>
+  );
+
   return (
-    <li className="flex items-center justify-between py-2 px-3 hover:bg-slate-50 rounded-md">
-      <div className="flex items-center min-w-0">
-        <span title={`Status: ${notebook.status || "Ativo"}`}>
-          <CircleDot
-            size={16}
-            className={`mr-3 flex-shrink-0 ${
-              isMaintenance ? "text-amber-500" : "text-green-500"
-            }`}
-          />
-        </span>
-        <span
-          className="text-gray-600 font-mono text-sm truncate"
-          title={notebook.hostname}
-        >
-          {notebook.hostname}
-        </span>
+    <li className="bg-white p-2 rounded-md border border-slate-200">
+      {/* Layout para Desktop (visível a partir de sm: 640px) */}
+      <div className="hidden sm:flex items-center justify-between">
+        <div className="flex items-center min-w-0">
+          <span title={`Status: ${notebook.status || "Ativo"}`}>
+            <CircleDot
+              size={16}
+              className={`mr-3 flex-shrink-0 ${
+                isMaintenance ? "text-amber-500" : "text-green-500"
+              }`}
+            />
+          </span>
+          <span
+            className="text-gray-600 font-mono text-sm truncate"
+            title={notebook.hostname}
+          >
+            {notebook.hostname}
+          </span>
+        </div>
+        {actionButtons}
       </div>
-      <div className="flex items-center space-x-3 flex-shrink-0">
-        <AppButton
-          onClick={onViewHistory}
-          variant="ghost"
-          size="icon"
-          title="Ver Histórico do Ativo"
-          className="data-[hover]:text-blue-600"
-        >
-          <History size={16} />
-        </AppButton>
-        <AppButton
-          onClick={onToggleMaintenance}
-          variant="ghost"
-          size="icon"
-          title={
-            isMaintenance ? "Retornar da Manutenção" : "Enviar para Manutenção"
-          }
-          className="data-[hover]:text-amber-600"
-        >
-          <Wrench size={16} />
-        </AppButton>
-        <AppButton
-          onClick={onViewQrCode}
-          variant="ghost"
-          size="icon"
-          title="Gerar QR Code"
-          className="data-[hover]:text-teal-600"
-        >
-          <QrCode size={16} />
-        </AppButton>
-        <AppButton
-          onClick={onEdit}
-          variant="ghost"
-          size="icon"
-          title="Editar"
-          className="data-[hover]:text-teal-600"
-        >
-          <Edit size={16} />
-        </AppButton>
-        <AppButton
-          onClick={onDelete}
-          variant="ghost"
-          size="icon"
-          title="Excluir"
-          className="data-[hover]:text-red-600"
-        >
-          <Trash2 size={16} />
-        </AppButton>
+
+      {/* Layout para Mobile (escondido a partir de sm: 640px) */}
+      <div className="sm:hidden">
+        <Disclosure>
+          {({ open }) => (
+            <>
+              <Disclosure.Button className="w-full flex items-center justify-between text-left py-1">
+                <div className="flex items-center min-w-0">
+                  <span title={`Status: ${notebook.status || "Ativo"}`}>
+                    <CircleDot
+                      size={16}
+                      className={`mr-3 flex-shrink-0 ${
+                        isMaintenance ? "text-amber-500" : "text-green-500"
+                      }`}
+                    />
+                  </span>
+                  <span
+                    className="text-gray-600 font-mono text-sm truncate"
+                    title={notebook.hostname}
+                  >
+                    {notebook.hostname}
+                  </span>
+                </div>
+                <ChevronDown
+                  size={20}
+                  className={`ml-2 transition-transform flex-shrink-0 ${
+                    open ? "rotate-180" : ""
+                  }`}
+                />
+              </Disclosure.Button>
+              <Transition
+                enter="transition duration-100 ease-out"
+                enterFrom="transform scale-95 opacity-0"
+                enterTo="transform scale-100 opacity-100"
+                leave="transition duration-75 ease-out"
+                leaveFrom="transform scale-100 opacity-100"
+                leaveTo="transform scale-95 opacity-0"
+              >
+                <Disclosure.Panel className="pt-3 pb-1 mt-2 border-t flex justify-end">
+                  {actionButtons}
+                </Disclosure.Panel>
+              </Transition>
+            </>
+          )}
+        </Disclosure>
       </div>
     </li>
   );
@@ -209,11 +263,13 @@ export default function NotebooksPage() {
         (doc) => ({ id: doc.id, ...doc.data() } as Project)
       );
       setProjects(projectsList);
+
       const umsSnapshot = await getDocs(collection(db, "ums"));
       const umsList = umsSnapshot.docs.map(
         (doc) => ({ id: doc.id, ...doc.data() } as UM)
       );
       setUms(umsList);
+
       if (umsList.length > 0) {
         setFormState((prev) => ({
           ...prev,
@@ -225,6 +281,7 @@ export default function NotebooksPage() {
         }));
         setImportUmId((prev) => prev || umsList[0].id);
       }
+
       const notebooksSnapshot = await getDocs(collection(db, "notebooks"));
       const notebooksList = notebooksSnapshot.docs.map(
         (doc) => ({ id: doc.id, ...doc.data() } as Notebook)
@@ -306,7 +363,9 @@ export default function NotebooksPage() {
     const headers = ["hostname", "serialNumber", "assetTag"];
     const delimiter = ";";
     const csvContent = `${headers.join(delimiter)}\n`;
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
     link.setAttribute("href", url);
@@ -351,16 +410,16 @@ export default function NotebooksPage() {
         toast.success("Arquivo processado. Verifique a pré-visualização.");
       },
       error: (error) => {
+        console.error("Erro PapaParse:", error);
         toast.error("Ocorreu um erro ao processar o arquivo.", {
           id: "global-toast",
         });
-        console.error("Erro PapaParse:", error);
       },
     });
   };
 
   const handleSaveCsvImport = async () => {
-    if (parsedCsvData.length === 0) {
+    if (!parsedCsvData || parsedCsvData.length === 0) {
       toast.error(
         "Não há dados para importar. Carregue um arquivo e pré-visualize.",
         { id: "global-toast" }
@@ -377,6 +436,7 @@ export default function NotebooksPage() {
     const notebooksCollection = collection(db, "notebooks");
     const umName = ums.find((um) => um.id === importUmId)?.name || "N/A";
     const newNotebooksWithIds: { id: string; name: string }[] = [];
+
     parsedCsvData.forEach((notebook) => {
       if (notebook.hostname) {
         const newNotebookRef = doc(notebooksCollection);
@@ -488,7 +548,7 @@ export default function NotebooksPage() {
         const notebookRef = doc(db, "notebooks", currentNotebook.id);
         await updateDoc(notebookRef, notebookData);
         toast.success(
-          `Notebook &quot;${notebookData.hostname}&quot; atualizado com sucesso!`,
+          `Notebook "${notebookData.hostname}" atualizado com sucesso!`,
           { id: "global-toast" }
         );
       } else {
@@ -505,7 +565,7 @@ export default function NotebooksPage() {
           `Ativo cadastrado na UM: ${umName}`
         );
         toast.success(
-          `Notebook &quot;${formState.hostname}&quot; adicionado com sucesso!`,
+          `Notebook "${formState.hostname}" adicionado com sucesso!`,
           { id: "global-toast" }
         );
       }
@@ -524,7 +584,7 @@ export default function NotebooksPage() {
     try {
       await deleteDoc(doc(db, "notebooks", notebookToDelete.id));
       toast.success(
-        `Notebook &quot;${notebookToDelete.hostname}&quot; excluído com sucesso!`,
+        `Notebook "${notebookToDelete.hostname}" excluído com sucesso!`,
         { id: "global-toast" }
       );
       fetchData();
@@ -563,7 +623,7 @@ export default function NotebooksPage() {
           : "Ativo retornou à operação.";
       await logLifecycleEvent(id, eventType, details);
       toast.success(
-        `Status do notebook &quot;${hostname}&quot; alterado para ${newStatus}.`,
+        `Status do notebook "${hostname}" alterado para ${newStatus}.`,
         { id: "global-toast" }
       );
       fetchData();
@@ -596,7 +656,7 @@ export default function NotebooksPage() {
   };
 
   const handleSaveBatch = async () => {
-    if (generatedNames.length === 0 || !batchFormState.batchSelectedUmId) {
+    if (!generatedNames.length || !batchFormState.batchSelectedUmId) {
       toast.error("Gere os nomes e selecione uma UM antes de salvar.", {
         id: "global-toast",
       });
@@ -661,7 +721,7 @@ export default function NotebooksPage() {
       snapshot.docs.forEach((doc) => batch.delete(doc.ref));
       await batch.commit();
       toast.success(
-        `Todos os notebooks da UM &quot;${umToDeleteFrom.name}&quot; foram excluídos.`,
+        `Todos os notebooks da UM "${umToDeleteFrom.name}" foram excluídos.`,
         { id: "global-toast" }
       );
       fetchData();
@@ -677,7 +737,6 @@ export default function NotebooksPage() {
   const formModalTitle = currentNotebook
     ? "Editar Notebook"
     : "Adicionar Notebook";
-
   const getUmName = (umId: string) =>
     ums.find((um) => um.id === umId)?.name || "Selecione uma UM";
 
@@ -754,7 +813,7 @@ export default function NotebooksPage() {
                             <Disclosure key={um.id} as="div">
                               {({ open: umOpen }) => (
                                 <>
-                                  <Disclosure.Button className="w-full flex items-center p-3 bg-slate-50 rounded-lg text-left hover:bg-slate-100 text-gray-700">
+                                  <Disclosure.Button className="w-full flex items-center p-3 bg-slate-50 hover:bg-slate-100 rounded-lg text-left text-gray-700">
                                     <ChevronDown
                                       size={18}
                                       className={`mr-2 transition-transform ${
@@ -807,7 +866,7 @@ export default function NotebooksPage() {
                                               Excluir Todos
                                             </AppButton>
                                           </div>
-                                          <ul className="space-y-1 bg-white p-3 rounded-md">
+                                          <ul className="space-y-1">
                                             {umNotebooks
                                               .sort((a, b) =>
                                                 a.hostname.localeCompare(
@@ -919,7 +978,10 @@ export default function NotebooksPage() {
                   {getUmName(formState.selectedUmId)}
                 </span>
                 <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                  <ChevronsUpDown className="h-5 w-5 text-gray-400" />
+                  <ChevronsUpDown
+                    className="h-5 w-5 text-gray-400"
+                    aria-hidden="true"
+                  />
                 </span>
               </Listbox.Button>
               <Transition
@@ -950,7 +1012,7 @@ export default function NotebooksPage() {
                           </span>
                           {selected ? (
                             <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-teal-600">
-                              <Check className="h-5 w-5" />
+                              <Check className="h-5 w-5" aria-hidden="true" />
                             </span>
                           ) : null}
                         </>
@@ -986,7 +1048,10 @@ export default function NotebooksPage() {
                   {getUmName(batchFormState.batchSelectedUmId)}
                 </span>
                 <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                  <ChevronsUpDown className="h-5 w-5 text-gray-400" />
+                  <ChevronsUpDown
+                    className="h-5 w-5 text-gray-400"
+                    aria-hidden="true"
+                  />
                 </span>
               </Listbox.Button>
               <Transition
@@ -1017,7 +1082,7 @@ export default function NotebooksPage() {
                           </span>
                           {selected ? (
                             <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-teal-600">
-                              <Check className="h-5 w-5" />
+                              <Check className="h-5 w-5" aria-hidden="true" />
                             </span>
                           ) : null}
                         </>
@@ -1041,7 +1106,7 @@ export default function NotebooksPage() {
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
             />
           </Field>
-          <div className="flex space-x-4">
+          <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-4 sm:space-y-0">
             <Field className="flex-1">
               <Label className="block text-sm font-medium text-gray-700">
                 Número Inicial
@@ -1126,7 +1191,10 @@ export default function NotebooksPage() {
                     {getUmName(importUmId)}
                   </span>
                   <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                    <ChevronsUpDown className="h-5 w-5 text-gray-400" />
+                    <ChevronsUpDown
+                      className="h-5 w-5 text-gray-400"
+                      aria-hidden="true"
+                    />
                   </span>
                 </Listbox.Button>
                 <Transition
@@ -1157,7 +1225,7 @@ export default function NotebooksPage() {
                             </span>
                             {selected ? (
                               <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-teal-600">
-                                <Check className="h-5 w-5" />
+                                <Check className="h-5 w-5" aria-hidden="true" />
                               </span>
                             ) : null}
                           </>
@@ -1193,7 +1261,7 @@ export default function NotebooksPage() {
               Carregar e Pré-visualizar
             </AppButton>
           </div>
-          {parsedCsvData.length > 0 && (
+          {parsedCsvData && parsedCsvData.length > 0 && (
             <div className="pt-4 space-y-3">
               <h4 className="font-semibold">
                 Pré-visualização ({parsedCsvData.length} itens):
@@ -1237,6 +1305,7 @@ export default function NotebooksPage() {
         confirmButtonText="Confirmar Exclusão"
         confirmButtonVariant="danger"
       />
+
       <ConfirmationModal
         isOpen={isDeleteBatchModalOpen}
         onClose={() => setIsDeleteBatchModalOpen(false)}
@@ -1246,6 +1315,7 @@ export default function NotebooksPage() {
         confirmButtonText="Confirmar Exclusão"
         confirmButtonVariant="danger"
       />
+
       <ConfirmationModal
         isOpen={isMaintenanceModalOpen}
         onClose={() => setIsMaintenanceModalOpen(false)}
@@ -1259,11 +1329,13 @@ export default function NotebooksPage() {
         confirmButtonText="Confirmar"
         confirmButtonVariant="primary"
       />
+
       <QrCodePrintModal
         isOpen={isQrModalOpen}
         onClose={() => setIsQrModalOpen(false)}
         hostnames={hostnamesForQrModal}
       />
+
       <AssetLifecycleModal
         isOpen={isLifecycleModalOpen}
         onClose={() => setIsLifecycleModalOpen(false)}

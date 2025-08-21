@@ -22,23 +22,10 @@ import { Modal } from "@/components/ui/Modal";
 import { PeripheralsModal } from "@/components/ui/PeripheralsModal";
 import { ConferenceSummaryModal } from "@/components/ui/ConferenceSummaryModal";
 import { PaginationControls } from "@/components/ui/PaginationControls";
-import {
-  ScanBarcode,
-  Camera,
-  CheckCircle,
-  TriangleAlert,
-  FileText,
-  Eye,
-} from "lucide-react";
+import { ScanBarcode, Camera, CheckCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import { ConferenceData } from "@/types";
-import { AppButton } from "@/components/ui/AppButton";
-
-interface ConferenceForHistory extends ConferenceData {
-  date: string;
-  startTimeFormatted: string;
-  endTimeFormatted: string;
-}
+import { TabelaHistorico } from "@/components/ui/TabelaHistorico"; // ADICIONADO
 
 interface PeripheralsData {
   miceCount?: number;
@@ -51,7 +38,7 @@ const ITEMS_PER_PAGE = 10;
 export default function InicioPage() {
   const { userProfile } = useAuth();
   const router = useRouter();
-  const [conferences, setConferences] = useState<ConferenceForHistory[]>([]);
+  const [conferences, setConferences] = useState<ConferenceData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
@@ -105,20 +92,7 @@ export default function InicioPage() {
           return {
             ...data,
             id: document.id,
-            date: data.endTime.toDate().toLocaleDateString("pt-BR"),
-            startTimeFormatted: data.startTime
-              .toDate()
-              .toLocaleTimeString("pt-BR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-            endTimeFormatted: data.endTime
-              .toDate()
-              .toLocaleTimeString("pt-BR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-          } as ConferenceForHistory;
+          };
         });
 
         setConferences(userConferences);
@@ -196,17 +170,6 @@ export default function InicioPage() {
     setSelectedConferenceForSummary(conference);
     setIsSummaryModalOpen(true);
   };
-  const renderStatus = (conference: ConferenceData) => {
-    const isComplete = conference.scannedCount === conference.expectedCount;
-    const style = isComplete
-      ? "bg-green-100 text-green-800"
-      : "bg-red-100 text-red-800";
-    return (
-      <span className={`px-3 py-1 text-xs font-bold rounded-full ${style}`}>
-        {isComplete ? "CONCLUÍDO" : "INCOMPLETO"}
-      </span>
-    );
-  };
 
   if (!userProfile || userProfile.role !== "USER") {
     return (
@@ -258,113 +221,22 @@ export default function InicioPage() {
           <h2 className="text-xl font-bold text-gray-800 mb-4">
             Seu Histórico de Conferências
           </h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-slate-200 border-b-2 border-slate-300">
-                <tr>
-                  <th className="p-3 text-sm font-semibold text-slate-600">
-                    Data
-                  </th>
-                  <th className="p-3 text-sm font-semibold text-slate-600">
-                    UM
-                  </th>
-                  <th className="p-3 text-sm font-semibold text-slate-600 text-center">
-                    Contagem
-                  </th>
-                  <th className="p-3 text-sm font-semibold text-slate-600 text-center">
-                    Periféricos
-                  </th>
-                  <th className="p-3 text-sm font-semibold text-slate-600 text-center">
-                    Status
-                  </th>
-                  <th className="p-3 text-sm font-semibold text-slate-600 text-center">
-                    Detalhes
-                  </th>
-                  <th className="p-3 text-sm font-semibold text-slate-600 text-center">
-                    Resumo
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={7} className="text-center p-6 text-gray-500">
-                      Carregando histórico...
-                    </td>
-                  </tr>
-                ) : conferences.length > 0 ? (
-                  conferences.map((conference) => (
-                    <tr
-                      key={conference.id}
-                      className="border-b hover:bg-slate-50"
-                    >
-                      <td className="p-3 text-sm">
-                        <p>{conference.date}</p>
-                        <p className="text-xs text-gray-500">
-                          {conference.startTimeFormatted} -{" "}
-                          {conference.endTimeFormatted}
-                        </p>
-                      </td>
-                      <td className="p-3 text-sm font-medium">
-                        {conference.umName}
-                      </td>
-                      <td className="p-3 text-sm text-center">
-                        {conference.scannedCount} / {conference.expectedCount}
-                      </td>
-                      <td className="p-3 text-center">
-                        {(conference.miceCount !== undefined ||
-                          conference.chargersCount !== undefined ||
-                          conference.headsetsCount !== undefined) && (
-                          <AppButton
-                            size="sm"
-                            className="!text-xs !bg-teal-100 !text-teal-800 data-[hover]:!bg-teal-200 !rounded-full !px-3 !py-1 !shadow-none !font-semibold"
-                            onClick={() => openPeripheralsModal(conference)}
-                          >
-                            <Eye size={14} className="mr-1.5" />
-                            Ver
-                          </AppButton>
-                        )}
-                      </td>
-                      <td className="p-3 text-center">
-                        {renderStatus(conference)}
-                      </td>
-                      <td className="p-3 text-center">
-                        {conference.missingCount > 0 && (
-                          <AppButton
-                            size="sm"
-                            className="!text-xs !bg-amber-100 !text-amber-800 data-[hover]:!bg-amber-200 !rounded-full !px-3 !py-1 !shadow-none !font-semibold"
-                            onClick={() =>
-                              openDetailsModal(conference.missingDevices)
-                            }
-                          >
-                            <TriangleAlert size={14} className="mr-1.5" />
-                            Ver Faltantes
-                          </AppButton>
-                        )}
-                      </td>
-                      <td className="p-3 text-center">
-                        <AppButton
-                          size="sm"
-                          className="!text-xs !bg-blue-100 !text-blue-800 data-[hover]:!bg-blue-200 !rounded-full !px-3 !py-1 !shadow-none !font-semibold"
-                          onClick={() => openSummaryModal(conference)}
-                        >
-                          <FileText size={14} className="mr-1.5" />
-                          Ver Resumo
-                        </AppButton>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={7} className="text-center p-6 text-gray-500">
-                      Nenhuma conferência encontrada.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
+          {isLoading ? (
+            <p className="text-center text-gray-500 p-6">
+              Carregando histórico...
+            </p>
+          ) : conferences.length > 0 ? (
+            <TabelaHistorico
+              data={conferences}
+              openDetailsModal={openDetailsModal}
+              openPeripheralsModal={openPeripheralsModal}
+              openSummaryModal={openSummaryModal}
+            />
+          ) : (
+            <p className="text-center text-gray-500 p-6">
+              Nenhuma conferência encontrada.
+            </p>
+          )}
           <div className="p-4 border-t">
             <PaginationControls
               currentPage={currentPage}

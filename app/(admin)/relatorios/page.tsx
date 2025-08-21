@@ -25,7 +25,8 @@ import { Listbox, Transition } from "@headlessui/react";
 import { AppButton } from "@/components/ui/AppButton";
 import { DateRangePicker } from "@/components/ui/DateRangePicker";
 import { DateRange } from "react-day-picker";
-import { TabelaRelatorios } from "@/components/ui/TabelaRelatorios"; // ADICIONADO
+import { TabelaRelatorios } from "@/components/ui/TabelaRelatorios";
+import { RowSelectionState } from "@tanstack/react-table";
 
 interface Project {
   id: string;
@@ -68,6 +69,7 @@ export default function ReportsPage() {
     technicianId: "",
     dateRange: undefined,
   });
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
   const fetchFilterData = useCallback(async () => {
     try {
@@ -203,7 +205,6 @@ export default function ReportsPage() {
     if (newPage > currentPage && lastVisible) {
       fetchConferences(newPage, lastVisible);
     } else if (newPage < currentPage) {
-      // Para voltar, reiniciamos a busca da primeira página.
       fetchConferences(1, null);
     }
   };
@@ -228,88 +229,58 @@ export default function ReportsPage() {
     });
   };
 
-  const handleExportCSV = async () => {
-    toast.loading("Exportando dados...", { id: "export-toast" });
-    try {
-      const conferencesRef = collection(db, "conferences");
-      const queryConstraints: QueryConstraint[] = [];
-      if (filters.projectId) {
-        const projectDoc = projects.find((p) => p.id === filters.projectId);
-        if (projectDoc)
-          queryConstraints.push(where("projectName", "==", projectDoc.name));
-      }
-      if (filters.umId) {
-        const umDoc = ums.find((u) => u.id === filters.umId);
-        if (umDoc) queryConstraints.push(where("umName", "==", umDoc.name));
-      }
-      if (filters.technicianId) {
-        queryConstraints.push(where("userId", "==", filters.technicianId));
-      }
-      if (filters.dateRange?.from) {
-        queryConstraints.push(
-          where("endTime", ">=", Timestamp.fromDate(filters.dateRange.from))
-        );
-      }
-      if (filters.dateRange?.to) {
-        const endOfDay = new Date(filters.dateRange.to);
-        endOfDay.setHours(23, 59, 59, 999);
-        queryConstraints.push(
-          where("endTime", "<=", Timestamp.fromDate(endOfDay))
-        );
-      }
-
-      const exportQuery = query(
-        conferencesRef,
-        ...queryConstraints,
-        orderBy("endTime", "desc")
-      );
-      const dataToExportSnapshot = await getDocs(exportQuery);
-
-      if (dataToExportSnapshot.empty) {
-        toast.error("Nenhum dado para exportar com os filtros atuais.", {
-          id: "export-toast",
-        });
-        return;
-      }
-
-      const dataToExport = dataToExportSnapshot.docs.map((doc) => {
-        const data = doc.data() as ConferenceData;
-        return {
-          Data: data.endTime.toDate().toLocaleDateString("pt-BR"),
-          Inicio: data.startTime.toDate().toLocaleTimeString("pt-BR"),
-          Fim: data.endTime.toDate().toLocaleTimeString("pt-BR"),
-          Projeto: data.projectName,
-          UM: data.umName,
-          Tecnico: data.userName,
-          Esperados: data.expectedCount,
-          Escaneados: data.scannedCount,
-          Faltantes: data.missingCount,
-          Mouses: data.miceCount ?? 0,
-          Carregadores: data.chargersCount ?? 0,
-          "Fones de Ouvido": data.headsetsCount ?? 0,
-        };
-      });
-
-      const csvData = Papa.unparse(dataToExport);
-      const blob = new Blob([`\uFEFF${csvData}`], {
-        type: "text/csv;charset=utf-8;",
-      });
-      const link = document.createElement("a");
-      const url = URL.createObjectURL(blob);
-      link.setAttribute("href", url);
-      link.setAttribute("download", "relatorio_scanpro.csv");
-      link.style.visibility = "hidden";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      toast.success("Relatório exportado com sucesso!", {
-        id: "export-toast",
-      });
-    } catch (error) {
-      console.error("Erro ao exportar CSV:", error);
-      toast.error("Falha ao exportar relatório.", { id: "export-toast" });
+  const generateAndDownloadCSV = (
+    dataToExport: ConferenceData[],
+    fileName: string
+  ) => {
+    if (dataToExport.length === 0) {
+      toast.error("Nenhum dado para exportar.", { id: "export-toast" });
+      return;
     }
+
+    toast.loading("Exportando dados...", { id: "export-toast" });
+
+    const formattedData = dataToExport.map((data) => ({
+      Data: data.endTime.toDate().toLocaleDateString("pt-BR"),
+      Inicio: data.startTime.toDate().toLocaleTimeString("pt-BR"),
+      Fim: data.endTime.toDate().toLocaleTimeString("pt-BR"),
+      Projeto: data.projectName,
+      UM: data.umName,
+      Tecnico: data.userName,
+      Esperados: data.expectedCount,
+      Escaneados: data.scannedCount,
+      Faltantes: data.missingCount,
+      Mouses: data.miceCount ?? 0,
+      Carregadores: data.chargersCount ?? 0,
+      "Fones de Ouvido": data.headsetsCount ?? 0,
+    }));
+
+    const csvData = Papa.unparse(formattedData);
+    const blob = new Blob([`\uFEFF${csvData}`], {
+      type: "text/csv;charset=utf-8;",
+    });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", fileName);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast.success("Relatório exportado com sucesso!", { id: "export-toast" });
+  };
+
+  const handleExportAllCSV = () => {
+    generateAndDownloadCSV(conferences, "relatorio_completo_scanpro.csv");
+  };
+
+  const handleExportSelectedCSV = () => {
+    const selectedIndexes = Object.keys(rowSelection).map(Number);
+    const selectedData = conferences.filter((_, index) =>
+      selectedIndexes.includes(index)
+    );
+    generateAndDownloadCSV(selectedData, "relatorio_selecionado_scanpro.csv");
   };
 
   const openPeripheralsModal = (data: Partial<ConferenceData>) => {
@@ -328,20 +299,30 @@ export default function ReportsPage() {
   const getTechnicianName = (id: string) =>
     technicians.find((t) => t.uid === id)?.nome || "Todos os Técnicos";
 
+  const numSelected = Object.keys(rowSelection).length;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
         <h1 className="text-3xl font-bold text-gray-800">
           Relatórios de Conferências
         </h1>
-        <AppButton
-          onClick={handleExportCSV}
-          variant="success"
-          size="sm"
-          className="mt-4 sm:mt-0"
-        >
-          <Download size={16} className="mr-2" /> Exportar CSV
-        </AppButton>
+        <div className="flex items-center space-x-2 mt-4 sm:mt-0">
+          {numSelected > 0 ? (
+            <AppButton
+              onClick={handleExportSelectedCSV}
+              variant="primary"
+              size="sm"
+            >
+              <Download size={16} className="mr-2" />
+              Exportar {numSelected} Selecionado(s)
+            </AppButton>
+          ) : (
+            <AppButton onClick={handleExportAllCSV} variant="success" size="sm">
+              <Download size={16} className="mr-2" /> Exportar Tudo
+            </AppButton>
+          )}
+        </div>
       </div>
 
       <div className="bg-white p-4 rounded-lg shadow-md space-y-4">
@@ -564,13 +545,19 @@ export default function ReportsPage() {
           <TabelaRelatorios
             data={conferences}
             openPeripheralsModal={openPeripheralsModal}
+            rowSelection={rowSelection}
+            setRowSelection={setRowSelection}
           />
         ) : (
           <p className="text-center text-gray-500 p-6">
             Nenhum resultado encontrado para os filtros selecionados.
           </p>
         )}
-        <div className="p-4 border-t">
+        <div className="p-4 border-t flex justify-between items-center">
+          <div className="text-sm text-slate-600">
+            {Object.keys(rowSelection).length} de {conferences.length} linha(s)
+            selecionada(s).
+          </div>
           <PaginationControls
             currentPage={currentPage}
             totalPages={totalPages}

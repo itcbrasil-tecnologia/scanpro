@@ -44,10 +44,10 @@ export default function NotificacoesPage() {
     fetchTechnicians();
   }, []);
 
-  const handleSendNotification = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // CORREÇÃO 1: A função não precisa mais receber o evento do formulário (e)
+  const handleSendNotification = async () => {
     if (!title || !message) {
-      toast.error("Título e mensagem são obrigatórios.");
+      toast.error("Titulo e mensagem são obrigatórios.");
       return;
     }
     setIsLoading(true);
@@ -97,7 +97,8 @@ export default function NotificacoesPage() {
         Disparar Notificações
       </h1>
       <div className="bg-white p-6 md:p-8 rounded-lg shadow-md max-w-2xl mx-auto">
-        <form onSubmit={handleSendNotification} className="space-y-6">
+        {/* CORREÇÃO 2: O 'onSubmit' foi removido do form. O formulário agora é apenas um container. */}
+        <form className="space-y-6">
           <Listbox value={target} onChange={setTarget}>
             <div className="relative">
               <Listbox.Label className="block text-sm font-medium text-gray-700 mb-1">
@@ -213,7 +214,12 @@ export default function NotificacoesPage() {
           </Field>
 
           <div className="flex justify-end">
-            <AppButton type="submit" disabled={isLoading}>
+            {/* CORREÇÃO 3: O 'type' foi mudado para 'button' e adicionamos o 'onClick' */}
+            <AppButton
+              type="button"
+              onClick={handleSendNotification}
+              disabled={isLoading}
+            >
               <Send size={18} className="mr-2" />
               {isLoading ? "Enviando..." : "Enviar Notificação"}
             </AppButton>

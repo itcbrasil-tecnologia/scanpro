@@ -14,124 +14,13 @@ import {
 } from "firebase/firestore";
 import { Modal } from "@/components/ui/Modal";
 import { ConfirmationModal } from "@/components/ui/ConfirmationModal";
-import {
-  Plus,
-  Edit,
-  Trash2,
-  ChevronDown,
-  Check,
-  ChevronsUpDown,
-} from "lucide-react";
+import { Plus, Check, ChevronsUpDown } from "lucide-react";
 import { UserProfile, UserRole } from "@/types";
 import toast from "react-hot-toast";
 import { Field, Label, Input, Listbox, Transition } from "@headlessui/react";
 import { NumberInput } from "@/components/ui/NumberInput";
 import { AppButton } from "@/components/ui/AppButton";
-
-function UserListItem({
-  user,
-  onEdit,
-  onDelete,
-}: {
-  user: UserProfile;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const roleColor = {
-    MASTER: "bg-purple-200 text-purple-800",
-    ADMIN: "bg-blue-200 text-blue-800",
-    USER: "bg-green-200 text-green-800",
-  };
-  return (
-    <div className="bg-slate-50 rounded-lg">
-      <div className="hidden sm:grid grid-cols-12 gap-4 items-center p-3">
-        <div className="col-span-3 font-semibold text-gray-800">
-          {user.nome}
-        </div>
-        <div className="col-span-4 text-gray-600">{user.email}</div>
-        <div className="col-span-2 text-gray-600">{user.whatsapp}</div>
-        <div className="col-span-2">
-          <span
-            className={`px-2 py-1 text-xs font-bold rounded-full ${
-              roleColor[user.role]
-            }`}
-          >
-            {user.role}
-          </span>
-        </div>
-        <div className="col-span-1 flex items-center justify-end space-x-3">
-          <AppButton onClick={onEdit} variant="ghost" size="icon">
-            <Edit size={20} />
-          </AppButton>
-          <AppButton
-            onClick={onDelete}
-            variant="ghost"
-            size="icon"
-            className="data-[hover]:text-red-600"
-          >
-            <Trash2 size={20} />
-          </AppButton>
-        </div>
-      </div>
-      <div className="sm:hidden">
-        {/* REFATORADO: O botão de toggle também agora é um AppButton para consistência */}
-        <AppButton
-          onClick={() => setIsMobileOpen(!isMobileOpen)}
-          variant="ghost"
-          className="w-full flex items-center justify-between p-3 text-left !font-normal !shadow-none data-[hover]:bg-slate-100"
-        >
-          <div>
-            <span className="font-semibold text-gray-800">{user.nome}</span>
-            <p
-              className={`text-sm font-medium ${
-                roleColor[user.role]
-              } bg-opacity-40 rounded-full inline-block px-2 mt-1`}
-            >
-              {user.role}
-            </p>
-          </div>
-          <ChevronDown
-            size={20}
-            className={`transition-transform ${
-              isMobileOpen ? "rotate-180" : ""
-            }`}
-          />
-        </AppButton>
-        {isMobileOpen && (
-          <div className="p-4 border-t border-slate-200 space-y-3">
-            <div>
-              <p className="text-xs text-gray-500">Email</p>
-              <p>{user.email}</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Whatsapp</p>
-              <p>{user.whatsapp}</p>
-            </div>
-            <div className="flex justify-end space-x-4 pt-2">
-              <AppButton
-                onClick={onEdit}
-                variant="secondary"
-                size="sm"
-                className="flex items-center"
-              >
-                <Edit size={16} className="mr-1" /> Editar
-              </AppButton>
-              <AppButton
-                onClick={onDelete}
-                variant="danger"
-                size="sm"
-                className="flex items-center !bg-red-100 !text-red-700 data-[hover]:!bg-red-200"
-              >
-                <Trash2 size={16} className="mr-1" /> Excluir
-              </AppButton>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
+import { TabelaUsuarios } from "@/components/ui/TabelaUsuarios"; // ADICIONADO
 
 export default function UsersPage() {
   const { userProfile } = useAuth();
@@ -318,27 +207,14 @@ export default function UsersPage() {
             Carregando usuários...
           </p>
         ) : (
-          <>
-            <div className="hidden sm:grid grid-cols-12 gap-4 p-3 text-sm font-bold text-slate-500 border-b">
-              <div className="col-span-3">Nome</div>
-              <div className="col-span-4">Email</div>
-              <div className="col-span-2">Whatsapp</div>
-              <div className="col-span-2">Perfil</div>
-              <div className="col-span-1 text-right">Ações</div>
-            </div>
-            <div className="space-y-2 mt-2">
-              {users.map((user) => (
-                <UserListItem
-                  key={user.uid}
-                  user={user}
-                  onEdit={() => openEditModal(user)}
-                  onDelete={() => openDeleteModal(user)}
-                />
-              ))}
-            </div>
-          </>
+          <TabelaUsuarios
+            data={users}
+            onEdit={openEditModal}
+            onDelete={openDeleteModal}
+          />
         )}
       </div>
+
       <Modal
         isOpen={isFormModalOpen}
         onClose={() => setIsFormModalOpen(false)}
@@ -469,6 +345,7 @@ export default function UsersPage() {
           </div>
         </div>
       </Modal>
+
       <ConfirmationModal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}

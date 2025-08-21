@@ -9,42 +9,19 @@ import {
   where,
   limit,
   orderBy,
-  Timestamp,
 } from "firebase/firestore";
 import { DashboardCard } from "@/components/ui/DashboardCard";
 import { Modal } from "@/components/ui/Modal";
 import { AssetLifecycleModal } from "@/components/ui/AssetLifecycleModal";
 import { ConferenceSummaryModal } from "@/components/ui/ConferenceSummaryModal";
-import {
-  Users,
-  BriefcaseBusiness,
-  Truck,
-  Laptop,
-  Wrench,
-  History,
-  MapPin,
-  FileText,
-} from "lucide-react";
+import { Users, BriefcaseBusiness, Truck, Laptop, Wrench } from "lucide-react"; // CORREÇÃO: Ícones não utilizados foram removidos
 import toast from "react-hot-toast";
-import { ConferenceData } from "@/types";
-import { AppButton } from "@/components/ui/AppButton"; // ADICIONADO
+import { ConferenceData, MaintenanceNotebook } from "@/types";
+import { TabelaManutencao } from "@/components/ui/TabelaManutencao";
+// CORREÇÃO: Importação alterada para default (sem chaves)
+import TabelaConferencias from "@/components/ui/TabelaConferencias";
 
 type ModalListItem = { name: string; whatsapp?: string };
-
-interface ConferenceForTable extends ConferenceData {
-  id: string;
-  date: string;
-  startTimeFormatted: string;
-  endTimeFormatted: string;
-}
-
-interface MaintenanceNotebook {
-  id: string;
-  hostname: string;
-  serialNumber?: string;
-  assetTag?: string;
-  maintenanceStartDate?: Timestamp;
-}
 
 export default function DashboardPage() {
   const [summaryData, setSummaryData] = useState({
@@ -54,7 +31,7 @@ export default function DashboardPage() {
     notebooks: 0,
     maintenance: 0,
   });
-  const [conferences, setConferences] = useState<ConferenceForTable[]>([]);
+  const [conferences, setConferences] = useState<ConferenceData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [detailsModalContent, setDetailsModalContent] = useState<{
@@ -116,8 +93,7 @@ export default function DashboardPage() {
         setTechniciansList(techniciansData);
 
         const maintenanceData = maintenanceSnapshot.docs.map(
-          (doc) =>
-            ({ id: doc.id, ...doc.data() } as unknown as MaintenanceNotebook)
+          (doc) => ({ id: doc.id, ...doc.data() } as MaintenanceNotebook)
         );
         setMaintenanceNotebooks(maintenanceData);
 
@@ -134,20 +110,7 @@ export default function DashboardPage() {
           return {
             ...data,
             id: doc.id,
-            date: data.endTime.toDate().toLocaleDateString("pt-BR"),
-            startTimeFormatted: data.startTime
-              .toDate()
-              .toLocaleTimeString("pt-BR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-            endTimeFormatted: data.endTime
-              .toDate()
-              .toLocaleTimeString("pt-BR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
-          } as ConferenceForTable;
+          };
         });
         setConferences(conferencesList);
       } catch (error) {
@@ -178,20 +141,6 @@ export default function DashboardPage() {
   const openSummaryModal = (conference: ConferenceData) => {
     setSelectedConferenceForSummary(conference);
     setIsSummaryModalOpen(true);
-  };
-
-  const renderStatus = (scanned: number, expected: number) => {
-    const isCompleted = scanned === expected;
-    const bgColor = isCompleted
-      ? "bg-green-100 text-green-800"
-      : "bg-red-100 text-red-800";
-    return (
-      <span
-        className={`px-3 py-1 text-sm font-semibold rounded-full ${bgColor}`}
-      >
-        {isCompleted ? "Concluído" : "Incompleto"}
-      </span>
-    );
   };
 
   return (
@@ -234,101 +183,20 @@ export default function DashboardPage() {
         <h2 className="text-xl font-bold text-gray-800 mb-4">
           Últimas Conferências
         </h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-slate-200 border-b-2 border-slate-300">
-              <tr>
-                <th className="p-3 text-sm font-semibold text-slate-600">
-                  Data
-                </th>
-                <th className="p-3 text-sm font-semibold text-slate-600">
-                  Projeto / UM
-                </th>
-                <th className="p-3 text-sm font-semibold text-slate-600">
-                  Técnico
-                </th>
-                <th className="p-3 text-sm font-semibold text-slate-600 text-center">
-                  Contagem
-                </th>
-                <th className="p-3 text-sm font-semibold text-slate-600 text-center">
-                  Status
-                </th>
-                <th className="p-3 text-sm font-semibold text-slate-600 text-center">
-                  Localidade
-                </th>
-                <th className="p-3 text-sm font-semibold text-slate-600 text-center">
-                  Resumo
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={7} className="text-center p-6 text-gray-500">
-                    Carregando conferências...
-                  </td>
-                </tr>
-              ) : conferences.length > 0 ? (
-                conferences.map((conference) => (
-                  <tr
-                    key={conference.id}
-                    className="border-b hover:bg-slate-50"
-                  >
-                    <td className="p-3 text-sm">
-                      {conference.date}
-                      <br />
-                      <span className="text-xs text-gray-500">
-                        {conference.startTimeFormatted} -{" "}
-                        {conference.endTimeFormatted}
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      {conference.projectName} / {conference.umName}
-                    </td>
-                    <td className="p-3">{conference.userName}</td>
-                    <td className="p-3 text-center">
-                      {conference.scannedCount} / {conference.expectedCount}
-                    </td>
-                    <td className="p-3 text-center">
-                      {renderStatus(
-                        conference.scannedCount,
-                        conference.expectedCount
-                      )}
-                    </td>
-                    <td className="p-3 text-center">
-                      {conference.latitude && conference.longitude && (
-                        <a
-                          href={`https://www.google.com/maps?q=${conference.latitude},${conference.longitude}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-teal-600 hover:underline font-semibold flex items-center justify-center"
-                        >
-                          <MapPin size={14} className="mr-1" /> Link
-                        </a>
-                      )}
-                    </td>
-                    <td className="p-3 text-center">
-                      {/* REFATORADO */}
-                      <AppButton
-                        onClick={() => openSummaryModal(conference)}
-                        size="sm"
-                        className="!text-xs !bg-blue-100 !text-blue-800 data-[hover]:!bg-blue-200 !rounded-full !px-3 !py-1 !shadow-none !font-semibold"
-                      >
-                        <FileText size={14} className="mr-1.5" /> Ver
-                      </AppButton>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={7} className="text-center p-6 text-gray-500">
-                    Nenhuma conferência registrada ainda.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        {isLoading ? (
+          <p className="text-center text-gray-500 py-6">
+            Carregando conferências...
+          </p>
+        ) : conferences.length > 0 ? (
+          <TabelaConferencias
+            data={conferences}
+            openSummaryModal={openSummaryModal}
+          />
+        ) : (
+          <p className="text-center text-gray-500 py-6">
+            Nenhuma conferência registrada ainda.
+          </p>
+        )}
       </div>
 
       <Modal
@@ -357,49 +225,10 @@ export default function DashboardPage() {
       >
         <div className="max-h-[60vh] overflow-y-auto">
           {maintenanceNotebooks.length > 0 ? (
-            <table className="w-full text-left text-sm">
-              <thead className="bg-slate-100">
-                <tr>
-                  <th className="p-2 font-semibold text-slate-600">Hostname</th>
-                  <th className="p-2 font-semibold text-slate-600">S/N</th>
-                  <th className="p-2 font-semibold text-slate-600">
-                    Patrimônio
-                  </th>
-                  <th className="p-2 font-semibold text-slate-600 text-center">
-                    Data de Envio
-                  </th>
-                  <th className="p-2 font-semibold text-slate-600 text-center">
-                    Ações
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {maintenanceNotebooks.map((nb) => (
-                  <tr key={nb.id} className="border-b">
-                    <td className="p-2 font-mono">{nb.hostname}</td>
-                    <td className="p-2">{nb.serialNumber || "-"}</td>
-                    <td className="p-2">{nb.assetTag || "-"}</td>
-                    <td className="p-2 text-center">
-                      {nb.maintenanceStartDate
-                        ?.toDate()
-                        .toLocaleDateString("pt-BR") || "-"}
-                    </td>
-                    <td className="p-2 text-center">
-                      {/* REFATORADO */}
-                      <AppButton
-                        onClick={() => openHistoryModal(nb)}
-                        variant="ghost"
-                        size="icon"
-                        title="Ver Histórico do Ativo"
-                        className="data-[hover]:text-blue-600"
-                      >
-                        <History size={18} />
-                      </AppButton>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <TabelaManutencao
+              data={maintenanceNotebooks}
+              openHistoryModal={openHistoryModal}
+            />
           ) : (
             <p className="text-center text-gray-500 py-4">
               Não há notebooks em manutenção no momento.
