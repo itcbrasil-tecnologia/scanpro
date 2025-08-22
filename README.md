@@ -163,4 +163,4 @@ A estrutura de arquivos foi organizada para garantir a escalabilidade e a manute
 
 ## Deploy
 
-A aplicação está configurada para deploy contínuo na **Vercel**. Qualquer `push` para a branch `main` irá acionar um novo build e deploy de produção. As variáveis de ambiente devem ser configuradas no painel de "Environment Variables" do projeto na Vercel.
+A aplicação está configurada para deploy contínuo na **Vercel**. Qualquer `push` para a branch `main` irá acionar um novo build e deploy de produção. As variáveis de ambiente devem ser configuradas no painel de "Environment Variables" do projeto na Vercel..
