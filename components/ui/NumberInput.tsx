@@ -2,7 +2,7 @@
 
 import { Minus, Plus } from "lucide-react";
 import React from "react";
-import { AppButton } from "./AppButton"; // ADICIONADO
+import { AppButton } from "./AppButton";
 
 interface NumberInputProps {
   value: number;
@@ -62,7 +62,7 @@ export const NumberInput: React.FC<NumberInputProps> = ({
         pattern="[0-9]*"
         value={value}
         onChange={handleInputChange}
-        className="h-16 w-24 rounded-lg border-2 border-slate-300 bg-slate-50 text-center text-3xl font-bold text-slate-800 focus:border-teal-500 focus:ring-teal-500"
+        className="h-16 w-24 rounded-lg border-2 border-slate-300 bg-slate-50 text-center text-3xl font-bold text-slate-800 focus:border-teal-500 focus:ring-teal-500 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-100"
       />
 
       <AppButton

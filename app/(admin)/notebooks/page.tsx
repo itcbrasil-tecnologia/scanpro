@@ -784,7 +784,8 @@ export default function NotebooksPage() {
           </AppButton>
           <AppButton
             onClick={() => setIsBatchModalOpen(true)}
-            className="!bg-blue-600 data-[hover]:!bg-blue-700"
+            variant="ghost"
+            className="bg-blue-600 text-white data-[hover]:bg-blue-700"
           >
             <Layers size={20} className="mr-2" />
             <span className="hidden sm:inline">Adicionar em Lote</span>

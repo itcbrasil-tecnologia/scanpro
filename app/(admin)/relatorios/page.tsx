@@ -355,7 +355,7 @@ export default function ReportsPage() {
                     className={({ active }) =>
                       `relative cursor-default select-none py-2 pl-10 pr-4 ${
                         active
-                          ? "bg-teal-100 text-teal-900 dark:bg-zinc-700"
+                          ? "bg-teal-100 text-teal-900 dark:bg-zinc-700 dark:text-zinc-100"
                           : "text-gray-900 dark:text-zinc-200"
                       }`
                     }
@@ -369,7 +369,7 @@ export default function ReportsPage() {
                       className={({ active }) =>
                         `relative cursor-default select-none py-2 pl-10 pr-4 ${
                           active
-                            ? "bg-teal-100 text-teal-900 dark:bg-zinc-700"
+                            ? "bg-teal-100 text-teal-900 dark:bg-zinc-700 dark:text-zinc-100"
                             : "text-gray-900 dark:text-zinc-200"
                         }`
                       }
@@ -425,7 +425,7 @@ export default function ReportsPage() {
                     className={({ active }) =>
                       `relative cursor-default select-none py-2 pl-10 pr-4 ${
                         active
-                          ? "bg-teal-100 text-teal-900 dark:bg-zinc-700"
+                          ? "bg-teal-100 text-teal-900 dark:bg-zinc-700 dark:text-zinc-100"
                           : "text-gray-900 dark:text-zinc-200"
                       }`
                     }
@@ -439,7 +439,7 @@ export default function ReportsPage() {
                       className={({ active }) =>
                         `relative cursor-default select-none py-2 pl-10 pr-4 ${
                           active
-                            ? "bg-teal-100 text-teal-900 dark:bg-zinc-700"
+                            ? "bg-teal-100 text-teal-900 dark:bg-zinc-700 dark:text-zinc-100"
                             : "text-gray-900 dark:text-zinc-200"
                         }`
                       }
@@ -495,7 +495,7 @@ export default function ReportsPage() {
                     className={({ active }) =>
                       `relative cursor-default select-none py-2 pl-10 pr-4 ${
                         active
-                          ? "bg-teal-100 text-teal-900 dark:bg-zinc-700"
+                          ? "bg-teal-100 text-teal-900 dark:bg-zinc-700 dark:text-zinc-100"
                           : "text-gray-900 dark:text-zinc-200"
                       }`
                     }
@@ -509,7 +509,7 @@ export default function ReportsPage() {
                       className={({ active }) =>
                         `relative cursor-default select-none py-2 pl-10 pr-4 ${
                           active
-                            ? "bg-teal-100 text-teal-900 dark:bg-zinc-700"
+                            ? "bg-teal-100 text-teal-900 dark:bg-zinc-700 dark:text-zinc-100"
                             : "text-gray-900 dark:text-zinc-200"
                         }`
                       }

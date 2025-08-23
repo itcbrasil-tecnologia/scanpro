@@ -26,38 +26,41 @@ export function PeripheralsModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Periféricos da Conferência">
       <div className="space-y-4">
-        {/* CORREÇÃO: Renderização condicional para cada periférico */}
         {data.miceCount !== undefined && (
-          <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg">
+          <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg dark:bg-zinc-700">
             <div className="flex items-center">
-              <Mouse className="h-5 w-5 mr-3 text-slate-600" />
-              <span className="font-medium text-slate-800">Mouses</span>
+              <Mouse className="h-5 w-5 mr-3 text-slate-600 dark:text-zinc-300" />
+              <span className="font-medium text-slate-800 dark:text-zinc-100">
+                Mouses
+              </span>
             </div>
-            <span className="font-bold text-lg text-teal-700">
+            <span className="font-bold text-lg text-teal-700 dark:text-teal-400">
               {data.miceCount}
             </span>
           </div>
         )}
         {data.chargersCount !== undefined && (
-          <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg">
+          <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg dark:bg-zinc-700">
             <div className="flex items-center">
-              <Power className="h-5 w-5 mr-3 text-slate-600" />
-              <span className="font-medium text-slate-800">Carregadores</span>
+              <Power className="h-5 w-5 mr-3 text-slate-600 dark:text-zinc-300" />
+              <span className="font-medium text-slate-800 dark:text-zinc-100">
+                Carregadores
+              </span>
             </div>
-            <span className="font-bold text-lg text-teal-700">
+            <span className="font-bold text-lg text-teal-700 dark:text-teal-400">
               {data.chargersCount}
             </span>
           </div>
         )}
         {data.headsetsCount !== undefined && (
-          <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg">
+          <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg dark:bg-zinc-700">
             <div className="flex items-center">
-              <Headphones className="h-5 w-5 mr-3 text-slate-600" />
-              <span className="font-medium text-slate-800">
+              <Headphones className="h-5 w-5 mr-3 text-slate-600 dark:text-zinc-300" />
+              <span className="font-medium text-slate-800 dark:text-zinc-100">
                 Fones de Ouvido
               </span>
             </div>
-            <span className="font-bold text-lg text-teal-700">
+            <span className="font-bold text-lg text-teal-700 dark:text-teal-400">
               {data.headsetsCount}
             </span>
           </div>

@@ -430,9 +430,9 @@ export default function ScannerPage() {
 
   return (
     <div className="space-y-4">
-      <div className="bg-white p-4 rounded-lg shadow-md flex justify-between items-center">
+      <div className="bg-white p-4 rounded-lg shadow-md flex justify-between items-center dark:bg-zinc-800">
         <div className="w-full">
-          <label className="block text-sm font-medium text-gray-700">
+          <label className="block text-sm font-medium text-gray-700 dark:text-zinc-300">
             1. Selecione a Unidade Móvel (UM)
           </label>
           <Listbox
@@ -441,8 +441,8 @@ export default function ScannerPage() {
             disabled={isLoading || step !== "selection"}
           >
             <div className="relative mt-1">
-              <Listbox.Button className="relative w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-teal-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-teal-300 sm:text-sm disabled:bg-slate-50 disabled:cursor-not-allowed">
-                <span className="block truncate">
+              <Listbox.Button className="relative w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-teal-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-teal-300 sm:text-sm disabled:bg-slate-50 disabled:cursor-not-allowed dark:bg-zinc-700 dark:border-zinc-600 dark:disabled:bg-zinc-700/50">
+                <span className="block truncate dark:text-zinc-200">
                   {getUmName(selectedUmId)}
                 </span>
                 <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
@@ -458,14 +458,16 @@ export default function ScannerPage() {
                 leaveFrom="opacity-100"
                 leaveTo="opacity-0"
               >
-                <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-10">
+                <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-10 dark:bg-zinc-900 dark:ring-zinc-700">
                   {ums.map((um) => (
                     <Listbox.Option
                       key={um.id}
                       value={um.id}
                       className={({ active }) =>
                         `relative cursor-default select-none py-2 pl-10 pr-4 ${
-                          active ? "bg-teal-100 text-teal-900" : "text-gray-900"
+                          active
+                            ? "bg-teal-100 text-teal-900 dark:bg-zinc-700 dark:text-zinc-100"
+                            : "text-gray-900 dark:text-zinc-200"
                         }`
                       }
                     >
@@ -479,7 +481,7 @@ export default function ScannerPage() {
                             {um.name}
                           </span>
                           {selected ? (
-                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-teal-600">
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-teal-600 dark:text-teal-400">
                               <Check className="h-5 w-5" aria-hidden="true" />
                             </span>
                           ) : null}
@@ -494,7 +496,9 @@ export default function ScannerPage() {
         </div>
         <div
           className={`flex items-center text-xs font-bold px-3 py-1 rounded-full ml-4 flex-shrink-0 ${
-            isOnline ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+            isOnline
+              ? "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300"
+              : "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300"
           }`}
         >
           {isOnline ? (
@@ -508,11 +512,11 @@ export default function ScannerPage() {
 
       {step === "scanning" && (
         <>
-          <div className="bg-white p-4 rounded-lg shadow-md">
-            <h3 className="font-bold text-center mb-2">
+          <div className="bg-white p-4 rounded-lg shadow-md dark:bg-zinc-800">
+            <h3 className="font-bold text-center mb-2 dark:text-zinc-200">
               2. Escaneie os QR Codes
             </h3>
-            <div className="w-full max-w-sm mx-auto rounded-lg overflow-hidden border-2 border-dashed">
+            <div className="w-full max-w-sm mx-auto rounded-lg overflow-hidden border-2 border-dashed dark:border-zinc-600">
               <Scanner
                 onScan={handleScan}
                 allowMultiple={false}
@@ -521,19 +525,19 @@ export default function ScannerPage() {
               />
             </div>
           </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-white p-4 rounded-lg shadow-md">
-              <h3 className="font-bold text-gray-700 flex items-center">
+            <div className="bg-white p-4 rounded-lg shadow-md dark:bg-zinc-800">
+              <h3 className="font-bold text-gray-700 flex items-center dark:text-zinc-200">
                 <List className="mr-2" />A SEREM ESCANEADOS (
                 {devicesToScan.length})
               </h3>
               {maintenanceDevices.length > 0 && (
-                <div className="mt-4 border-t pt-3">
+                <div className="mt-4 border-t pt-3 dark:border-zinc-700">
                   <Disclosure>
                     {({ open }) => (
                       <>
-                        {/* MUDANÇA 2: Adicionadas classes de estilo ao Disclosure.Button */}
-                        <Disclosure.Button className="w-full flex justify-between items-center text-left text-amber-800 p-2 rounded-md bg-amber-100 hover:bg-amber-200 transition-colors">
+                        <Disclosure.Button className="w-full flex justify-between items-center text-left text-amber-800 p-2 rounded-md bg-amber-100 hover:bg-amber-200 transition-colors dark:bg-amber-900/50 dark:text-amber-300 dark:hover:bg-amber-800/50">
                           <div className="flex items-center font-semibold text-sm">
                             <Wrench size={14} className="mr-2" />
                             {maintenanceDevices.length} dispositivo(s) em
@@ -547,10 +551,10 @@ export default function ScannerPage() {
                           />
                         </Disclosure.Button>
                         <Disclosure.Panel className="mt-2 pl-2">
-                          <p className="text-xs text-slate-500 mb-2">
+                          <p className="text-xs text-slate-500 mb-2 dark:text-zinc-400">
                             Estes itens não precisam ser escaneados.
                           </p>
-                          <ul className="h-24 overflow-y-auto bg-slate-50 p-2 rounded-md space-y-1 font-mono text-sm">
+                          <ul className="h-24 overflow-y-auto bg-slate-50 p-2 rounded-md space-y-1 font-mono text-sm dark:bg-zinc-900/50 dark:text-zinc-300">
                             {maintenanceDevices.map((device) => (
                               <li key={device}>{device}</li>
                             ))}
@@ -565,15 +569,16 @@ export default function ScannerPage() {
                 {devicesToScan.map((device) => (
                   <li
                     key={device}
-                    className="p-2 bg-red-50 text-red-800 rounded font-mono text-sm"
+                    className="p-2 bg-red-50 text-red-800 rounded font-mono text-sm dark:bg-red-900/40 dark:text-red-300"
                   >
                     {device}
                   </li>
                 ))}
               </ul>
             </div>
-            <div className="bg-white p-4 rounded-lg shadow-md">
-              <h3 className="font-bold text-gray-700 flex items-center">
+
+            <div className="bg-white p-4 rounded-lg shadow-md dark:bg-zinc-800">
+              <h3 className="font-bold text-gray-700 flex items-center dark:text-zinc-200">
                 <ListChecks className="mr-2" />
                 ESCANEADOS ({scannedDevices.length})
               </h3>
@@ -581,7 +586,7 @@ export default function ScannerPage() {
                 {scannedDevices.map((device) => (
                   <li
                     key={device}
-                    className="p-2 bg-green-50 text-green-800 rounded font-mono text-sm"
+                    className="p-2 bg-green-50 text-green-800 rounded font-mono text-sm dark:bg-green-900/40 dark:text-green-300"
                   >
                     {device}
                   </li>
@@ -589,8 +594,8 @@ export default function ScannerPage() {
               </ul>
             </div>
           </div>
-          <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-md">
-            {/* MUDANÇA 1: Adicionadas classes de cor customizadas */}
+
+          <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-md dark:bg-zinc-800">
             <AppButton
               onClick={handleRestart}
               size="md"
@@ -610,23 +615,25 @@ export default function ScannerPage() {
       )}
 
       {step === "peripherals" && (
-        <div className="bg-white p-6 rounded-lg shadow-md space-y-8">
-          <h3 className="font-bold text-lg text-gray-800 text-center">
+        <div className="bg-white p-6 rounded-lg shadow-md space-y-8 dark:bg-zinc-800">
+          <h3 className="font-bold text-lg text-gray-800 text-center dark:text-zinc-100">
             3. Informe a Quantidade de Periféricos
           </h3>
           <div className="grid grid-cols-1 gap-8">
             {expectedPeripherals.includes("mouse") && (
               <div className="flex flex-col items-center">
-                <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
-                  <Mouse className="h-5 w-5 mr-2 text-slate-500" /> Mouses
+                <label className="flex items-center text-sm font-medium text-gray-700 mb-2 dark:text-zinc-300">
+                  <Mouse className="h-5 w-5 mr-2 text-slate-500 dark:text-zinc-400" />
+                  Mouses
                 </label>
                 <NumberInput value={miceCount} onChange={setMiceCount} />
               </div>
             )}
             {expectedPeripherals.includes("carregador") && (
               <div className="flex flex-col items-center">
-                <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
-                  <Power className="h-5 w-5 mr-2 text-slate-500" /> Carregadores
+                <label className="flex items-center text-sm font-medium text-gray-700 mb-2 dark:text-zinc-300">
+                  <Power className="h-5 w-5 mr-2 text-slate-500 dark:text-zinc-400" />
+                  Carregadores
                 </label>
                 <NumberInput
                   value={chargersCount}
@@ -636,9 +643,9 @@ export default function ScannerPage() {
             )}
             {expectedPeripherals.includes("fone") && (
               <div className="flex flex-col items-center">
-                <label className="flex items-center text-sm font-medium text-gray-700 mb-2">
-                  <Headphones className="h-5 w-5 mr-2 text-slate-500" /> Fones
-                  de Ouvido
+                <label className="flex items-center text-sm font-medium text-gray-700 mb-2 dark:text-zinc-300">
+                  <Headphones className="h-5 w-5 mr-2 text-slate-500 dark:text-zinc-400" />
+                  Fones de Ouvido
                 </label>
                 <NumberInput
                   value={headsetsCount}
@@ -695,7 +702,9 @@ export default function ScannerPage() {
             </p>
             {(summaryData.miceCount !== undefined ||
               summaryData.chargersCount !== undefined ||
-              summaryData.headsetsCount !== undefined) && <hr />}
+              summaryData.headsetsCount !== undefined) && (
+              <hr className="dark:border-zinc-700" />
+            )}
             <div className="grid grid-cols-2 gap-x-4">
               {summaryData.miceCount !== undefined && (
                 <p>
@@ -716,7 +725,7 @@ export default function ScannerPage() {
                 </p>
               )}
             </div>
-            <hr />
+            <hr className="dark:border-zinc-700" />
             <p>
               <span className="font-semibold">
                 Total de Dispositivos (Ativos):
@@ -724,11 +733,13 @@ export default function ScannerPage() {
               {summaryData.expectedCount}
             </p>
             <p>
-              <span className="font-semibold text-green-600">Escaneados:</span>{" "}
+              <span className="font-semibold text-green-600 dark:text-green-400">
+                Escaneados:
+              </span>{" "}
               {summaryData.scannedCount}
             </p>
             <p>
-              <span className="font-semibold text-red-600">
+              <span className="font-semibold text-red-600 dark:text-red-400">
                 Não Escaneados (Faltantes):
               </span>{" "}
               {summaryData.missingCount}
@@ -736,7 +747,7 @@ export default function ScannerPage() {
             {summaryData.maintenanceCount &&
               summaryData.maintenanceCount > 0 && (
                 <p>
-                  <span className="font-semibold text-amber-600">
+                  <span className="font-semibold text-amber-600 dark:text-amber-400">
                     Em Manutenção:
                   </span>{" "}
                   {summaryData.maintenanceCount}
@@ -745,7 +756,7 @@ export default function ScannerPage() {
             {summaryData.missingCount > 0 && (
               <div>
                 <h4 className="font-semibold mt-2">Dispositivos Faltantes:</h4>
-                <ul className="text-xs h-24 overflow-y-auto bg-slate-100 p-2 rounded-md mt-1 font-mono">
+                <ul className="text-xs h-24 overflow-y-auto bg-slate-100 p-2 rounded-md mt-1 font-mono dark:bg-zinc-700">
                   {summaryData.missingDevices.map((device: string) => (
                     <li key={device}>{device}</li>
                   ))}
@@ -759,7 +770,7 @@ export default function ScannerPage() {
                   <h4 className="font-semibold mt-2">
                     Dispositivos em Manutenção:
                   </h4>
-                  <ul className="text-xs h-24 overflow-y-auto bg-slate-100 p-2 rounded-md mt-1 font-mono">
+                  <ul className="text-xs h-24 overflow-y-auto bg-slate-100 p-2 rounded-md mt-1 font-mono dark:bg-zinc-700">
                     {summaryData.maintenanceDevices?.map((device: string) => (
                       <li key={device}>{device}</li>
                     ))}

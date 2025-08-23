@@ -4,6 +4,7 @@ import React from "react";
 import { Modal } from "./Modal";
 import { X, FileText, MapPin } from "lucide-react";
 import { ConferenceData } from "@/types";
+import { AppButton } from "./AppButton";
 
 interface ConferenceSummaryModalProps {
   isOpen: boolean;
@@ -27,7 +28,6 @@ export function ConferenceSummaryModal({
     (conferenceData.expectedCount || 0) +
     (conferenceData.maintenanceCount || 0);
 
-  // ADICIONADO: Variáveis formatadas para uso no JSX
   const formattedDate = conferenceData.endTime
     .toDate()
     .toLocaleDateString("pt-BR");
@@ -43,7 +43,7 @@ export function ConferenceSummaryModal({
       isOpen={isOpen}
       onClose={onClose}
       title="Resumo da Conferência"
-      icon={<FileText className="h-6 w-6 text-teal-600" />}
+      icon={<FileText className="h-6 w-6 text-teal-600 dark:text-teal-400" />}
     >
       <div className="space-y-2 text-sm max-h-[70vh] overflow-y-auto pr-2">
         <div className="grid grid-cols-2 gap-x-6">
@@ -53,12 +53,10 @@ export function ConferenceSummaryModal({
               {conferenceData.userName}
             </p>
             <p>
-              {/* ALTERADO: Usando a variável formatada */}
               <span className="font-semibold">Data:</span> {formattedDate}
             </p>
             <p>
               <span className="font-semibold">Horário:</span>{" "}
-              {/* ALTERADO: Usando as variáveis formatadas */}
               {formattedStartTime} às {formattedEndTime}
             </p>
           </div>
@@ -75,7 +73,7 @@ export function ConferenceSummaryModal({
 
         {hasPeripherals && (
           <>
-            <hr className="my-1 border-slate-200" />
+            <hr className="my-1 border-slate-200 dark:border-zinc-700" />
             <div className="grid grid-cols-2 gap-x-6 pt-2">
               {conferenceData.miceCount !== undefined && (
                 <p>
@@ -101,7 +99,7 @@ export function ConferenceSummaryModal({
 
         {conferenceData.latitude && conferenceData.longitude && (
           <>
-            <hr className="my-1 border-slate-200" />
+            <hr className="my-1 border-slate-200 dark:border-zinc-700" />
             <div className="pt-2">
               <p className="font-semibold flex items-center mb-1">
                 <MapPin size={14} className="mr-2" /> Localização Registrada:
@@ -110,7 +108,7 @@ export function ConferenceSummaryModal({
                 href={`https://www.google.com/maps?q=${conferenceData.latitude},${conferenceData.longitude}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-teal-600 hover:underline text-sm font-medium"
+                className="text-teal-600 hover:underline text-sm font-medium dark:text-teal-400"
               >
                 Ver no Mapa
               </a>
@@ -118,7 +116,7 @@ export function ConferenceSummaryModal({
           </>
         )}
 
-        <hr className="my-1 border-slate-200" />
+        <hr className="my-1 border-slate-200 dark:border-zinc-700" />
 
         <div className="space-y-1 mt-2">
           <p>
@@ -134,11 +132,13 @@ export function ConferenceSummaryModal({
             {conferenceData.expectedCount}
           </p>
           <p>
-            <span className="font-semibold text-green-600">Escaneados:</span>{" "}
+            <span className="font-semibold text-green-600 dark:text-green-400">
+              Escaneados:
+            </span>{" "}
             {conferenceData.scannedCount}
           </p>
           <p>
-            <span className="font-semibold text-red-600">
+            <span className="font-semibold text-red-600 dark:text-red-400">
               Não Escaneados (Faltantes):
             </span>{" "}
             {conferenceData.missingCount}
@@ -146,7 +146,7 @@ export function ConferenceSummaryModal({
           {conferenceData.maintenanceCount !== undefined &&
             conferenceData.maintenanceCount > 0 && (
               <p>
-                <span className="font-semibold text-amber-600">
+                <span className="font-semibold text-amber-600 dark:text-amber-400">
                   Em Manutenção:
                 </span>{" "}
                 {conferenceData.maintenanceCount}
@@ -158,7 +158,7 @@ export function ConferenceSummaryModal({
           conferenceData.missingCount > 0 && (
             <div className="pt-2">
               <h4 className="font-semibold">Dispositivos Faltantes:</h4>
-              <ul className="text-xs max-h-20 overflow-y-auto bg-slate-100 p-2 rounded-md mt-1 font-mono">
+              <ul className="text-xs max-h-20 overflow-y-auto bg-slate-100 p-2 rounded-md mt-1 font-mono dark:bg-zinc-700">
                 {conferenceData.missingDevices?.map((device: string) => (
                   <li key={device}>{device}</li>
                 ))}
@@ -170,7 +170,7 @@ export function ConferenceSummaryModal({
           conferenceData.maintenanceCount > 0 && (
             <div className="pt-2">
               <h4 className="font-semibold">Dispositivos em Manutenção:</h4>
-              <ul className="text-xs max-h-20 overflow-y-auto bg-slate-100 p-2 rounded-md mt-1 font-mono">
+              <ul className="text-xs max-h-20 overflow-y-auto bg-slate-100 p-2 rounded-md mt-1 font-mono dark:bg-zinc-700">
                 {conferenceData.maintenanceDevices?.map((device: string) => (
                   <li key={device}>{device}</li>
                 ))}
@@ -178,14 +178,12 @@ export function ConferenceSummaryModal({
             </div>
           )}
       </div>
-      <div className="flex justify-end pt-4 mt-4 border-t">
-        <button
-          onClick={onClose}
-          className="flex items-center justify-center bg-slate-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-600 transition-colors"
-        >
+
+      <div className="flex justify-end pt-4 mt-4 border-t dark:border-zinc-700">
+        <AppButton onClick={onClose} variant="secondary">
           <X size={20} className="mr-2" />
           Fechar
-        </button>
+        </AppButton>
       </div>
     </Modal>
   );

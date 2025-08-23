@@ -25,7 +25,7 @@ import { PaginationControls } from "@/components/ui/PaginationControls";
 import { ScanBarcode, Camera, CheckCircle } from "lucide-react";
 import toast from "react-hot-toast";
 import { ConferenceData } from "@/types";
-import { TabelaHistorico } from "@/components/ui/TabelaHistorico"; // ADICIONADO
+import { TabelaHistorico } from "@/components/ui/TabelaHistorico";
 
 interface PeripheralsData {
   miceCount?: number;
@@ -94,7 +94,6 @@ export default function InicioPage() {
             id: document.id,
           };
         });
-
         setConferences(userConferences);
         setLastVisible(
           historySnapshot.docs[historySnapshot.docs.length - 1] || null
@@ -121,7 +120,6 @@ export default function InicioPage() {
         }
         return;
       }
-
       const today = new Date();
       const startOfDay = new Date(
         today.getFullYear(),
@@ -174,7 +172,7 @@ export default function InicioPage() {
   if (!userProfile || userProfile.role !== "USER") {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-slate-500">Carregando...</div>
+        <div className="text-slate-500 dark:text-zinc-400">Carregando...</div>
       </div>
     );
   }
@@ -183,19 +181,19 @@ export default function InicioPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-800">
+      <h1 className="text-3xl font-bold text-gray-800 dark:text-zinc-100">
         Bem-vindo, {userProfile?.nome?.split(" ")[0]}!
       </h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
         <div className="lg:col-span-1 space-y-4">
-          <div className="bg-white p-4 rounded-lg shadow-md text-center">
-            <h3 className="font-bold text-gray-700">
+          <div className="bg-white p-4 rounded-lg shadow-md text-center dark:bg-zinc-800">
+            <h3 className="font-bold text-gray-700 dark:text-zinc-200">
               Contagens Diárias Disponíveis
             </h3>
             <div className="flex justify-center items-center my-2">
-              <ScanBarcode className="w-10 h-10 text-teal-600" />
-              <p className="text-4xl font-bold text-gray-800 ml-4">
+              <ScanBarcode className="w-10 h-10 text-teal-600 dark:text-teal-400" />
+              <p className="text-4xl font-bold text-gray-800 ml-4 dark:text-zinc-100">
                 {dailyCounts.total - dailyCounts.completed}/{dailyCounts.total}
               </p>
             </div>
@@ -203,7 +201,7 @@ export default function InicioPage() {
 
           <div className="sm:hidden">
             {allDailyCountsCompleted ? (
-              <div className="w-full flex items-center justify-center bg-gray-200 text-gray-500 px-4 py-3 rounded-lg font-bold text-lg">
+              <div className="w-full flex items-center justify-center bg-gray-200 text-gray-500 px-4 py-3 rounded-lg font-bold text-lg dark:bg-zinc-700 dark:text-zinc-400">
                 <CheckCircle size={24} className="mr-3" /> CONCLUÍDO
               </div>
             ) : (
@@ -217,12 +215,12 @@ export default function InicioPage() {
           </div>
         </div>
 
-        <div className="lg:col-span-3 bg-white p-4 rounded-lg shadow-md overflow-hidden">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">
+        <div className="lg:col-span-3 bg-white p-4 rounded-lg shadow-md overflow-hidden dark:bg-zinc-800">
+          <h2 className="text-xl font-bold text-gray-800 mb-4 dark:text-zinc-100">
             Seu Histórico de Conferências
           </h2>
           {isLoading ? (
-            <p className="text-center text-gray-500 p-6">
+            <p className="text-center text-gray-500 p-6 dark:text-zinc-400">
               Carregando histórico...
             </p>
           ) : conferences.length > 0 ? (
@@ -233,11 +231,12 @@ export default function InicioPage() {
               openSummaryModal={openSummaryModal}
             />
           ) : (
-            <p className="text-center text-gray-500 p-6">
+            <p className="text-center text-gray-500 p-6 dark:text-zinc-400">
               Nenhuma conferência encontrada.
             </p>
           )}
-          <div className="p-4 border-t">
+
+          <div className="p-4 border-t dark:border-zinc-700">
             <PaginationControls
               currentPage={currentPage}
               totalPages={totalPages}
@@ -256,7 +255,7 @@ export default function InicioPage() {
           {modalContent.map((hostname, index) => (
             <li
               key={index}
-              className="bg-gray-100 p-2 rounded-md text-gray-700 font-mono"
+              className="bg-gray-100 p-2 rounded-md text-gray-700 font-mono dark:bg-zinc-700 dark:text-zinc-200"
             >
               {hostname}
             </li>

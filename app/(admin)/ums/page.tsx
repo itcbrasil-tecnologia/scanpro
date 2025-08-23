@@ -455,7 +455,7 @@ export default function UMsPage() {
                   Projeto
                 </Listbox.Label>
                 <Listbox.Button className="relative mt-1 w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-teal-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-teal-300 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600">
-                  <span className="block truncate">
+                  <span className="block truncate dark:text-zinc-200">
                     {projects.find((p) => p.id === formState.projectId)?.name}
                   </span>
                   <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">

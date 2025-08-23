@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/estilo-Tailwind%20CSS-blue?logo=tailwind-css" alt="Tailwind CSS">
 </p>
 
-**ScanPRO** é uma aplicação web full-stack robusta e escalável, projetada para a gestão e conferência de ativos (notebooks) através da leitura de QR Codes. Agora, evoluído para um **Progressive Web App (PWA)**, o sistema garante funcionalidade contínua mesmo em ambientes offline, otimizando o fluxo de trabalho de equipes de TI e logística.
+**ScanPRO** é uma aplicação web full-stack robusta e escalável, projetada para a gestão e conferência de ativos (notebooks) através da leitura de QR Codes. Evoluído para um **Progressive Web App (PWA)**, o sistema garante funcionalidade contínua mesmo em ambientes offline, otimizando o fluxo de trabalho de equipes de TI e logística com uma interface moderna e responsiva.
 
 ---
 
@@ -37,6 +37,11 @@ Com a transformação em PWA, a aplicação agora oferece uma experiência "app-
 
 ## Principais Funcionalidades
 
+- ✅ **Interface Moderna com Tema Escuro (Dark Mode):**
+
+  - Interface totalmente responsiva, com atenção aos detalhes de UI/UX.
+  - Tema escuro completo e consistente, projetado para conforto visual e elegância, aplicado a todas as páginas, modais e componentes.
+
 - ✅ **Arquitetura PWA (Progressive Web App):**
 
   - **Modo de Conferência Offline:** Técnicos podem realizar conferências completas sem conexão com a internet. Os dados são salvos localmente no dispositivo.
@@ -56,6 +61,7 @@ Com a transformação em PWA, a aplicação agora oferece uma experiência "app-
 - ✅ **Relatórios e Análises:**
 
   - Página de relatórios completa com busca, filtros dinâmicos e paginação no lado do servidor para alta performance.
+  - Tabelas interativas com ordenação por múltiplas colunas e seleção para ações em massa.
   - Exportação dos relatórios (completos ou filtrados) para o formato CSV.
 
 - ✅ **Fluxo de Conferência Inteligente:**
@@ -81,6 +87,8 @@ O projeto foi construído com foco em performance, escalabilidade e qualidade de
 - **Backend & Banco de Dados:** [Firebase](https://firebase.google.com/) (Authentication, Cloud Firestore)
 - **PWA e Service Worker:** [@ducanh2912/next-pwa](https://github.com/DuCanh2912/next-pwa)
 - **Banco de Dados Offline:** [dexie.js](https://dexie.org/)
+- **Tabelas de Dados:** [@tanstack/react-table](https://tanstack.com/table/v8)
+- **Componentes & UI:** [Headless UI](https://headlessui.com/)
 - **Notificações Push:** [web-push](https://github.com/web-push-libs/web-push)
 - **Manipulação de Arquivos (Frontend):** [jszip](https://stuk.github.io/jszip/), [file-saver](https://github.com/eligrey/FileSaver.js/) & [papaparse](https://www.papaparse.com/)
 - **Ícones:** [Lucide React](https://lucide.dev/)
@@ -163,4 +171,4 @@ A estrutura de arquivos foi organizada para garantir a escalabilidade e a manute
 
 ## Deploy
 
-A aplicação está configurada para deploy contínuo na **Vercel**. Qualquer `push` para a branch `main` irá acionar um novo build e deploy de produção. As variáveis de ambiente devem ser configuradas no painel de "Environment Variables" do projeto na Vercel..
+A aplicação está configurada para deploy contínuo na **Vercel**. Qualquer `push` para a branch `main` irá acionar um novo build e deploy de produção. As variáveis de ambiente devem ser configuradas no painel de "Environment Variables" do projeto na Vercel.

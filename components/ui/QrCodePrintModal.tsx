@@ -301,17 +301,14 @@ export function QrCodePrintModal({
           ))}
         </div>
         <div className="no-print flex justify-end space-x-3 pt-4">
-          <AppButton
-            onClick={onClose}
-            className="!bg-slate-500 !text-white hover:!bg-slate-600 data-[disabled]:!bg-slate-400"
-          >
+          <AppButton onClick={onClose} variant="secondary">
             <X size={20} className="mr-2" />
             Fechar
           </AppButton>
           <AppButton
             onClick={handleDownload}
             disabled={isDownloading}
-            className="!bg-blue-600 !text-white hover:!bg-blue-700 data-[disabled]:!bg-blue-400"
+            className="bg-blue-600 text-white data-[hover]:bg-blue-700"
           >
             <Download size={20} className="mr-2" />
             Baixar PNGs
