@@ -20,7 +20,7 @@ import toast from "react-hot-toast";
 import { Field, Label, Input, Listbox, Transition } from "@headlessui/react";
 import { NumberInput } from "@/components/ui/NumberInput";
 import { AppButton } from "@/components/ui/AppButton";
-import { TabelaUsuarios } from "@/components/ui/TabelaUsuarios"; // ADICIONADO
+import { TabelaUsuarios } from "@/components/ui/TabelaUsuarios";
 
 export default function UsersPage() {
   const { userProfile } = useAuth();
@@ -121,24 +121,41 @@ export default function UsersPage() {
   };
 
   const handleSave = async () => {
+    // Para edição, a API PUT é usada para garantir que os Claims sejam atualizados
     if (currentUser) {
       try {
+        const response = await fetch("/api/users", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(formState),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message);
+
+        // Atualiza também a meta diária, que não faz parte do Claim
         const userRef = doc(db, "users", currentUser.uid);
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { senha, uid, ...profileData } = formState;
-        await setDoc(userRef, profileData, { merge: true });
-        toast.success(`Usuário "${formState.nome}" atualizado com sucesso!`, {
+        await setDoc(
+          userRef,
+          { dailyConferenceGoal: formState.dailyConferenceGoal },
+          { merge: true }
+        );
+
+        toast.success(result.message, {
           id: "global-toast",
         });
         fetchUsers();
         setIsFormModalOpen(false);
       } catch (error) {
         console.error("Erro ao atualizar usuário:", error);
-        toast.error("Não foi possível atualizar o usuário.", {
-          id: "global-toast",
-        });
+        toast.error(
+          `Erro: ${
+            error instanceof Error ? error.message : "Erro desconhecido"
+          }`,
+          { id: "global-toast" }
+        );
       }
     } else {
+      // Para criação, a API POST é usada
       if (!formState.email || !formState.senha) {
         toast.error(
           "Email e Senha são obrigatórios para criar um novo usuário.",
@@ -194,16 +211,18 @@ export default function UsersPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-        <h1 className="text-3xl font-bold text-gray-800">Gerenciar Usuários</h1>
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-zinc-100">
+          Gerenciar Usuários
+        </h1>
         <AppButton onClick={openAddModal} className="mt-4 sm:mt-0">
           <Plus size={20} className="mr-2" />
           <span className="hidden sm:inline">Adicionar Usuário</span>
           <span className="sm:hidden">Usuário</span>
         </AppButton>
       </div>
-      <div className="bg-white p-4 rounded-lg shadow-md">
+      <div className="bg-white p-4 rounded-lg shadow-md dark:bg-zinc-800">
         {isLoading ? (
-          <p className="text-center text-gray-500 py-8">
+          <p className="text-center text-gray-500 py-8 dark:text-zinc-400">
             Carregando usuários...
           </p>
         ) : (
@@ -222,7 +241,7 @@ export default function UsersPage() {
       >
         <div className="space-y-4">
           <Field>
-            <Label className="block text-sm font-medium text-gray-700">
+            <Label className="block text-sm font-medium text-gray-700 dark:text-zinc-300">
               Nome
             </Label>
             <Input
@@ -230,11 +249,11 @@ export default function UsersPage() {
               name="nome"
               value={formState.nome}
               onChange={handleFormChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-zinc-700 dark:border-zinc-600 dark:text-zinc-200"
             />
           </Field>
           <Field>
-            <Label className="block text-sm font-medium text-gray-700">
+            <Label className="block text-sm font-medium text-gray-700 dark:text-zinc-300">
               Email
             </Label>
             <Input
@@ -242,11 +261,12 @@ export default function UsersPage() {
               name="email"
               value={formState.email}
               onChange={handleFormChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-zinc-700 dark:border-zinc-600 dark:text-zinc-200"
+              disabled={!!currentUser}
             />
           </Field>
           <Field>
-            <Label className="block text-sm font-medium text-gray-700">
+            <Label className="block text-sm font-medium text-gray-700 dark:text-zinc-300">
               Whatsapp
             </Label>
             <Input
@@ -254,11 +274,11 @@ export default function UsersPage() {
               name="whatsapp"
               value={formState.whatsapp}
               onChange={handleFormChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-zinc-700 dark:border-zinc-600 dark:text-zinc-200"
             />
           </Field>
           <Field>
-            <Label className="block text-sm font-medium text-gray-700">
+            <Label className="block text-sm font-medium text-gray-700 dark:text-zinc-300">
               Senha
             </Label>
             <Input
@@ -269,17 +289,17 @@ export default function UsersPage() {
               placeholder={
                 currentUser ? "Deixe em branco para não alterar" : ""
               }
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-zinc-700 dark:border-zinc-600 dark:text-zinc-200"
             />
           </Field>
 
           <Listbox value={formState.role} onChange={handleRoleChange}>
             <div className="relative">
-              <Listbox.Label className="block text-sm font-medium text-gray-700">
+              <Listbox.Label className="block text-sm font-medium text-gray-700 dark:text-zinc-300">
                 Perfil
               </Listbox.Label>
-              <Listbox.Button className="relative mt-1 w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-teal-500 focus-visible:ring-2 focus-visible:ring-white">
-                <span className="block truncate">
+              <Listbox.Button className="relative mt-1 w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-teal-500 focus-visible:ring-2 focus-visible:ring-white dark:bg-zinc-700 dark:border-zinc-600">
+                <span className="block truncate dark:text-zinc-200">
                   {userRoles.find((r) => r.value === formState.role)?.label}
                 </span>
                 <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
@@ -292,14 +312,16 @@ export default function UsersPage() {
                 leaveFrom="opacity-100"
                 leaveTo="opacity-0"
               >
-                <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 z-10">
+                <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 z-10 dark:bg-zinc-900 dark:ring-zinc-700">
                   {userRoles.map((role) => (
                     <Listbox.Option
                       key={role.value}
                       value={role.value}
                       className={({ active }) =>
                         `relative cursor-default select-none py-2 pl-10 pr-4 ${
-                          active ? "bg-teal-100" : "text-gray-900"
+                          active
+                            ? "bg-teal-100 dark:bg-zinc-700"
+                            : "text-gray-900 dark:text-zinc-200"
                         }`
                       }
                     >
@@ -313,7 +335,7 @@ export default function UsersPage() {
                             {role.label}
                           </span>
                           {selected ? (
-                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-teal-600">
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-teal-600 dark:text-teal-400">
                               <Check className="h-5 w-5" />
                             </span>
                           ) : null}
@@ -328,7 +350,7 @@ export default function UsersPage() {
 
           {formState.role === "USER" && (
             <Field>
-              <Label className="block text-sm font-medium text-gray-700">
+              <Label className="block text-sm font-medium text-gray-700 dark:text-zinc-300">
                 Meta de Conferências Diárias
               </Label>
               <div className="mt-1">
@@ -352,6 +374,8 @@ export default function UsersPage() {
         onConfirm={handleDelete}
         title="Confirmar Exclusão"
         message={`Tem certeza que deseja excluir o usuário "${userToDelete?.nome}"? Esta ação é irreversível.`}
+        confirmButtonText="Confirmar Exclusão"
+        confirmButtonVariant="danger"
       />
     </div>
   );

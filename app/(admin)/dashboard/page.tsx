@@ -14,11 +14,10 @@ import { DashboardCard } from "@/components/ui/DashboardCard";
 import { Modal } from "@/components/ui/Modal";
 import { AssetLifecycleModal } from "@/components/ui/AssetLifecycleModal";
 import { ConferenceSummaryModal } from "@/components/ui/ConferenceSummaryModal";
-import { Users, BriefcaseBusiness, Truck, Laptop, Wrench } from "lucide-react"; // CORREÇÃO: Ícones não utilizados foram removidos
+import { Users, BriefcaseBusiness, Truck, Laptop, Wrench } from "lucide-react";
 import toast from "react-hot-toast";
 import { ConferenceData, MaintenanceNotebook } from "@/types";
 import { TabelaManutencao } from "@/components/ui/TabelaManutencao";
-// CORREÇÃO: Importação alterada para default (sem chaves)
 import TabelaConferencias from "@/components/ui/TabelaConferencias";
 
 type ModalListItem = { name: string; whatsapp?: string };
@@ -145,7 +144,9 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
+      <h1 className="text-3xl font-bold text-gray-800 dark:text-zinc-100">
+        Dashboard
+      </h1>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
         <DashboardCard
           title="Técnicos Cadastrados"
@@ -179,12 +180,12 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="bg-white p-6 rounded-lg shadow-md overflow-hidden">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">
+      <div className="bg-white p-6 rounded-lg shadow-md overflow-hidden dark:bg-zinc-800">
+        <h2 className="text-xl font-bold text-gray-800 mb-4 dark:text-zinc-100">
           Últimas Conferências
         </h2>
         {isLoading ? (
-          <p className="text-center text-gray-500 py-6">
+          <p className="text-center text-gray-500 py-6 dark:text-zinc-400">
             Carregando conferências...
           </p>
         ) : conferences.length > 0 ? (
@@ -193,7 +194,7 @@ export default function DashboardPage() {
             openSummaryModal={openSummaryModal}
           />
         ) : (
-          <p className="text-center text-gray-500 py-6">
+          <p className="text-center text-gray-500 py-6 dark:text-zinc-400">
             Nenhuma conferência registrada ainda.
           </p>
         )}
@@ -208,7 +209,7 @@ export default function DashboardPage() {
           {detailsModalContent.data.map((item, index) => (
             <li
               key={index}
-              className="bg-gray-100 p-2 rounded-md text-gray-700"
+              className="bg-gray-100 p-2 rounded-md text-gray-700 dark:bg-zinc-700 dark:text-zinc-200"
             >
               {typeof item === "string"
                 ? item
@@ -230,7 +231,7 @@ export default function DashboardPage() {
               openHistoryModal={openHistoryModal}
             />
           ) : (
-            <p className="text-center text-gray-500 py-4">
+            <p className="text-center text-gray-500 py-4 dark:text-zinc-400">
               Não há notebooks em manutenção no momento.
             </p>
           )}

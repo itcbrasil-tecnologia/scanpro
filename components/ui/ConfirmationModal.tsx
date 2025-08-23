@@ -3,14 +3,14 @@
 import React from "react";
 import { Modal } from "./Modal";
 import { AlertTriangle } from "lucide-react";
-import { AppButton } from "./AppButton"; // ADICIONADO
+import { AppButton } from "./AppButton";
 
 interface ConfirmationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
   title: string;
-  message: string;
+  message: string; // Revertido para 'string' para aceitar o texto com a entidade HTML
   confirmButtonText?: string;
   confirmButtonVariant?: "danger" | "primary";
 }
@@ -26,8 +26,6 @@ export function ConfirmationModal({
 }: ConfirmationModalProps) {
   if (!isOpen) return null;
 
-  // A variável buttonClass não é mais necessária.
-
   return (
     <Modal
       isOpen={isOpen}
@@ -36,10 +34,10 @@ export function ConfirmationModal({
       icon={<AlertTriangle className="h-6 w-6 text-amber-500" />}
     >
       <div className="space-y-6">
-        <p className="text-sm text-gray-600">{message}</p>
+        {/* React irá renderizar &quot; como " */}
+        <p className="text-sm text-gray-600 dark:text-zinc-300">{message}</p>
 
-        {/* REFATORADO: Botões de ação */}
-        <div className="flex justify-end space-x-4 pt-4 border-t border-slate-200">
+        <div className="flex justify-end space-x-4 pt-4 border-t border-slate-200 dark:border-zinc-700">
           <AppButton variant="secondary" onClick={onClose}>
             Cancelar
           </AppButton>

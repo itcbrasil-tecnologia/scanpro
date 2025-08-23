@@ -39,28 +39,27 @@ export function Modal({ isOpen, onClose, title, children, icon }: ModalProps) {
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              {/* CORREÇÃO: 'overflow-hidden' foi removido deste painel */}
-              <Dialog.Panel className="w-full max-w-lg transform rounded-lg bg-white text-left align-middle shadow-xl transition-all">
-                <div className="flex justify-between items-center p-4 border-b">
+              <Dialog.Panel className="w-full max-w-lg transform rounded-lg bg-white text-left align-middle shadow-xl transition-all dark:bg-zinc-800">
+                <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-zinc-700">
                   <div className="flex items-center">
                     {icon && <div className="mr-3">{icon}</div>}
                     <Dialog.Title
                       as="h3"
-                      className="text-xl font-bold text-gray-800"
+                      className="text-xl font-bold text-gray-800 dark:text-zinc-100"
                     >
                       {title}
                     </Dialog.Title>
                   </div>
+
                   <button
                     onClick={onClose}
-                    className="text-gray-400 hover:text-gray-600"
+                    className="text-gray-400 hover:text-gray-600 dark:text-zinc-400 dark:hover:text-zinc-200"
                     aria-label="Fechar modal"
                   >
                     <X size={24} />
                   </button>
                 </div>
 
-                {/* CORREÇÃO: O controle de scroll agora está neste container interno */}
                 <div className="p-6 max-h-[80vh] overflow-y-auto">
                   {children}
                 </div>

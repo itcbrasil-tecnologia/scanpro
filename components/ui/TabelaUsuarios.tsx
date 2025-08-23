@@ -20,9 +20,10 @@ interface TabelaUsuariosProps {
 }
 
 const roleColor: Record<UserProfile["role"], string> = {
-  MASTER: "bg-purple-200 text-purple-800",
-  ADMIN: "bg-blue-200 text-blue-800",
-  USER: "bg-green-200 text-green-800",
+  MASTER:
+    "bg-purple-200 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300",
+  ADMIN: "bg-blue-200 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300",
+  USER: "bg-green-200 text-green-800 dark:bg-green-900/50 dark:text-green-300",
 };
 
 const columns: ColumnDef<UserProfile>[] = [
@@ -84,6 +85,7 @@ const columns: ColumnDef<UserProfile>[] = [
               onClick={() => onEdit(row.original)}
               variant="ghost"
               size="icon"
+              className="bg-slate-100 data-[hover]:bg-slate-200 dark:bg-zinc-700/50 dark:data-[hover]:bg-zinc-700"
             >
               <Edit size={20} />
             </AppButton>
@@ -93,7 +95,7 @@ const columns: ColumnDef<UserProfile>[] = [
               onClick={() => onDelete(row.original)}
               variant="ghost"
               size="icon"
-              className="data-[hover]:text-red-600"
+              className="data-[hover]:text-red-600 bg-slate-100 data-[hover]:bg-slate-200 dark:bg-zinc-700/50 dark:data-[hover]:bg-zinc-700"
             >
               <Trash2 size={20} />
             </AppButton>
@@ -129,13 +131,13 @@ export function TabelaUsuarios({
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
-        <thead className="bg-slate-200 rounded-t-lg">
+        <thead className="bg-slate-200 rounded-t-lg dark:bg-black/20">
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
                 <th
                   key={header.id}
-                  className="p-3 font-semibold text-slate-700 first:rounded-tl-lg last:rounded-tr-lg"
+                  className="p-3 font-semibold text-slate-700 first:rounded-tl-lg last:rounded-tr-lg dark:text-zinc-300"
                 >
                   {header.isPlaceholder
                     ? null
@@ -150,7 +152,10 @@ export function TabelaUsuarios({
         </thead>
         <tbody>
           {table.getRowModel().rows.map((row) => (
-            <tr key={row.id} className="border-b hover:bg-slate-50">
+            <tr
+              key={row.id}
+              className="border-b hover:bg-slate-50 dark:border-zinc-700 dark:hover:bg-zinc-700/50"
+            >
               {row.getVisibleCells().map((cell) => (
                 <td key={cell.id} className="p-3">
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}

@@ -23,15 +23,15 @@ import {
   Truck,
   BriefcaseBusiness,
   MessageSquare,
-} from "lucide-react"; // O ícone 'Search' foi removido
+} from "lucide-react";
 import toast from "react-hot-toast";
 import { NotificationBell } from "./NotificationBell";
 import { AppButton } from "./AppButton";
 import clsx from "clsx";
+import { ThemeSwitcher } from "./ThemeSwitcher";
 
 interface NavbarProps {
   userProfile: UserProfile;
-  // A prop 'onOpenCommandPalette' foi removida
 }
 
 export default function Navbar({ userProfile }: NavbarProps) {
@@ -59,7 +59,6 @@ export default function Navbar({ userProfile }: NavbarProps) {
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { name: "Relatórios", href: "/relatorios", icon: FileText },
   ];
-
   const adminDropdownItems = [
     { name: "Projetos", href: "/projetos", icon: BriefcaseBusiness },
     { name: "UMs", href: "/ums", icon: Truck },
@@ -84,11 +83,12 @@ export default function Navbar({ userProfile }: NavbarProps) {
   }) => (
     <Link href={href} passHref>
       <div
-        className={`px-4 py-2 rounded-md text-base font-medium transition-colors ${
+        className={clsx(
+          "px-4 py-2 rounded-md text-base font-medium transition-colors",
           pathname === href
-            ? "bg-slate-700 text-white"
-            : "text-slate-300 hover:bg-slate-700 hover:text-white"
-        }`}
+            ? "bg-slate-700 text-white dark:bg-zinc-700"
+            : "text-slate-300 hover:bg-slate-700 hover:text-white dark:hover:bg-zinc-700"
+        )}
       >
         {children}
       </div>
@@ -112,7 +112,7 @@ export default function Navbar({ userProfile }: NavbarProps) {
 
   const UserMenu = () => (
     <Menu as="div" className="relative">
-      <Menu.Button className="flex items-center text-sm rounded-full text-slate-300 hover:text-white hover:bg-slate-700 p-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75">
+      <Menu.Button className="flex items-center text-sm rounded-full text-slate-300 hover:text-white hover:bg-slate-700 dark:hover:bg-zinc-700 p-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75">
         <User size={24} />
         <span className="hidden sm:inline ml-2">
           {userProfile.nome.split(" ")[0]}
@@ -128,10 +128,10 @@ export default function Navbar({ userProfile }: NavbarProps) {
         leaveFrom="transform opacity-100 scale-100"
         leaveTo="transform opacity-0 scale-95"
       >
-        <Menu.Items className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
-          <div className="px-4 py-3 text-sm text-slate-500 border-b border-slate-200">
+        <Menu.Items className="origin-top-right absolute right-0 mt-2 w-56 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-10 dark:bg-zinc-800 dark:ring-zinc-700">
+          <div className="px-4 py-3 text-sm text-slate-500 border-b border-slate-200 dark:text-slate-400 dark:border-zinc-700">
             <p>Sessão iniciada como</p>
-            <p className="font-medium text-slate-800 truncate">
+            <p className="font-medium text-slate-800 truncate dark:text-slate-200">
               {userProfile.email}
             </p>
           </div>
@@ -139,11 +139,15 @@ export default function Navbar({ userProfile }: NavbarProps) {
             {({ active }) => (
               <Link
                 href="/inicio"
-                className={`flex items-center w-full px-4 py-2 text-sm text-slate-700 ${
-                  active ? "bg-slate-100" : ""
-                }`}
+                className={clsx(
+                  "flex items-center w-full px-4 py-2 text-sm text-slate-700 dark:text-slate-300",
+                  active && "bg-slate-100 dark:bg-zinc-700"
+                )}
               >
-                <Home size={16} className="mr-3 text-slate-500" />
+                <Home
+                  size={16}
+                  className="mr-3 text-slate-500 dark:text-slate-400"
+                />
                 Início
               </Link>
             )}
@@ -152,11 +156,15 @@ export default function Navbar({ userProfile }: NavbarProps) {
             {({ active }) => (
               <Link
                 href="/alterar-senha"
-                className={`flex items-center w-full px-4 py-2 text-sm text-slate-700 ${
-                  active ? "bg-slate-100" : ""
-                }`}
+                className={clsx(
+                  "flex items-center w-full px-4 py-2 text-sm text-slate-700 dark:text-slate-300",
+                  active && "bg-slate-100 dark:bg-zinc-700"
+                )}
               >
-                <KeyRound size={16} className="mr-3 text-slate-500" />
+                <KeyRound
+                  size={16}
+                  className="mr-3 text-slate-500 dark:text-slate-400"
+                />
                 Alterar Senha
               </Link>
             )}
@@ -168,8 +176,8 @@ export default function Navbar({ userProfile }: NavbarProps) {
                 variant="ghost"
                 size="sm"
                 className={clsx(
-                  "w-full !justify-start !font-normal !text-red-600 !px-4 !py-2",
-                  active && "!bg-red-50"
+                  "w-full !justify-start !font-normal !text-red-600 dark:!text-red-400 !px-4 !py-2",
+                  active && "!bg-red-50 dark:!bg-red-900/20"
                 )}
               >
                 <LogOut size={16} className="mr-3" /> Sair
@@ -183,7 +191,7 @@ export default function Navbar({ userProfile }: NavbarProps) {
 
   return (
     <>
-      <nav className="bg-slate-800 sticky top-0 z-40">
+      <nav className="bg-slate-800 dark:bg-zinc-950 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex-shrink-0">
@@ -197,18 +205,18 @@ export default function Navbar({ userProfile }: NavbarProps) {
                       {item.name}
                     </NavLink>
                   ))}
-
                   <Menu as="div" className="relative">
                     <Menu.Button
-                      className={`px-4 py-2 rounded-md text-base font-medium transition-colors flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 ${
+                      className={clsx(
+                        "px-4 py-2 rounded-md text-base font-medium transition-colors flex items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75",
                         pathname.startsWith("/projetos") ||
-                        pathname.startsWith("/ums") ||
-                        pathname.startsWith("/notebooks") ||
-                        pathname.startsWith("/usuarios") ||
-                        pathname.startsWith("/notificacoes")
-                          ? "bg-slate-700 text-white"
-                          : "text-slate-300 hover:bg-slate-700 hover:text-white"
-                      }`}
+                          pathname.startsWith("/ums") ||
+                          pathname.startsWith("/notebooks") ||
+                          pathname.startsWith("/usuarios") ||
+                          pathname.startsWith("/notificacoes")
+                          ? "bg-slate-700 text-white dark:bg-zinc-700"
+                          : "text-slate-300 hover:bg-slate-700 hover:text-white dark:hover:bg-zinc-700"
+                      )}
                     >
                       <span>Administração</span>
                       <ChevronDown size={16} className="ml-1" />
@@ -222,15 +230,18 @@ export default function Navbar({ userProfile }: NavbarProps) {
                       leaveFrom="transform opacity-100 scale-100"
                       leaveTo="transform opacity-0 scale-95"
                     >
-                      <Menu.Items className="origin-top-center absolute mt-2 w-48 rounded-md shadow-lg py-1 bg-slate-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-10">
+                      <Menu.Items className="origin-top-center absolute mt-2 w-48 rounded-md shadow-lg py-1 bg-slate-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-10 dark:bg-zinc-800 dark:ring-zinc-700">
                         {adminDropdownItems.map((item) => (
                           <Menu.Item key={item.name}>
                             {({ active }) => (
                               <Link
                                 href={item.href}
-                                className={`flex items-center w-full px-4 py-2 text-sm text-slate-200 ${
-                                  active ? "bg-slate-700 text-white" : ""
-                                }`}
+                                className={clsx(
+                                  "flex items-center w-full px-4 py-2 text-sm text-slate-200",
+                                  active
+                                    ? "bg-slate-700 text-white dark:bg-zinc-700"
+                                    : ""
+                                )}
                               >
                                 <item.icon size={16} className="mr-3" />
                                 {item.name}
@@ -248,11 +259,13 @@ export default function Navbar({ userProfile }: NavbarProps) {
             )}
 
             <div className="hidden md:flex items-center space-x-2">
+              <ThemeSwitcher />
               <NotificationBell userProfile={userProfile} />
               <UserMenu />
             </div>
 
             <div className="md:hidden flex items-center ml-auto space-x-2">
+              <ThemeSwitcher />
               <NotificationBell userProfile={userProfile} />
               <AppButton
                 onClick={() => setIsMobileMenuOpen(true)}
@@ -296,8 +309,8 @@ export default function Navbar({ userProfile }: NavbarProps) {
                 leaveFrom="translate-x-0"
                 leaveTo="-translate-x-full"
               >
-                <Dialog.Panel className="w-full max-w-xs transform overflow-hidden bg-slate-800 text-left align-middle shadow-xl transition-all">
-                  <div className="p-4 flex justify-between items-center border-b border-slate-700">
+                <Dialog.Panel className="w-full max-w-xs transform overflow-hidden bg-slate-800 dark:bg-zinc-950 text-left align-middle shadow-xl transition-all">
+                  <div className="p-4 flex justify-between items-center border-b border-slate-700 dark:border-zinc-800">
                     <Logo />
                     <AppButton
                       onClick={() => setIsMobileMenuOpen(false)}
@@ -308,7 +321,6 @@ export default function Navbar({ userProfile }: NavbarProps) {
                       <X size={24} />
                     </AppButton>
                   </div>
-
                   <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
                     {isAdminOrMaster ? (
                       <>
@@ -317,7 +329,7 @@ export default function Navbar({ userProfile }: NavbarProps) {
                             key={item.name}
                             href={item.href}
                             onClick={handleMobileLinkClick}
-                            className="flex items-center text-slate-200 hover:bg-slate-700 hover:text-white px-3 py-2 rounded-md text-base font-medium"
+                            className="flex items-center text-slate-200 hover:bg-slate-700 hover:text-white dark:hover:bg-zinc-700 px-3 py-2 rounded-md text-base font-medium"
                           >
                             <item.icon size={18} className="mr-3" />
                             {item.name}
@@ -326,7 +338,7 @@ export default function Navbar({ userProfile }: NavbarProps) {
                         <AppButton
                           onClick={() => setIsMobileAdminOpen((prev) => !prev)}
                           variant="ghost"
-                          className="w-full !justify-between !text-slate-200 data-[hover]:!bg-slate-700 data-[hover]:!text-white !px-3 !py-2 !text-base !font-medium"
+                          className="w-full !justify-between !text-slate-200 data-[hover]:!bg-slate-700 data-[hover]:!text-white dark:hover:!bg-zinc-700 !px-3 !py-2 !text-base !font-medium"
                         >
                           <div className="flex items-center">
                             <ChevronDown
@@ -341,7 +353,6 @@ export default function Navbar({ userProfile }: NavbarProps) {
                             Administração
                           </div>
                         </AppButton>
-
                         {isMobileAdminOpen && (
                           <div className="pl-8">
                             {adminDropdownItems.map((item) => (
@@ -349,7 +360,7 @@ export default function Navbar({ userProfile }: NavbarProps) {
                                 key={item.name}
                                 href={item.href}
                                 onClick={handleMobileLinkClick}
-                                className="flex items-center text-slate-200 hover:bg-slate-700 hover:text-white px-3 py-2 rounded-md text-base font-medium"
+                                className="flex items-center text-slate-200 hover:bg-slate-700 hover:text-white dark:hover:bg-zinc-700 px-3 py-2 rounded-md text-base font-medium"
                               >
                                 <item.icon size={18} className="mr-3" />
                                 {item.name}
@@ -362,14 +373,14 @@ export default function Navbar({ userProfile }: NavbarProps) {
                       <Link
                         href="/inicio"
                         onClick={handleMobileLinkClick}
-                        className="flex items-center text-slate-200 hover:bg-slate-700 hover:text-white px-3 py-2 rounded-md text-base font-medium"
+                        className="flex items-center text-slate-200 hover:bg-slate-700 hover:text-white dark:hover:bg-zinc-700 px-3 py-2 rounded-md text-base font-medium"
                       >
                         <Home size={18} className="mr-3" />
                         Início
                       </Link>
                     )}
                   </div>
-                  <div className="pt-4 pb-3 border-t border-slate-700">
+                  <div className="pt-4 pb-3 border-t border-slate-700 dark:border-zinc-800">
                     <div className="flex items-center px-5">
                       <div className="flex-shrink-0">
                         <User size={24} className="text-slate-300" />
@@ -387,14 +398,14 @@ export default function Navbar({ userProfile }: NavbarProps) {
                       <Link
                         href="/alterar-senha"
                         onClick={handleMobileLinkClick}
-                        className="flex items-center text-slate-200 hover:bg-slate-700 hover:text-white px-3 py-2 rounded-md text-base font-medium"
+                        className="flex items-center text-slate-200 hover:bg-slate-700 hover:text-white dark:hover:bg-zinc-700 px-3 py-2 rounded-md text-base font-medium"
                       >
                         <KeyRound size={18} className="mr-3" />
                         Alterar Senha
                       </Link>
                       <button
                         onClick={handleLogout}
-                        className="w-full text-left flex items-center text-red-400 hover:bg-slate-700 hover:text-red-300 px-3 py-2 rounded-md text-base font-medium"
+                        className="w-full text-left flex items-center text-red-400 hover:bg-slate-700 hover:text-red-300 dark:hover:bg-zinc-700 px-3 py-2 rounded-md text-base font-medium"
                       >
                         <LogOut size={18} className="mr-3" />
                         Sair

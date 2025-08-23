@@ -53,11 +53,13 @@ interface Project {
   name: string;
   color: string;
 }
+
 interface UM {
   id: string;
   name: string;
   projectId: string;
 }
+
 interface Notebook {
   id: string;
   hostname: string;
@@ -67,6 +69,7 @@ interface Notebook {
   status?: "Ativo" | "Em Manutenção";
   maintenanceStartDate?: Timestamp;
 }
+
 interface CsvData {
   hostname: string;
   serialNumber: string;
@@ -89,6 +92,8 @@ function NotebookListItem({
   onViewHistory: () => void;
 }) {
   const isMaintenance = notebook.status === "Em Manutenção";
+  const actionButtonClasses =
+    "bg-slate-100 data-[hover]:bg-slate-200 dark:bg-zinc-700/50 dark:data-[hover]:bg-zinc-700";
 
   const actionButtons = (
     <div className="flex items-center space-x-2 flex-shrink-0">
@@ -97,7 +102,7 @@ function NotebookListItem({
         variant="ghost"
         size="icon"
         title="Ver Histórico do Ativo"
-        className="data-[hover]:text-blue-600"
+        className={`${actionButtonClasses} data-[hover]:text-blue-600`}
       >
         <History size={16} />
       </AppButton>
@@ -108,7 +113,7 @@ function NotebookListItem({
         title={
           isMaintenance ? "Retornar da Manutenção" : "Enviar para Manutenção"
         }
-        className="data-[hover]:text-amber-600"
+        className={`${actionButtonClasses} data-[hover]:text-amber-600`}
       >
         <Wrench size={16} />
       </AppButton>
@@ -117,7 +122,7 @@ function NotebookListItem({
         variant="ghost"
         size="icon"
         title="Gerar QR Code"
-        className="data-[hover]:text-teal-800"
+        className={`${actionButtonClasses} data-[hover]:text-teal-800`}
       >
         <QrCode size={16} />
       </AppButton>
@@ -126,7 +131,7 @@ function NotebookListItem({
         variant="ghost"
         size="icon"
         title="Editar"
-        className="data-[hover]:text-teal-600"
+        className={`${actionButtonClasses} data-[hover]:text-teal-600`}
       >
         <Edit size={16} />
       </AppButton>
@@ -135,7 +140,7 @@ function NotebookListItem({
         variant="ghost"
         size="icon"
         title="Excluir"
-        className="data-[hover]:text-red-600"
+        className={`${actionButtonClasses} data-[hover]:text-red-600`}
       >
         <Trash2 size={16} />
       </AppButton>
@@ -143,8 +148,8 @@ function NotebookListItem({
   );
 
   return (
-    <li className="bg-white p-2 rounded-md border border-slate-200">
-      {/* Layout para Desktop (visível a partir de sm: 640px) */}
+    <li className="bg-white p-2 rounded-md border border-slate-200 dark:bg-zinc-800/50 dark:border-zinc-700">
+      {/* Layout para Desktop (visivel a partir de sm: 640px) */}
       <div className="hidden sm:flex items-center justify-between">
         <div className="flex items-center min-w-0">
           <span title={`Status: ${notebook.status || "Ativo"}`}>
@@ -156,7 +161,7 @@ function NotebookListItem({
             />
           </span>
           <span
-            className="text-gray-600 font-mono text-sm truncate"
+            className="text-gray-600 font-mono text-sm truncate dark:text-zinc-300"
             title={notebook.hostname}
           >
             {notebook.hostname}
@@ -164,12 +169,11 @@ function NotebookListItem({
         </div>
         {actionButtons}
       </div>
-
       {/* Layout para Mobile (escondido a partir de sm: 640px) */}
       <div className="sm:hidden">
         <Disclosure>
           {({ open }) => (
-            <>
+            <div>
               <Disclosure.Button className="w-full flex items-center justify-between text-left py-1">
                 <div className="flex items-center min-w-0">
                   <span title={`Status: ${notebook.status || "Ativo"}`}>
@@ -181,7 +185,7 @@ function NotebookListItem({
                     />
                   </span>
                   <span
-                    className="text-gray-600 font-mono text-sm truncate"
+                    className="text-gray-600 font-mono text-sm truncate dark:text-zinc-300"
                     title={notebook.hostname}
                   >
                     {notebook.hostname}
@@ -202,11 +206,11 @@ function NotebookListItem({
                 leaveFrom="transform scale-100 opacity-100"
                 leaveTo="transform scale-95 opacity-0"
               >
-                <Disclosure.Panel className="pt-3 pb-1 mt-2 border-t flex justify-end">
+                <Disclosure.Panel className="pt-3 pb-1 mt-2 border-t flex justify-end dark:border-zinc-700">
                   {actionButtons}
                 </Disclosure.Panel>
               </Transition>
-            </>
+            </div>
           )}
         </Disclosure>
       </div>
@@ -241,12 +245,14 @@ export default function NotebooksPage() {
   const [parsedCsvData, setParsedCsvData] = useState<CsvData[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [importUmId, setImportUmId] = useState<string>("");
+
   const [formState, setFormState] = useState({
     hostname: "",
     serialNumber: "",
     assetTag: "",
     selectedUmId: "",
   });
+
   const [batchFormState, setBatchFormState] = useState({
     prefix: "",
     startNumber: 1,
@@ -432,6 +438,7 @@ export default function NotebooksPage() {
       });
       return;
     }
+
     const batch = writeBatch(db);
     const notebooksCollection = collection(db, "notebooks");
     const umName = ums.find((um) => um.id === importUmId)?.name || "N/A";
@@ -543,6 +550,7 @@ export default function NotebooksPage() {
       assetTag: formState.assetTag,
       umId: formState.selectedUmId,
     };
+
     try {
       if (currentNotebook) {
         const notebookRef = doc(db, "notebooks", currentNotebook.id);
@@ -557,6 +565,7 @@ export default function NotebooksPage() {
           ...notebookData,
           status: "Ativo",
         });
+
         const umName =
           ums.find((um) => um.id === formState.selectedUmId)?.name || "N/A";
         await logLifecycleEvent(
@@ -564,6 +573,7 @@ export default function NotebooksPage() {
           "Criação",
           `Ativo cadastrado na UM: ${umName}`
         );
+
         toast.success(
           `Notebook "${formState.hostname}" adicionado com sucesso!`,
           { id: "global-toast" }
@@ -599,9 +609,11 @@ export default function NotebooksPage() {
 
   const handleToggleMaintenanceStatus = async () => {
     if (!notebookForMaintenance) return;
+
     const { id, hostname } = notebookForMaintenance;
     const currentStatus = notebookForMaintenance.status || "Ativo";
     const newStatus = currentStatus === "Ativo" ? "Em Manutenção" : "Ativo";
+
     try {
       const notebookRef = doc(db, "notebooks", id);
       if (newStatus === "Em Manutenção") {
@@ -615,6 +627,7 @@ export default function NotebooksPage() {
           maintenanceStartDate: deleteField(),
         });
       }
+
       const eventType =
         newStatus === "Em Manutenção" ? "Manutenção" : "Operacional";
       const details =
@@ -622,6 +635,7 @@ export default function NotebooksPage() {
           ? "Ativo enviado para manutenção."
           : "Ativo retornou à operação.";
       await logLifecycleEvent(id, eventType, details);
+
       toast.success(
         `Status do notebook "${hostname}" alterado para ${newStatus}.`,
         { id: "global-toast" }
@@ -662,6 +676,7 @@ export default function NotebooksPage() {
       });
       return;
     }
+
     try {
       const batch = writeBatch(db);
       const notebooksCollection = collection(db, "notebooks");
@@ -669,6 +684,7 @@ export default function NotebooksPage() {
         ums.find((um) => um.id === batchFormState.batchSelectedUmId)?.name ||
         "N/A";
       const newNotebooksWithIds: { id: string; name: string }[] = [];
+
       generatedNames.forEach((name) => {
         const newNotebookRef = doc(notebooksCollection);
         batch.set(newNotebookRef, {
@@ -678,7 +694,9 @@ export default function NotebooksPage() {
         });
         newNotebooksWithIds.push({ id: newNotebookRef.id, name });
       });
+
       await batch.commit();
+
       for (const nb of newNotebooksWithIds) {
         await logLifecycleEvent(
           nb.id,
@@ -686,6 +704,7 @@ export default function NotebooksPage() {
           `Ativo cadastrado em lote na UM: ${umName}`
         );
       }
+
       toast.success(
         `${generatedNames.length} notebooks adicionados com sucesso!`,
         { id: "global-toast", duration: 5000 }
@@ -704,12 +723,14 @@ export default function NotebooksPage() {
 
   const handleDeleteBatch = async () => {
     if (!umToDeleteFrom) return;
+
     try {
       const notebooksQuery = query(
         collection(db, "notebooks"),
         where("umId", "==", umToDeleteFrom.id)
       );
       const snapshot = await getDocs(notebooksQuery);
+
       if (snapshot.empty) {
         toast.error("Nenhum notebook para excluir nesta UM.", {
           id: "global-toast",
@@ -717,9 +738,11 @@ export default function NotebooksPage() {
         setIsDeleteBatchModalOpen(false);
         return;
       }
+
       const batch = writeBatch(db);
       snapshot.docs.forEach((doc) => batch.delete(doc.ref));
       await batch.commit();
+
       toast.success(
         `Todos os notebooks da UM "${umToDeleteFrom.name}" foram excluídos.`,
         { id: "global-toast" }
@@ -737,13 +760,14 @@ export default function NotebooksPage() {
   const formModalTitle = currentNotebook
     ? "Editar Notebook"
     : "Adicionar Notebook";
+
   const getUmName = (umId: string) =>
     ums.find((um) => um.id === umId)?.name || "Selecione uma UM";
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-        <h1 className="text-3xl font-bold text-gray-800">
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-zinc-100">
           Gerenciar Notebooks
         </h1>
         <div className="flex space-x-2 mt-4 sm:mt-0">
@@ -760,7 +784,7 @@ export default function NotebooksPage() {
           </AppButton>
           <AppButton
             onClick={() => setIsBatchModalOpen(true)}
-            className="bg-blue-600 data-[hover]:bg-blue-700"
+            className="!bg-blue-600 data-[hover]:!bg-blue-700"
           >
             <Layers size={20} className="mr-2" />
             <span className="hidden sm:inline">Adicionar em Lote</span>
@@ -769,7 +793,9 @@ export default function NotebooksPage() {
       </div>
 
       {isLoading ? (
-        <p className="text-center text-gray-500 py-8">Carregando dados...</p>
+        <p className="text-center text-gray-500 py-8 dark:text-zinc-400">
+          Carregando dados...
+        </p>
       ) : (
         <div className="space-y-4">
           {projects.map((project) => (
@@ -777,7 +803,7 @@ export default function NotebooksPage() {
               {({ open }) => (
                 <>
                   <Disclosure.Button
-                    className="w-full flex items-center p-3 bg-white rounded-lg shadow-md text-left"
+                    className="w-full flex items-center p-3 bg-white rounded-lg shadow-md text-left dark:bg-zinc-800"
                     style={{
                       borderColor: project.color,
                       borderLeftWidth: "4px",
@@ -789,7 +815,7 @@ export default function NotebooksPage() {
                         open ? "rotate-180" : ""
                       }`}
                     />
-                    <span className="text-xl font-bold text-gray-800">
+                    <span className="text-xl font-bold text-gray-800 dark:text-zinc-100">
                       {project.name}
                     </span>
                   </Disclosure.Button>
@@ -813,7 +839,7 @@ export default function NotebooksPage() {
                             <Disclosure key={um.id} as="div">
                               {({ open: umOpen }) => (
                                 <>
-                                  <Disclosure.Button className="w-full flex items-center p-3 bg-slate-50 hover:bg-slate-100 rounded-lg text-left text-gray-700">
+                                  <Disclosure.Button className="w-full flex items-center p-3 bg-slate-100 hover:bg-slate-200 rounded-lg text-left text-gray-700 dark:bg-zinc-700/80 dark:hover:bg-zinc-700 dark:text-zinc-200">
                                     <ChevronDown
                                       size={18}
                                       className={`mr-2 transition-transform ${
@@ -903,7 +929,7 @@ export default function NotebooksPage() {
                                           </ul>
                                         </>
                                       ) : (
-                                        <p className="text-sm text-gray-500 italic px-3 py-2">
+                                        <p className="text-sm text-gray-500 italic px-3 py-2 dark:text-zinc-400">
                                           Nenhum notebook cadastrado nesta UM.
                                         </p>
                                       )}
@@ -930,7 +956,7 @@ export default function NotebooksPage() {
       >
         <div className="space-y-4">
           <Field>
-            <Label className="block text-sm font-medium text-gray-700">
+            <Label className="block text-sm font-medium text-gray-700 dark:text-zinc-300">
               Hostname
             </Label>
             <Input
@@ -938,11 +964,11 @@ export default function NotebooksPage() {
               type="text"
               value={formState.hostname}
               onChange={handleFormInputChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500 dark:bg-zinc-700 dark:border-zinc-600 dark:text-zinc-200"
             />
           </Field>
           <Field>
-            <Label className="block text-sm font-medium text-gray-700">
+            <Label className="block text-sm font-medium text-gray-700 dark:text-zinc-300">
               Número de Série (SN)
             </Label>
             <Input
@@ -950,11 +976,11 @@ export default function NotebooksPage() {
               type="text"
               value={formState.serialNumber}
               onChange={handleFormInputChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500 dark:bg-zinc-700 dark:border-zinc-600 dark:text-zinc-200"
             />
           </Field>
           <Field>
-            <Label className="block text-sm font-medium text-gray-700">
+            <Label className="block text-sm font-medium text-gray-700 dark:text-zinc-300">
               Patrimônio
             </Label>
             <Input
@@ -962,7 +988,7 @@ export default function NotebooksPage() {
               type="text"
               value={formState.assetTag}
               onChange={handleFormInputChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-teal-500 focus:border-teal-500 dark:bg-zinc-700 dark:border-zinc-600 dark:text-zinc-200"
             />
           </Field>
           <Listbox
@@ -970,10 +996,10 @@ export default function NotebooksPage() {
             onChange={handleFormListboxChange}
           >
             <div className="relative">
-              <Listbox.Label className="block text-sm font-medium text-gray-700">
+              <Listbox.Label className="block text-sm font-medium text-gray-700 dark:text-zinc-300">
                 Unidade Móvel (UM)
               </Listbox.Label>
-              <Listbox.Button className="relative mt-1 w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-teal-500 focus-visible:ring-2 focus-visible:ring-offset-2">
+              <Listbox.Button className="relative mt-1 w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-teal-500 focus-visible:ring-2 focus-visible:ring-offset-2 dark:bg-zinc-700 dark:border-zinc-600">
                 <span className="block truncate">
                   {getUmName(formState.selectedUmId)}
                 </span>
@@ -990,14 +1016,16 @@ export default function NotebooksPage() {
                 leaveFrom="opacity-100"
                 leaveTo="opacity-0"
               >
-                <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 z-10">
+                <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 z-10 dark:bg-zinc-800 dark:ring-zinc-700">
                   {ums.map((um) => (
                     <Listbox.Option
                       key={um.id}
                       value={um.id}
                       className={({ active }) =>
                         `relative cursor-default select-none py-2 pl-10 pr-4 ${
-                          active ? "bg-teal-100" : "text-gray-900"
+                          active
+                            ? "bg-teal-100 text-teal-900 dark:bg-zinc-700"
+                            : "text-gray-900 dark:text-zinc-200"
                         }`
                       }
                     >
@@ -1011,7 +1039,7 @@ export default function NotebooksPage() {
                             {um.name}
                           </span>
                           {selected ? (
-                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-teal-600">
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-teal-600 dark:text-teal-400">
                               <Check className="h-5 w-5" aria-hidden="true" />
                             </span>
                           ) : null}
@@ -1040,10 +1068,10 @@ export default function NotebooksPage() {
             onChange={handleBatchListboxChange}
           >
             <div className="relative">
-              <Listbox.Label className="block text-sm font-medium text-gray-700">
+              <Listbox.Label className="block text-sm font-medium text-gray-700 dark:text-zinc-300">
                 Unidade Móvel (UM)
               </Listbox.Label>
-              <Listbox.Button className="relative mt-1 w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-teal-500 focus-visible:ring-2 focus-visible:ring-offset-2">
+              <Listbox.Button className="relative mt-1 w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-teal-500 focus-visible:ring-2 focus-visible:ring-offset-2 dark:bg-zinc-700 dark:border-zinc-600">
                 <span className="block truncate">
                   {getUmName(batchFormState.batchSelectedUmId)}
                 </span>
@@ -1060,14 +1088,16 @@ export default function NotebooksPage() {
                 leaveFrom="opacity-100"
                 leaveTo="opacity-0"
               >
-                <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 z-10">
+                <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 z-10 dark:bg-zinc-800 dark:ring-zinc-700">
                   {ums.map((um) => (
                     <Listbox.Option
                       key={um.id}
                       value={um.id}
                       className={({ active }) =>
                         `relative cursor-default select-none py-2 pl-10 pr-4 ${
-                          active ? "bg-teal-100" : "text-gray-900"
+                          active
+                            ? "bg-teal-100 text-teal-900 dark:bg-zinc-700"
+                            : "text-gray-900 dark:text-zinc-200"
                         }`
                       }
                     >
@@ -1081,7 +1111,7 @@ export default function NotebooksPage() {
                             {um.name}
                           </span>
                           {selected ? (
-                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-teal-600">
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-teal-600 dark:text-teal-400">
                               <Check className="h-5 w-5" aria-hidden="true" />
                             </span>
                           ) : null}
@@ -1094,7 +1124,7 @@ export default function NotebooksPage() {
             </div>
           </Listbox>
           <Field>
-            <Label className="block text-sm font-medium text-gray-700">
+            <Label className="block text-sm font-medium text-gray-700 dark:text-zinc-300">
               Prefixo do Hostname
             </Label>
             <Input
@@ -1103,12 +1133,12 @@ export default function NotebooksPage() {
               placeholder="Ex: BSBIA01-EST"
               value={batchFormState.prefix}
               onChange={handleBatchInputChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-zinc-700 dark:border-zinc-600 dark:text-zinc-200"
             />
           </Field>
           <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-4 sm:space-y-0">
             <Field className="flex-1">
-              <Label className="block text-sm font-medium text-gray-700">
+              <Label className="block text-sm font-medium text-gray-700 dark:text-zinc-300">
                 Número Inicial
               </Label>
               <NumberInput
@@ -1119,7 +1149,7 @@ export default function NotebooksPage() {
               />
             </Field>
             <Field className="flex-1">
-              <Label className="block text-sm font-medium text-gray-700">
+              <Label className="block text-sm font-medium text-gray-700 dark:text-zinc-300">
                 Número Final
               </Label>
               <NumberInput
@@ -1137,10 +1167,10 @@ export default function NotebooksPage() {
           </div>
           {generatedNames.length > 0 && (
             <div className="pt-4 space-y-3">
-              <h4 className="font-semibold">
+              <h4 className="font-semibold dark:text-zinc-200">
                 Notebooks a serem criados ({generatedNames.length}):
               </h4>
-              <div className="h-32 overflow-y-auto bg-slate-100 p-2 rounded-md font-mono text-sm">
+              <div className="h-32 overflow-y-auto bg-slate-100 p-2 rounded-md font-mono text-sm dark:bg-zinc-900">
                 {generatedNames.join("\n")}
               </div>
               <div className="flex justify-end pt-2">
@@ -1157,7 +1187,7 @@ export default function NotebooksPage() {
         title="Importar Notebooks via CSV"
       >
         <div className="space-y-4">
-          <div className="p-4 bg-blue-50 text-blue-800 rounded-lg text-sm">
+          <div className="p-4 bg-blue-50 text-blue-800 rounded-lg text-sm dark:bg-blue-900/50 dark:text-blue-300">
             <strong>Instruções:</strong>
             <ol className="list-decimal list-inside mt-2 space-y-1">
               <li>Baixe o modelo CSV para garantir a formatação correta.</li>
@@ -1176,17 +1206,17 @@ export default function NotebooksPage() {
           <AppButton
             onClick={handleDownloadTemplate}
             variant="ghost"
-            className="!text-teal-600 !p-0 data-[hover]:!bg-transparent data-[hover]:underline"
+            className="!text-teal-600 !p-0 data-[hover]:!bg-transparent data-[hover]:underline dark:!text-teal-400"
           >
             Baixar modelo de planilha (.csv)
           </AppButton>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Listbox value={importUmId} onChange={setImportUmId}>
               <div className="relative">
-                <Listbox.Label className="block text-sm font-medium text-gray-700">
+                <Listbox.Label className="block text-sm font-medium text-gray-700 dark:text-zinc-300">
                   UM de Destino
                 </Listbox.Label>
-                <Listbox.Button className="relative mt-1 w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-teal-500 focus-visible:ring-2 focus-visible:ring-offset-2">
+                <Listbox.Button className="relative mt-1 w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-teal-500 focus-visible:ring-2 focus-visible:ring-offset-2 dark:bg-zinc-700 dark:border-zinc-600">
                   <span className="block truncate">
                     {getUmName(importUmId)}
                   </span>
@@ -1203,14 +1233,16 @@ export default function NotebooksPage() {
                   leaveFrom="opacity-100"
                   leaveTo="opacity-0"
                 >
-                  <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 z-10">
+                  <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 z-10 dark:bg-zinc-800 dark:ring-zinc-700">
                     {ums.map((um) => (
                       <Listbox.Option
                         key={um.id}
                         value={um.id}
                         className={({ active }) =>
                           `relative cursor-default select-none py-2 pl-10 pr-4 ${
-                            active ? "bg-teal-100" : "text-gray-900"
+                            active
+                              ? "bg-teal-100 text-teal-900 dark:bg-zinc-700"
+                              : "text-gray-900 dark:text-zinc-200"
                           }`
                         }
                       >
@@ -1224,7 +1256,7 @@ export default function NotebooksPage() {
                               {um.name}
                             </span>
                             {selected ? (
-                              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-teal-600">
+                              <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-teal-600 dark:text-teal-400">
                                 <Check className="h-5 w-5" aria-hidden="true" />
                               </span>
                             ) : null}
@@ -1237,7 +1269,7 @@ export default function NotebooksPage() {
               </div>
             </Listbox>
             <Field>
-              <Label className="block text-sm font-medium text-gray-700">
+              <Label className="block text-sm font-medium text-gray-700 dark:text-zinc-300">
                 Arquivo CSV
               </Label>
               <div className="mt-1">
@@ -1247,7 +1279,7 @@ export default function NotebooksPage() {
                   name="csvFile"
                   accept=".csv"
                   onChange={handleFileChange}
-                  className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100"
+                  className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100 dark:text-zinc-400 dark:file:bg-teal-900/50 dark:file:text-teal-300 dark:hover:file:bg-teal-800/50"
                 />
               </div>
             </Field>
@@ -1263,12 +1295,12 @@ export default function NotebooksPage() {
           </div>
           {parsedCsvData && parsedCsvData.length > 0 && (
             <div className="pt-4 space-y-3">
-              <h4 className="font-semibold">
+              <h4 className="font-semibold dark:text-zinc-200">
                 Pré-visualização ({parsedCsvData.length} itens):
               </h4>
-              <div className="h-40 overflow-y-auto bg-slate-50 p-1 rounded-md border">
+              <div className="h-40 overflow-y-auto bg-slate-50 p-1 rounded-md border dark:bg-zinc-900 dark:border-zinc-700">
                 <table className="w-full text-sm text-left">
-                  <thead className="bg-slate-200">
+                  <thead className="bg-slate-200 dark:bg-zinc-700">
                     <tr>
                       <th className="p-2">hostname</th>
                       <th className="p-2">serialNumber</th>
@@ -1277,7 +1309,7 @@ export default function NotebooksPage() {
                   </thead>
                   <tbody>
                     {parsedCsvData.map((row, index) => (
-                      <tr key={index} className="border-b">
+                      <tr key={index} className="border-b dark:border-zinc-600">
                         <td className="p-2 font-mono">{row.hostname}</td>
                         <td className="p-2 font-mono">{row.serialNumber}</td>
                         <td className="p-2 font-mono">{row.assetTag}</td>

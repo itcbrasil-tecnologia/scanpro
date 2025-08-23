@@ -125,15 +125,18 @@ export default function ReportsPage() {
           if (projectDoc)
             queryConstraints.push(where("projectName", "==", projectDoc.name));
         }
+
         if (activeFilters.umId) {
           const umDoc = ums.find((u) => u.id === activeFilters.umId);
           if (umDoc) queryConstraints.push(where("umName", "==", umDoc.name));
         }
+
         if (activeFilters.technicianId) {
           queryConstraints.push(
             where("userId", "==", activeFilters.technicianId)
           );
         }
+
         if (activeFilters.dateRange?.from) {
           queryConstraints.push(
             where(
@@ -143,6 +146,7 @@ export default function ReportsPage() {
             )
           );
         }
+
         if (activeFilters.dateRange?.to) {
           const endOfDay = new Date(activeFilters.dateRange.to);
           endOfDay.setHours(23, 59, 59, 999);
@@ -160,7 +164,6 @@ export default function ReportsPage() {
           orderBy("endTime", "desc"),
           limit(ITEMS_PER_PAGE),
         ];
-
         if (page > 1 && startingAfter) {
           dataQueryConstraints.push(startAfter(startingAfter));
         }
@@ -239,7 +242,6 @@ export default function ReportsPage() {
     }
 
     toast.loading("Exportando dados...", { id: "export-toast" });
-
     const formattedData = dataToExport.map((data) => ({
       Data: data.endTime.toDate().toLocaleDateString("pt-BR"),
       Inicio: data.startTime.toDate().toLocaleTimeString("pt-BR"),
@@ -254,7 +256,6 @@ export default function ReportsPage() {
       Carregadores: data.chargersCount ?? 0,
       "Fones de Ouvido": data.headsetsCount ?? 0,
     }));
-
     const csvData = Papa.unparse(formattedData);
     const blob = new Blob([`\uFEFF${csvData}`], {
       type: "text/csv;charset=utf-8;",
@@ -267,7 +268,6 @@ export default function ReportsPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
     toast.success("Relatório exportado com sucesso!", { id: "export-toast" });
   };
 
@@ -304,7 +304,7 @@ export default function ReportsPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-        <h1 className="text-3xl font-bold text-gray-800">
+        <h1 className="text-3xl font-bold text-gray-800 dark:text-zinc-100">
           Relatórios de Conferências
         </h1>
         <div className="flex items-center space-x-2 mt-4 sm:mt-0">
@@ -325,14 +325,14 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      <div className="bg-white p-4 rounded-lg shadow-md space-y-4">
+      <div className="bg-white p-4 rounded-lg shadow-md space-y-4 dark:bg-zinc-800">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Listbox
             value={filters.projectId}
             onChange={(value) => handleFilterChange("projectId", value)}
           >
             <div className="relative">
-              <Listbox.Button className="relative w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-teal-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-teal-300 sm:text-sm">
+              <Listbox.Button className="relative w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-teal-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-teal-300 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600">
                 <span className="block truncate">
                   {getProjectName(filters.projectId)}
                 </span>
@@ -349,12 +349,14 @@ export default function ReportsPage() {
                 leaveFrom="opacity-100"
                 leaveTo="opacity-0"
               >
-                <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-10">
+                <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-10 dark:bg-zinc-900 dark:ring-zinc-700">
                   <Listbox.Option
                     value=""
                     className={({ active }) =>
                       `relative cursor-default select-none py-2 pl-10 pr-4 ${
-                        active ? "bg-teal-100 text-teal-900" : "text-gray-900"
+                        active
+                          ? "bg-teal-100 text-teal-900 dark:bg-zinc-700"
+                          : "text-gray-900 dark:text-zinc-200"
                       }`
                     }
                   >
@@ -366,7 +368,9 @@ export default function ReportsPage() {
                       value={p.id}
                       className={({ active }) =>
                         `relative cursor-default select-none py-2 pl-10 pr-4 ${
-                          active ? "bg-teal-100 text-teal-900" : "text-gray-900"
+                          active
+                            ? "bg-teal-100 text-teal-900 dark:bg-zinc-700"
+                            : "text-gray-900 dark:text-zinc-200"
                         }`
                       }
                     >
@@ -392,12 +396,13 @@ export default function ReportsPage() {
               </Transition>
             </div>
           </Listbox>
+
           <Listbox
             value={filters.umId}
             onChange={(value) => handleFilterChange("umId", value)}
           >
             <div className="relative">
-              <Listbox.Button className="relative w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-teal-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-teal-300 sm:text-sm">
+              <Listbox.Button className="relative w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-teal-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-teal-300 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600">
                 <span className="block truncate">
                   {getUmName(filters.umId)}
                 </span>
@@ -414,12 +419,14 @@ export default function ReportsPage() {
                 leaveFrom="opacity-100"
                 leaveTo="opacity-0"
               >
-                <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-10">
+                <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-10 dark:bg-zinc-900 dark:ring-zinc-700">
                   <Listbox.Option
                     value=""
                     className={({ active }) =>
                       `relative cursor-default select-none py-2 pl-10 pr-4 ${
-                        active ? "bg-teal-100 text-teal-900" : "text-gray-900"
+                        active
+                          ? "bg-teal-100 text-teal-900 dark:bg-zinc-700"
+                          : "text-gray-900 dark:text-zinc-200"
                       }`
                     }
                   >
@@ -431,7 +438,9 @@ export default function ReportsPage() {
                       value={u.id}
                       className={({ active }) =>
                         `relative cursor-default select-none py-2 pl-10 pr-4 ${
-                          active ? "bg-teal-100 text-teal-900" : "text-gray-900"
+                          active
+                            ? "bg-teal-100 text-teal-900 dark:bg-zinc-700"
+                            : "text-gray-900 dark:text-zinc-200"
                         }`
                       }
                     >
@@ -457,12 +466,13 @@ export default function ReportsPage() {
               </Transition>
             </div>
           </Listbox>
+
           <Listbox
             value={filters.technicianId}
             onChange={(value) => handleFilterChange("technicianId", value)}
           >
             <div className="relative">
-              <Listbox.Button className="relative w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-teal-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-teal-300 sm:text-sm">
+              <Listbox.Button className="relative w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-teal-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-teal-300 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600">
                 <span className="block truncate">
                   {getTechnicianName(filters.technicianId)}
                 </span>
@@ -479,12 +489,14 @@ export default function ReportsPage() {
                 leaveFrom="opacity-100"
                 leaveTo="opacity-0"
               >
-                <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-10">
+                <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-10 dark:bg-zinc-900 dark:ring-zinc-700">
                   <Listbox.Option
                     value=""
                     className={({ active }) =>
                       `relative cursor-default select-none py-2 pl-10 pr-4 ${
-                        active ? "bg-teal-100 text-teal-900" : "text-gray-900"
+                        active
+                          ? "bg-teal-100 text-teal-900 dark:bg-zinc-700"
+                          : "text-gray-900 dark:text-zinc-200"
                       }`
                     }
                   >
@@ -496,7 +508,9 @@ export default function ReportsPage() {
                       value={t.uid}
                       className={({ active }) =>
                         `relative cursor-default select-none py-2 pl-10 pr-4 ${
-                          active ? "bg-teal-100 text-teal-900" : "text-gray-900"
+                          active
+                            ? "bg-teal-100 text-teal-900 dark:bg-zinc-700"
+                            : "text-gray-900 dark:text-zinc-200"
                         }`
                       }
                     >
@@ -522,6 +536,7 @@ export default function ReportsPage() {
               </Transition>
             </div>
           </Listbox>
+
           <div className="lg:col-span-1">
             <DateRangePicker
               range={filters.dateRange}
@@ -529,6 +544,7 @@ export default function ReportsPage() {
             />
           </div>
         </div>
+
         <div className="flex justify-end space-x-2">
           <AppButton onClick={handleClearFilters} variant="secondary" size="sm">
             <X size={16} className="mr-2" /> Limpar Filtros
@@ -536,9 +552,9 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="bg-white rounded-lg shadow-md overflow-hidden dark:bg-zinc-800">
         {isLoading ? (
-          <p className="text-center text-gray-500 p-6">
+          <p className="text-center text-gray-500 p-6 dark:text-zinc-400">
             Carregando relatórios...
           </p>
         ) : conferences.length > 0 ? (
@@ -549,12 +565,12 @@ export default function ReportsPage() {
             setRowSelection={setRowSelection}
           />
         ) : (
-          <p className="text-center text-gray-500 p-6">
+          <p className="text-center text-gray-500 p-6 dark:text-zinc-400">
             Nenhum resultado encontrado para os filtros selecionados.
           </p>
         )}
-        <div className="p-4 border-t flex justify-between items-center">
-          <div className="text-sm text-slate-600">
+        <div className="p-4 border-t flex justify-between items-center dark:border-zinc-700">
+          <div className="text-sm text-slate-600 dark:text-zinc-300">
             {Object.keys(rowSelection).length} de {conferences.length} linha(s)
             selecionada(s).
           </div>

@@ -110,8 +110,8 @@ export function AssetLifecycleModal({
       title="Detalhes e Histórico do Ativo"
     >
       <div className="space-y-4">
-        <div className="bg-slate-100 p-3 rounded-lg text-slate-700 space-y-2">
-          <h3 className="font-mono text-center text-lg">
+        <div className="bg-slate-100 p-3 rounded-lg text-slate-700 space-y-2 dark:bg-zinc-900 dark:text-zinc-300">
+          <h3 className="font-mono text-center text-lg dark:text-zinc-100">
             {notebook?.hostname}
           </h3>
           <div className="flex justify-around text-sm">
@@ -127,15 +127,15 @@ export function AssetLifecycleModal({
         </div>
 
         <div className="max-h-[50vh] overflow-y-auto pr-2">
-          <h4 className="font-bold text-slate-800 mb-4">
+          <h4 className="font-bold text-slate-800 mb-4 dark:text-zinc-100">
             Linha do Tempo de Eventos
           </h4>
           {isLoading ? (
-            <p className="text-center text-slate-500 py-4">
+            <p className="text-center text-slate-500 py-4 dark:text-zinc-400">
               Carregando histórico...
             </p>
           ) : events.length > 0 ? (
-            <div className="relative border-l-2 border-slate-200 ml-4">
+            <div className="relative border-l-2 border-slate-200 ml-4 dark:border-zinc-700">
               {events.map((event) => (
                 <div key={event.id} className="mb-8 flex items-center">
                   <div
@@ -145,12 +145,14 @@ export function AssetLifecycleModal({
                   >
                     {eventIcons[event.eventType]}
                   </div>
-                  <div className="ml-10 p-4 bg-slate-50 rounded-lg w-full">
-                    <p className="font-bold text-slate-800">
+                  <div className="ml-10 p-4 bg-slate-50 rounded-lg w-full dark:bg-zinc-700/50">
+                    <p className="font-bold text-slate-800 dark:text-zinc-100">
                       {event.eventType}
                     </p>
-                    <p className="text-sm text-slate-600">{event.details}</p>
-                    <div className="flex items-center text-xs text-slate-500 mt-2 space-x-4">
+                    <p className="text-sm text-slate-600 dark:text-zinc-300">
+                      {event.details}
+                    </p>
+                    <div className="flex items-center text-xs text-slate-500 mt-2 space-x-4 dark:text-zinc-400">
                       <div className="flex items-center">
                         <Calendar size={14} className="mr-1.5" />
                         <span>
@@ -169,7 +171,7 @@ export function AssetLifecycleModal({
               ))}
             </div>
           ) : (
-            <p className="text-center text-slate-500 py-4">
+            <p className="text-center text-slate-500 py-4 dark:text-zinc-400">
               Nenhum evento registrado para este ativo.
             </p>
           )}

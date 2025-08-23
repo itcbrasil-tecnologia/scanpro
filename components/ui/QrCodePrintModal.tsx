@@ -21,7 +21,6 @@ const sizeOptions = [
   { name: "M", value: 128 },
   { name: "G", value: 256 },
 ];
-
 const positionOptions = [
   { name: "Embaixo", value: "bottom", icon: ArrowDown },
   { name: "Direita", value: "right", icon: ArrowRight },
@@ -160,14 +159,15 @@ export function QrCodePrintModal({
           }
         }
       `}</style>
+
       <div className="space-y-4">
-        <div className="no-print p-4 bg-slate-100 rounded-lg space-y-4">
+        <div className="no-print p-4 bg-slate-100 rounded-lg space-y-4 dark:bg-zinc-900">
           <RadioGroup
             value={qrSize}
             onChange={setQrSize}
             className="flex justify-between items-center w-full"
           >
-            <RadioGroup.Label className="font-semibold text-sm text-slate-600">
+            <RadioGroup.Label className="font-semibold text-sm text-slate-600 dark:text-zinc-300">
               Tamanho:
             </RadioGroup.Label>
             <div className="flex items-center space-x-2">
@@ -181,8 +181,8 @@ export function QrCodePrintModal({
                     <button
                       className={`px-3 py-1 text-sm rounded-full transition-colors ${
                         checked
-                          ? "bg-teal-600 text-white ring-2 ring-offset-2 ring-teal-600"
-                          : "bg-white hover:bg-slate-200"
+                          ? "bg-teal-600 text-white ring-2 ring-offset-2 ring-teal-600 dark:ring-offset-zinc-800"
+                          : "bg-white hover:bg-slate-200 dark:bg-zinc-700 dark:hover:bg-zinc-600"
                       }`}
                     >
                       {option.name}
@@ -194,14 +194,14 @@ export function QrCodePrintModal({
           </RadioGroup>
 
           <Switch.Group as="div" className="flex justify-between items-center">
-            <Switch.Label className="font-semibold text-sm text-slate-700 cursor-pointer">
+            <Switch.Label className="font-semibold text-sm text-slate-700 cursor-pointer dark:text-zinc-300">
               Incluir Hostname
             </Switch.Label>
             <Switch
               checked={showHostname}
               onChange={setShowHostname}
               className={`${
-                showHostname ? "bg-teal-600" : "bg-gray-200"
+                showHostname ? "bg-teal-600" : "bg-gray-200 dark:bg-zinc-600"
               } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
             >
               <span
@@ -218,7 +218,7 @@ export function QrCodePrintModal({
             disabled={!showHostname}
             className="flex justify-between items-center w-full"
           >
-            <RadioGroup.Label className="font-semibold text-sm text-slate-600 data-[disabled]:opacity-40">
+            <RadioGroup.Label className="font-semibold text-sm text-slate-600 data-[disabled]:opacity-40 dark:text-zinc-300">
               Posição:
             </RadioGroup.Label>
             <div className="flex items-center space-x-2">
@@ -232,10 +232,10 @@ export function QrCodePrintModal({
                     <button
                       className={`flex items-center px-3 py-1 text-sm rounded-full transition-colors ${
                         disabled
-                          ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                          ? "bg-slate-200 text-slate-400 cursor-not-allowed dark:bg-zinc-700 dark:text-zinc-500"
                           : checked
-                          ? "bg-teal-600 text-white ring-2 ring-offset-2 ring-teal-600"
-                          : "bg-white hover:bg-slate-200"
+                          ? "bg-teal-600 text-white ring-2 ring-offset-2 ring-teal-600 dark:ring-offset-zinc-800"
+                          : "bg-white hover:bg-slate-200 dark:bg-zinc-700 dark:hover:bg-zinc-600"
                       }`}
                     >
                       <option.icon size={14} className="mr-1.5" />
@@ -248,14 +248,14 @@ export function QrCodePrintModal({
           </RadioGroup>
 
           <Switch.Group as="div" className="flex justify-between items-center">
-            <Switch.Label className="font-semibold text-sm text-slate-700 cursor-pointer">
+            <Switch.Label className="font-semibold text-sm text-slate-700 cursor-pointer dark:text-zinc-300">
               Fundo Transparente
             </Switch.Label>
             <Switch
               checked={transparentBg}
               onChange={setTransparentBg}
               className={`${
-                transparentBg ? "bg-teal-600" : "bg-gray-200"
+                transparentBg ? "bg-teal-600" : "bg-gray-200 dark:bg-zinc-600"
               } relative inline-flex h-6 w-11 items-center rounded-full transition-colors`}
             >
               <span
@@ -269,7 +269,7 @@ export function QrCodePrintModal({
 
         <div
           id="printable-area"
-          className="flex flex-row flex-wrap justify-center items-start gap-4 p-4 max-h-[50vh] overflow-y-auto border rounded-lg"
+          className="flex flex-row flex-wrap justify-center items-start gap-4 p-4 max-h-[50vh] overflow-y-auto border rounded-lg dark:border-zinc-700"
         >
           {hostnames.map((name) => (
             <div
@@ -300,7 +300,6 @@ export function QrCodePrintModal({
             </div>
           ))}
         </div>
-
         <div className="no-print flex justify-end space-x-3 pt-4">
           <AppButton
             onClick={onClose}

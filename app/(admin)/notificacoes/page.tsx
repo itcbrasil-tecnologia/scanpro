@@ -44,7 +44,6 @@ export default function NotificacoesPage() {
     fetchTechnicians();
   }, []);
 
-  // CORREÇÃO 1: A função não precisa mais receber o evento do formulário (e)
   const handleSendNotification = async () => {
     if (!title || !message) {
       toast.error("Titulo e mensagem são obrigatórios.");
@@ -93,26 +92,25 @@ export default function NotificacoesPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-800">
-        Disparar Notificações
+      <h1 className="text-3xl font-bold text-gray-800 dark:text-zinc-100">
+        Enviar Notificações
       </h1>
-      <div className="bg-white p-6 md:p-8 rounded-lg shadow-md max-w-2xl mx-auto">
-        {/* CORREÇÃO 2: O 'onSubmit' foi removido do form. O formulário agora é apenas um container. */}
+      <div className="bg-white p-6 md:p-8 rounded-lg shadow-md max-w-2xl mx-auto dark:bg-zinc-800">
         <form className="space-y-6">
           <Listbox value={target} onChange={setTarget}>
             <div className="relative">
-              <Listbox.Label className="block text-sm font-medium text-gray-700 mb-1">
+              <Listbox.Label className="block text-sm font-medium text-gray-700 mb-1 dark:text-zinc-300">
                 Enviar Para
               </Listbox.Label>
-              <Listbox.Button className="relative w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-teal-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-teal-300 sm:text-sm">
+              <Listbox.Button className="relative w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-teal-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-teal-300 sm:text-sm dark:bg-zinc-700 dark:border-zinc-600">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-3">
                   {target === "all" ? (
-                    <Users className="h-5 w-5 text-gray-500" />
+                    <Users className="h-5 w-5 text-gray-500 dark:text-zinc-400" />
                   ) : (
-                    <User className="h-5 w-5 text-gray-500" />
+                    <User className="h-5 w-5 text-gray-500 dark:text-zinc-400" />
                   )}
                 </span>
-                <span className="block truncate pl-8">
+                <span className="block truncate pl-8 dark:text-zinc-200">
                   {getTargetName(target)}
                 </span>
                 <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
@@ -128,12 +126,14 @@ export default function NotificacoesPage() {
                 leaveFrom="opacity-100"
                 leaveTo="opacity-0"
               >
-                <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-10">
+                <Listbox.Options className="absolute mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm z-10 dark:bg-zinc-900 dark:ring-zinc-700">
                   <Listbox.Option
                     value="all"
                     className={({ active }) =>
                       `relative cursor-default select-none py-2 pl-10 pr-4 ${
-                        active ? "bg-teal-100 text-teal-900" : "text-gray-900"
+                        active
+                          ? "bg-teal-100 text-teal-900 dark:bg-zinc-700 dark:text-zinc-100"
+                          : "text-gray-900 dark:text-zinc-200"
                       }`
                     }
                   >
@@ -147,7 +147,7 @@ export default function NotificacoesPage() {
                           Todos os Técnicos
                         </span>
                         {selected ? (
-                          <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-teal-600">
+                          <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-teal-600 dark:text-teal-400">
                             <Check className="h-5 w-5" aria-hidden="true" />
                           </span>
                         ) : null}
@@ -160,7 +160,9 @@ export default function NotificacoesPage() {
                       value={tech.uid}
                       className={({ active }) =>
                         `relative cursor-default select-none py-2 pl-10 pr-4 ${
-                          active ? "bg-teal-100 text-teal-900" : "text-gray-900"
+                          active
+                            ? "bg-teal-100 text-teal-900 dark:bg-zinc-700 dark:text-zinc-100"
+                            : "text-gray-900 dark:text-zinc-200"
                         }`
                       }
                     >
@@ -174,7 +176,7 @@ export default function NotificacoesPage() {
                             {tech.nome}
                           </span>
                           {selected ? (
-                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-teal-600">
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-teal-600 dark:text-teal-400">
                               <Check className="h-5 w-5" aria-hidden="true" />
                             </span>
                           ) : null}
@@ -188,33 +190,32 @@ export default function NotificacoesPage() {
           </Listbox>
 
           <Field>
-            <Label className="block text-sm font-medium text-gray-700 mb-1">
+            <Label className="block text-sm font-medium text-gray-700 mb-1 dark:text-zinc-300">
               Título da Notificação
             </Label>
             <Input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 dark:bg-zinc-700 dark:border-zinc-600 dark:text-zinc-200"
               placeholder="Ex: Lembrete Importante"
             />
           </Field>
 
           <Field>
-            <Label className="block text-sm font-medium text-gray-700 mb-1">
+            <Label className="block text-sm font-medium text-gray-700 mb-1 dark:text-zinc-300">
               Mensagem
             </Label>
             <Textarea
               rows={4}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+              className="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 dark:bg-zinc-700 dark:border-zinc-600 dark:text-zinc-200"
               placeholder="Digite sua mensagem aqui..."
             />
           </Field>
 
           <div className="flex justify-end">
-            {/* CORREÇÃO 3: O 'type' foi mudado para 'button' e adicionamos o 'onClick' */}
             <AppButton
               type="button"
               onClick={handleSendNotification}

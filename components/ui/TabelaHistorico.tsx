@@ -40,7 +40,7 @@ const columns: ColumnDef<ConferenceData>[] = [
       return (
         <div>
           <p>{date.toLocaleDateString("pt-BR")}</p>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-500 dark:text-zinc-400">
             {startTime.toLocaleTimeString("pt-BR", {
               hour: "2-digit",
               minute: "2-digit",
@@ -90,13 +90,12 @@ const columns: ColumnDef<ConferenceData>[] = [
         headsetsCount !== undefined;
 
       if (!hasPeripherals || !openPeripheralsModal) return null;
-
       return (
         <div className="text-center">
           <AppButton
             onClick={() => openPeripheralsModal(row.original)}
             size="sm"
-            className="!text-xs !font-semibold !text-teal-800 !bg-teal-100 data-[hover]:!bg-teal-200 !px-3 !py-1 !rounded-full !shadow-none"
+            className="!text-xs !font-semibold !text-teal-800 !bg-teal-100 data-[hover]:!bg-teal-200 !px-3 !py-1 !rounded-full !shadow-none dark:!bg-teal-900/50 dark:!text-teal-300 dark:data-[hover]:!bg-teal-800/50"
           >
             <Eye size={14} className="mr-1.5" /> Ver
           </AppButton>
@@ -111,8 +110,8 @@ const columns: ColumnDef<ConferenceData>[] = [
       const isComplete =
         row.original.scannedCount === row.original.expectedCount;
       const style = isComplete
-        ? "bg-green-100 text-green-800"
-        : "bg-red-100 text-red-800";
+        ? "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300"
+        : "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300";
       return (
         <div className="text-center">
           <span className={`px-3 py-1 text-xs font-bold rounded-full ${style}`}>
@@ -132,7 +131,7 @@ const columns: ColumnDef<ConferenceData>[] = [
         <div className="text-center">
           <AppButton
             size="sm"
-            className="!text-xs !font-semibold !bg-amber-100 !text-amber-800 data-[hover]:!bg-amber-200 !rounded-full !px-3 !py-1 !shadow-none"
+            className="!text-xs !font-semibold !bg-amber-100 !text-amber-800 data-[hover]:!bg-amber-200 !rounded-full !px-3 !py-1 !shadow-none dark:!bg-amber-900/50 dark:!text-amber-300 dark:data-[hover]:!bg-amber-800/50"
             onClick={() => openDetailsModal(row.original.missingDevices)}
           >
             <TriangleAlert size={14} className="mr-1.5" /> Ver Faltantes
@@ -151,7 +150,7 @@ const columns: ColumnDef<ConferenceData>[] = [
         <div className="text-center">
           <AppButton
             size="sm"
-            className="!text-xs !font-semibold !bg-blue-100 !text-blue-800 data-[hover]:!bg-blue-200 !rounded-full !px-3 !py-1 !shadow-none"
+            className="!text-xs !font-semibold !bg-blue-100 !text-blue-800 data-[hover]:!bg-blue-200 !rounded-full !px-3 !py-1 !shadow-none dark:!bg-blue-900/50 dark:!text-blue-300 dark:data-[hover]:!bg-blue-800/50"
             onClick={() => openSummaryModal(row.original)}
           >
             <FileText size={14} className="mr-1.5" /> Ver Resumo
@@ -189,13 +188,13 @@ export function TabelaHistorico({
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left">
-        <thead className="bg-slate-200 border-b-2 border-slate-300 rounded-t-lg">
+        <thead className="bg-slate-200 border-b-2 border-slate-300 rounded-t-lg dark:bg-zinc-800 dark:border-zinc-700">
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
                 <th
                   key={header.id}
-                  className="p-3 text-sm font-semibold text-slate-600 first:rounded-tl-lg last:rounded-tr-lg"
+                  className="p-3 text-sm font-semibold text-slate-600 first:rounded-tl-lg last:rounded-tr-lg dark:text-zinc-300"
                 >
                   {header.isPlaceholder
                     ? null
@@ -210,7 +209,10 @@ export function TabelaHistorico({
         </thead>
         <tbody>
           {table.getRowModel().rows.map((row) => (
-            <tr key={row.id} className="border-b hover:bg-slate-50">
+            <tr
+              key={row.id}
+              className="border-b hover:bg-slate-50 dark:border-zinc-700 dark:hover:bg-zinc-700/50"
+            >
               {row.getVisibleCells().map((cell) => (
                 <td key={cell.id} className="p-3 text-sm">
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}

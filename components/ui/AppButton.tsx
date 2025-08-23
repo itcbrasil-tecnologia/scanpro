@@ -19,17 +19,18 @@ interface AppButtonProps extends ButtonProps {
   size?: AppButtonSize;
 }
 
-// Mapeamento de estilos para cada variante
+// Mapeamento de estilos para cada variante, agora com classes para o modo escuro
 const variantStyles: Record<AppButtonVariant, string> = {
   primary:
-    "bg-teal-600 text-white data-[hover]:bg-teal-700 data-[disabled]:bg-teal-400",
+    "bg-teal-600 text-white data-[hover]:bg-teal-700 dark:data-[hover]:bg-teal-500 data-[disabled]:bg-teal-400",
   secondary:
-    "bg-slate-200 text-slate-800 data-[hover]:bg-slate-300 data-[disabled]:bg-slate-200",
+    "bg-slate-200 text-slate-800 data-[hover]:bg-slate-300 dark:bg-zinc-700 dark:text-zinc-200 dark:data-[hover]:bg-zinc-600 data-[disabled]:bg-slate-200",
   danger:
-    "bg-red-600 text-white data-[hover]:bg-red-700 data-[disabled]:bg-red-400",
+    "bg-red-600 text-white data-[hover]:bg-red-700 dark:data-[hover]:bg-red-500 data-[disabled]:bg-red-400",
   success:
-    "bg-green-600 text-white data-[hover]:bg-green-700 data-[disabled]:bg-green-400",
-  ghost: "text-gray-500 data-[hover]:text-gray-800 data-[hover]:bg-gray-100",
+    "bg-green-600 text-white data-[hover]:bg-green-700 dark:data-[hover]:bg-green-500 data-[disabled]:bg-green-400",
+  ghost:
+    "text-gray-500 data-[hover]:text-gray-800 data-[hover]:bg-gray-100 dark:text-zinc-400 dark:data-[hover]:text-zinc-100 dark:data-[hover]:bg-zinc-800",
 };
 
 // Mapeamento de estilos para cada tamanho

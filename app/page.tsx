@@ -9,7 +9,7 @@ import { auth } from "@/lib/firebase/config";
 import toast from "react-hot-toast";
 import { Eye, EyeOff } from "lucide-react";
 import { Field, Label, Input } from "@headlessui/react";
-import { AppButton } from "@/components/ui/AppButton"; // ADICIONADO
+import { AppButton } from "@/components/ui/AppButton";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -67,8 +67,8 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="flex items-center justify-center min-h-screen bg-slate-100">
-      <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-xl">
+    <main className="flex items-center justify-center min-h-screen bg-slate-100 dark:bg-zinc-900">
+      <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-xl dark:bg-zinc-800">
         <div className="text-center">
           <Image
             src="/Logo.svg"
@@ -78,14 +78,14 @@ export default function LoginPage() {
             className="mx-auto mb-4 h-auto"
             priority
           />
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-gray-600 dark:text-zinc-400">
             Acesse sua conta para continuar
           </p>
         </div>
 
         <form className="space-y-6" onSubmit={handleLogin}>
           <Field>
-            <Label className="block text-sm font-medium text-gray-700">
+            <Label className="block text-sm font-medium text-gray-700 dark:text-zinc-300">
               E-mail
             </Label>
             <Input
@@ -95,12 +95,12 @@ export default function LoginPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 data-[hover]:border-teal-400"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 data-[hover]:border-teal-400 dark:bg-zinc-700 dark:border-zinc-600 dark:text-zinc-200"
             />
           </Field>
 
           <Field>
-            <Label className="block text-sm font-medium text-gray-700">
+            <Label className="block text-sm font-medium text-gray-700 dark:text-zinc-300">
               Senha
             </Label>
             <div className="relative mt-1">
@@ -111,14 +111,14 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 data-[hover]:border-teal-400"
+                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 data-[hover]:border-teal-400 dark:bg-zinc-700 dark:border-zinc-600 dark:text-zinc-200"
               />
               <AppButton
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 variant="ghost"
                 size="icon"
-                className="absolute inset-y-0 right-0 !text-gray-400 data-[hover]:!text-gray-600"
+                className="absolute inset-y-0 right-0 !text-gray-400 data-[hover]:!text-gray-600 dark:!text-zinc-400 dark:data-[hover]:!text-zinc-200"
                 aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}

@@ -11,7 +11,7 @@ import {
 import toast from "react-hot-toast";
 import { KeyRound, ArrowLeft } from "lucide-react";
 import { Field, Label, Input } from "@headlessui/react";
-import { AppButton } from "@/components/ui/AppButton"; // ADICIONADO
+import { AppButton } from "@/components/ui/AppButton";
 
 export default function AlterarSenhaPage() {
   const { user } = useAuth();
@@ -31,6 +31,7 @@ export default function AlterarSenhaPage() {
       setIsLoading(false);
       return;
     }
+
     if (newPassword !== confirmPassword) {
       toast.error("As novas senhas não coincidem.", { id: "global-toast" });
       setIsLoading(false);
@@ -82,16 +83,19 @@ export default function AlterarSenhaPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-slate-100">
-      <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-xl">
+    <div className="flex items-center justify-center min-h-screen bg-slate-100 dark:bg-zinc-900">
+      <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-xl dark:bg-zinc-800">
         <div className="text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-teal-100">
-            <KeyRound className="h-6 w-6 text-teal-600" aria-hidden="true" />
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-teal-100 dark:bg-teal-900/50">
+            <KeyRound
+              className="h-6 w-6 text-teal-600 dark:text-teal-400"
+              aria-hidden="true"
+            />
           </div>
-          <h1 className="mt-4 text-2xl font-bold text-gray-900">
+          <h1 className="mt-4 text-2xl font-bold text-gray-900 dark:text-zinc-100">
             Alterar Senha
           </h1>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-gray-600 dark:text-zinc-400">
             Para sua segurança, digite sua senha atual antes de definir uma
             nova.
           </p>
@@ -99,7 +103,7 @@ export default function AlterarSenhaPage() {
 
         <form className="space-y-6" onSubmit={handlePasswordChange}>
           <Field>
-            <Label className="block text-sm font-medium text-gray-700">
+            <Label className="block text-sm font-medium text-gray-700 dark:text-zinc-300">
               Senha Atual
             </Label>
             <Input
@@ -109,12 +113,11 @@ export default function AlterarSenhaPage() {
               required
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 data-[hover]:border-teal-400"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 data-[hover]:border-teal-400 dark:bg-zinc-700 dark:border-zinc-600 dark:text-zinc-200"
             />
           </Field>
-
           <Field>
-            <Label className="block text-sm font-medium text-gray-700">
+            <Label className="block text-sm font-medium text-gray-700 dark:text-zinc-300">
               Nova Senha
             </Label>
             <Input
@@ -124,12 +127,12 @@ export default function AlterarSenhaPage() {
               required
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 data-[hover]:border-teal-400"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 data-[hover]:border-teal-400 dark:bg-zinc-700 dark:border-zinc-600 dark:text-zinc-200"
             />
           </Field>
 
           <Field>
-            <Label className="block text-sm font-medium text-gray-700">
+            <Label className="block text-sm font-medium text-gray-700 dark:text-zinc-300">
               Confirmar Nova Senha
             </Label>
             <Input
@@ -139,7 +142,7 @@ export default function AlterarSenhaPage() {
               required
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 data-[hover]:border-teal-400"
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 data-[hover]:border-teal-400 dark:bg-zinc-700 dark:border-zinc-600 dark:text-zinc-200"
             />
           </Field>
 
@@ -160,7 +163,7 @@ export default function AlterarSenhaPage() {
             onClick={() => router.back()}
             variant="ghost"
             size="sm"
-            className="!text-teal-600 hover:!text-teal-500"
+            className="!text-teal-600 hover:!text-teal-500 dark:!text-teal-400 dark:hover:!text-teal-300"
           >
             <ArrowLeft size={16} className="mr-1" />
             Voltar

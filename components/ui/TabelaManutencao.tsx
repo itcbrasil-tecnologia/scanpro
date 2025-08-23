@@ -73,7 +73,6 @@ const columns: ColumnDef<MaintenanceNotebook>[] = [
     header: () => <div className="text-center">Ações</div>,
     cell: ({ row, table }) => {
       const openHistoryModal = table.options.meta?.openHistoryModal;
-
       if (!openHistoryModal) return null;
 
       return (
@@ -115,11 +114,14 @@ export function TabelaManutencao({
 
   return (
     <table className="w-full text-left text-sm">
-      <thead className="bg-slate-100">
+      <thead className="bg-slate-100 dark:bg-zinc-700/50">
         {table.getHeaderGroups().map((headerGroup) => (
           <tr key={headerGroup.id}>
             {headerGroup.headers.map((header) => (
-              <th key={header.id} className="p-2 font-semibold text-slate-600">
+              <th
+                key={header.id}
+                className="p-2 font-semibold text-slate-600 dark:text-zinc-300"
+              >
                 {header.isPlaceholder
                   ? null
                   : flexRender(
@@ -133,7 +135,7 @@ export function TabelaManutencao({
       </thead>
       <tbody>
         {table.getRowModel().rows.map((row) => (
-          <tr key={row.id} className="border-b">
+          <tr key={row.id} className="border-b dark:border-zinc-700">
             {row.getVisibleCells().map((cell) => (
               <td key={cell.id} className="p-2">
                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
