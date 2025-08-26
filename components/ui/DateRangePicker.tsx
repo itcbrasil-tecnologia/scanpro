@@ -1,106 +1,171 @@
+// Caminho: components/ui/DateRangePicker.tsx
+
 "use client";
 
-import React, { Fragment, useState } from "react";
-import { DayPicker, type DateRange } from "react-day-picker";
-import "react-day-picker/dist/style.css";
+import * as React from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Popover, Transition } from "@headlessui/react";
 import { Calendar as CalendarIcon } from "lucide-react";
-import { AppButton } from "./AppButton";
+import { DateRange } from "react-day-picker";
 
-interface DateRangePickerProps {
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+interface DateRangePickerProps extends React.HTMLAttributes<HTMLDivElement> {
   range: DateRange | undefined;
   setRange: (range: DateRange | undefined) => void;
 }
 
-// Objeto de estilos para o teste final
-const calendarStyles = {
-  day: {
-    borderRadius: "100%",
-  },
-  selected: {
-    backgroundColor: "#0d9488", // Cor Teal do ScanPRO
-    color: "white",
-  },
-  today: {
-    color: "#0d9488", // Cor Teal do ScanPRO
-    fontWeight: "bold",
-  },
-};
-
-export const DateRangePicker: React.FC<DateRangePickerProps> = ({
+export function DateRangePicker({
+  className,
   range,
   setRange,
-}) => {
-  const [month, setMonth] = useState<Date>(range?.from || new Date());
-
-  const handleClear = () => {
-    setRange(undefined);
-  };
-
-  const handleGoToToday = () => {
-    setMonth(new Date());
-    setRange({ from: new Date(), to: new Date() });
-  };
-
-  const footer = (
-    <div className="flex justify-end items-center p-2 border-t mt-2 space-x-2">
-      <AppButton onClick={handleGoToToday} variant="ghost" size="sm">
-        Hoje
-      </AppButton>
-      <AppButton onClick={handleClear} variant="secondary" size="sm">
-        Limpar
-      </AppButton>
-    </div>
+}: DateRangePickerProps) {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [localRange, setLocalRange] = React.useState<DateRange | undefined>(
+    range
   );
+  const [month, setMonth] = React.useState<Date>(range?.from || new Date());
+
+  React.useEffect(() => {
+    setLocalRange(range);
+  }, [range]);
+
+  const handleApply = () => {
+    setRange(localRange);
+    setIsOpen(false);
+  };
+
+  const handleYearChange = (year: string) => {
+    const newDate = new Date(month);
+    newDate.setFullYear(parseInt(year, 10));
+    setMonth(newDate);
+  };
+
+  const handleMonthChange = (monthIndex: string) => {
+    const newDate = new Date(month);
+    newDate.setMonth(parseInt(monthIndex, 10));
+    setMonth(newDate);
+  };
+
+  const currentYear = new Date().getFullYear();
+  const years = Array.from(
+    { length: currentYear - 2020 + 1 },
+    (_, i) => currentYear - i
+  );
+  const months = Array.from({ length: 12 }, (_, i) => i);
 
   return (
-    <Popover className="relative">
-      <Popover.Button className="relative w-full cursor-default rounded-md bg-white py-2 pl-3 pr-10 text-left border focus:outline-none focus-visible:border-teal-500 focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-opacity-75 focus-visible:ring-offset-2 focus-visible:ring-offset-teal-300 sm:text-sm">
-        <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-        <span className="pl-6 text-sm">
-          {range?.from ? (
-            range.to ? (
-              <>
-                {format(range.from, "dd/MM/yy", { locale: ptBR })} -{" "}
-                {format(range.to, "dd/MM/yy", { locale: ptBR })}
-              </>
+    <div className={cn("grid gap-2", className)}>
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            id="date"
+            variant={"outline"}
+            className={cn(
+              "w-full justify-start text-left font-normal",
+              !range && "text-muted-foreground"
+            )}
+          >
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {range?.from ? (
+              range.to ? (
+                <>
+                  {format(range.from, "dd/MM/y", { locale: ptBR })} -{" "}
+                  {format(range.to, "dd/MM/y", { locale: ptBR })}
+                </>
+              ) : (
+                format(range.from, "dd/MM/y", { locale: ptBR })
+              )
             ) : (
-              format(range.from, "dd/MM/yy", { locale: ptBR })
-            )
-          ) : (
-            <span>Selecione um período</span>
-          )}
-        </span>
-      </Popover.Button>
-      <Transition
-        as={Fragment}
-        enter="transition ease-out duration-200"
-        enterFrom="opacity-0 translate-y-1"
-        enterTo="opacity-100 translate-y-0"
-        leave="transition ease-in duration-150"
-        leaveFrom="opacity-100 translate-y-0"
-        leaveTo="opacity-0 translate-y-1"
-      >
-        <Popover.Panel className="absolute right-0 z-10 mt-1 w-auto bg-white border rounded-md shadow-lg p-3">
-          <DayPicker
+              <span>Selecione um período</span>
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <div className="flex justify-between items-center gap-2 p-3 border-b">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setMonth(new Date())}
+              className="hover:bg-teal-100 dark:hover:bg-teal-900"
+            >
+              Hoje
+            </Button>
+            <div className="flex items-center gap-2">
+              <Select
+                onValueChange={handleMonthChange}
+                value={String(month.getMonth())}
+              >
+                <SelectTrigger className="w-[120px] text-xs h-8">
+                  <SelectValue placeholder="Mês" />
+                </SelectTrigger>
+                <SelectContent>
+                  {months.map((m) => (
+                    <SelectItem key={m} value={String(m)}>
+                      {format(new Date(0, m), "MMMM", {
+                        locale: ptBR,
+                      })}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                onValueChange={handleYearChange}
+                value={String(month.getFullYear())}
+              >
+                <SelectTrigger className="w-[80px] text-xs h-8">
+                  <SelectValue placeholder="Ano" />
+                </SelectTrigger>
+                <SelectContent>
+                  {years.map((y) => (
+                    <SelectItem key={y} value={String(y)}>
+                      {y}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <Calendar
             initialFocus
-            mode="range"
             month={month}
             onMonthChange={setMonth}
-            selected={range}
-            onSelect={setRange}
-            locale={ptBR}
+            mode="range"
+            selected={localRange}
+            onSelect={setLocalRange}
             numberOfMonths={2}
-            footer={footer}
-            styles={calendarStyles} // Usando a prop `styles`
-            modifiersClassNames={{
-              selected: "font-bold", // Mantemos a classe para o texto em negrito
-            }}
+            locale={ptBR}
+            footer={
+              <div className="flex justify-end p-2 border-t mt-2 space-x-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setLocalRange(undefined)}
+                >
+                  Limpar
+                </Button>
+                <Button size="sm" onClick={handleApply}>
+                  Aplicar
+                </Button>
+              </div>
+            }
           />
-        </Popover.Panel>
-      </Transition>
-    </Popover>
+        </PopoverContent>
+      </Popover>
+    </div>
   );
-};
+}

@@ -1,5 +1,6 @@
-"use client";
+// Caminho: app/(admin)/ums/page.tsx
 
+"use client";
 import React, {
   useState,
   useEffect,
@@ -77,7 +78,6 @@ function UMListItem({
 }) {
   const actionButtonClasses =
     "bg-slate-100 data-[hover]:bg-slate-200 dark:bg-zinc-700/50 dark:data-[hover]:bg-zinc-700";
-
   return (
     <div className="bg-slate-50 rounded-md dark:bg-zinc-900/50">
       <div className="hidden sm:grid grid-cols-4 gap-4 items-center p-3">
@@ -307,7 +307,6 @@ export default function UMsPage() {
       });
       return;
     }
-
     const expectedPeripherals = Object.entries(formState.peripherals)
       .filter(([, isChecked]) => isChecked)
       .map(([peripheralName]) => peripheralName);
@@ -318,7 +317,6 @@ export default function UMsPage() {
       expectedNotebooks: Number(formState.expectedNotebooks) || 0,
       expectedPeripherals,
     };
-
     try {
       if (currentUm) {
         const umRef = doc(db, "ums", currentUm.id);
@@ -350,7 +348,6 @@ export default function UMsPage() {
         limit(1)
       );
       const notebooksSnapshot = await getDocs(notebooksQuery);
-
       if (!notebooksSnapshot.empty) {
         toast.error(
           "Não é possível excluir. Existem notebooks associados a esta UM.",
@@ -390,6 +387,7 @@ export default function UMsPage() {
           <span className="sm:hidden">UM</span>
         </AppButton>
       </div>
+
       {isLoading ? (
         <p className="text-center text-gray-500 py-8 dark:text-zinc-400">
           Carregando dados...
@@ -479,7 +477,7 @@ export default function UMsPage() {
                         className={({ active }) =>
                           `relative cursor-default select-none py-2 pl-10 pr-4 ${
                             active
-                              ? "bg-teal-100 text-teal-900 dark:bg-zinc-700"
+                              ? "bg-teal-100 text-teal-900 dark:bg-zinc-700 dark:text-white"
                               : "text-gray-900 dark:text-zinc-200"
                           }`
                         }

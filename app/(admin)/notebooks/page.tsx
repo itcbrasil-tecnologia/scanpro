@@ -1,5 +1,6 @@
-"use client";
+// Caminho: app/(admin)/notebooks/page.tsx
 
+"use client";
 import React, { useState, useEffect, useCallback, Fragment } from "react";
 import { db } from "@/lib/firebase/config";
 import {
@@ -53,13 +54,11 @@ interface Project {
   name: string;
   color: string;
 }
-
 interface UM {
   id: string;
   name: string;
   projectId: string;
 }
-
 interface Notebook {
   id: string;
   hostname: string;
@@ -69,7 +68,6 @@ interface Notebook {
   status?: "Ativo" | "Em Manutenção";
   maintenanceStartDate?: Timestamp;
 }
-
 interface CsvData {
   hostname: string;
   serialNumber: string;
@@ -94,7 +92,6 @@ function NotebookListItem({
   const isMaintenance = notebook.status === "Em Manutenção";
   const actionButtonClasses =
     "bg-slate-100 data-[hover]:bg-slate-200 dark:bg-zinc-700/50 dark:data-[hover]:bg-zinc-700";
-
   const actionButtons = (
     <div className="flex items-center space-x-2 flex-shrink-0">
       <AppButton
@@ -146,10 +143,8 @@ function NotebookListItem({
       </AppButton>
     </div>
   );
-
   return (
     <li className="bg-white p-2 rounded-md border border-slate-200 dark:bg-zinc-800/50 dark:border-zinc-700">
-      {/* Layout para Desktop (visivel a partir de sm: 640px) */}
       <div className="hidden sm:flex items-center justify-between">
         <div className="flex items-center min-w-0">
           <span title={`Status: ${notebook.status || "Ativo"}`}>
@@ -169,10 +164,10 @@ function NotebookListItem({
         </div>
         {actionButtons}
       </div>
-      {/* Layout para Mobile (escondido a partir de sm: 640px) */}
       <div className="sm:hidden">
         <Disclosure>
           {({ open }) => (
+            /* ATUALIZADO: Substituído <Fragment> ou <> por <div> para resolver o erro */
             <div>
               <Disclosure.Button className="w-full flex items-center justify-between text-left py-1">
                 <div className="flex items-center min-w-0">
@@ -259,6 +254,7 @@ export default function NotebooksPage() {
     endNumber: 1,
     batchSelectedUmId: "",
   });
+
   const [generatedNames, setGeneratedNames] = useState<string[]>([]);
 
   const fetchData = useCallback(async () => {
@@ -269,13 +265,11 @@ export default function NotebooksPage() {
         (doc) => ({ id: doc.id, ...doc.data() } as Project)
       );
       setProjects(projectsList);
-
       const umsSnapshot = await getDocs(collection(db, "ums"));
       const umsList = umsSnapshot.docs.map(
         (doc) => ({ id: doc.id, ...doc.data() } as UM)
       );
       setUms(umsList);
-
       if (umsList.length > 0) {
         setFormState((prev) => ({
           ...prev,
@@ -287,7 +281,6 @@ export default function NotebooksPage() {
         }));
         setImportUmId((prev) => prev || umsList[0].id);
       }
-
       const notebooksSnapshot = await getDocs(collection(db, "notebooks"));
       const notebooksList = notebooksSnapshot.docs.map(
         (doc) => ({ id: doc.id, ...doc.data() } as Notebook)
@@ -438,10 +431,10 @@ export default function NotebooksPage() {
       });
       return;
     }
-
     const batch = writeBatch(db);
     const notebooksCollection = collection(db, "notebooks");
     const umName = ums.find((um) => um.id === importUmId)?.name || "N/A";
+
     const newNotebooksWithIds: { id: string; name: string }[] = [];
 
     parsedCsvData.forEach((notebook) => {
@@ -568,6 +561,7 @@ export default function NotebooksPage() {
 
         const umName =
           ums.find((um) => um.id === formState.selectedUmId)?.name || "N/A";
+
         await logLifecycleEvent(
           newDocRef.id,
           "Criação",
@@ -609,7 +603,6 @@ export default function NotebooksPage() {
 
   const handleToggleMaintenanceStatus = async () => {
     if (!notebookForMaintenance) return;
-
     const { id, hostname } = notebookForMaintenance;
     const currentStatus = notebookForMaintenance.status || "Ativo";
     const newStatus = currentStatus === "Ativo" ? "Em Manutenção" : "Ativo";
@@ -657,6 +650,7 @@ export default function NotebooksPage() {
       });
       return;
     }
+
     const names = [];
     for (
       let i = batchFormState.startNumber;
@@ -676,7 +670,6 @@ export default function NotebooksPage() {
       });
       return;
     }
-
     try {
       const batch = writeBatch(db);
       const notebooksCollection = collection(db, "notebooks");
@@ -684,7 +677,6 @@ export default function NotebooksPage() {
         ums.find((um) => um.id === batchFormState.batchSelectedUmId)?.name ||
         "N/A";
       const newNotebooksWithIds: { id: string; name: string }[] = [];
-
       generatedNames.forEach((name) => {
         const newNotebookRef = doc(notebooksCollection);
         batch.set(newNotebookRef, {
@@ -694,7 +686,6 @@ export default function NotebooksPage() {
         });
         newNotebooksWithIds.push({ id: newNotebookRef.id, name });
       });
-
       await batch.commit();
 
       for (const nb of newNotebooksWithIds) {
@@ -723,14 +714,12 @@ export default function NotebooksPage() {
 
   const handleDeleteBatch = async () => {
     if (!umToDeleteFrom) return;
-
     try {
       const notebooksQuery = query(
         collection(db, "notebooks"),
         where("umId", "==", umToDeleteFrom.id)
       );
       const snapshot = await getDocs(notebooksQuery);
-
       if (snapshot.empty) {
         toast.error("Nenhum notebook para excluir nesta UM.", {
           id: "global-toast",
@@ -738,11 +727,9 @@ export default function NotebooksPage() {
         setIsDeleteBatchModalOpen(false);
         return;
       }
-
       const batch = writeBatch(db);
       snapshot.docs.forEach((doc) => batch.delete(doc.ref));
       await batch.commit();
-
       toast.success(
         `Todos os notebooks da UM "${umToDeleteFrom.name}" foram excluídos.`,
         { id: "global-toast" }
@@ -784,8 +771,7 @@ export default function NotebooksPage() {
           </AppButton>
           <AppButton
             onClick={() => setIsBatchModalOpen(true)}
-            variant="ghost"
-            className="bg-blue-600 text-white data-[hover]:bg-blue-700"
+            className="bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-600 dark:text-white dark:hover:bg-blue-700"
           >
             <Layers size={20} className="mr-2" />
             <span className="hidden sm:inline">Adicionar em Lote</span>
@@ -1025,7 +1011,7 @@ export default function NotebooksPage() {
                       className={({ active }) =>
                         `relative cursor-default select-none py-2 pl-10 pr-4 ${
                           active
-                            ? "bg-teal-100 text-teal-900 dark:bg-zinc-700"
+                            ? "bg-teal-100 text-teal-900 dark:bg-zinc-700 dark:text-white"
                             : "text-gray-900 dark:text-zinc-200"
                         }`
                       }
@@ -1097,7 +1083,7 @@ export default function NotebooksPage() {
                       className={({ active }) =>
                         `relative cursor-default select-none py-2 pl-10 pr-4 ${
                           active
-                            ? "bg-teal-100 text-teal-900 dark:bg-zinc-700"
+                            ? "bg-teal-100 text-teal-900 dark:bg-zinc-700 dark:text-white"
                             : "text-gray-900 dark:text-zinc-200"
                         }`
                       }
@@ -1207,7 +1193,7 @@ export default function NotebooksPage() {
           <AppButton
             onClick={handleDownloadTemplate}
             variant="ghost"
-            className="!text-teal-600 !p-0 data-[hover]:!bg-transparent data-[hover]:underline dark:!text-teal-400"
+            className="!text-teal-600 p-0 data-[hover]:!bg-transparent data-[hover]:underline dark:!text-teal-400"
           >
             Baixar modelo de planilha (.csv)
           </AppButton>
@@ -1242,7 +1228,7 @@ export default function NotebooksPage() {
                         className={({ active }) =>
                           `relative cursor-default select-none py-2 pl-10 pr-4 ${
                             active
-                              ? "bg-teal-100 text-teal-900 dark:bg-zinc-700"
+                              ? "bg-teal-100 text-teal-900 dark:bg-zinc-700 dark:text-white"
                               : "text-gray-900 dark:text-zinc-200"
                           }`
                         }

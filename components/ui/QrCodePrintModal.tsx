@@ -1,5 +1,6 @@
-"use client";
+// Caminho: components/ui/QrCodePrintModal.tsx
 
+"use client";
 import React, { useState, Fragment } from "react";
 import { Modal } from "./Modal";
 import { QRCodeSVG } from "qrcode.react";
@@ -60,7 +61,6 @@ export function QrCodePrintModal({
         const dataUrl = `data:image/svg+xml;base64,${btoa(svgXml)}`;
         const img = new Image();
         img.src = dataUrl;
-
         await new Promise((resolve) => {
           img.onload = resolve;
         });
@@ -78,7 +78,6 @@ export function QrCodePrintModal({
           ctx.font = `${textFontSize}px monospace`;
           textWidth = ctx.measureText(name).width;
         }
-
         if (showHostname && hostnamePosition === "right") {
           canvas.width = qrSize + textWidth + padding * 2 + textMargin;
           canvas.height = qrSize + padding * 2;
@@ -300,7 +299,8 @@ export function QrCodePrintModal({
             </div>
           ))}
         </div>
-        <div className="no-print flex justify-end space-x-3 pt-4">
+
+        <div className="no-print flex justify-end items-center space-x-3 pt-4">
           <AppButton onClick={onClose} variant="secondary">
             <X size={20} className="mr-2" />
             Fechar
@@ -308,7 +308,7 @@ export function QrCodePrintModal({
           <AppButton
             onClick={handleDownload}
             disabled={isDownloading}
-            className="bg-blue-600 text-white data-[hover]:bg-blue-700"
+            className="bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-600 dark:text-white dark:hover:bg-blue-700"
           >
             <Download size={20} className="mr-2" />
             Baixar PNGs

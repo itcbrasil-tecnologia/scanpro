@@ -1,5 +1,6 @@
-"use client";
+// Caminho: app/(admin)/relatorios/page.tsx
 
+"use client";
 import React, { useState, useEffect, useCallback, Fragment } from "react";
 import { db } from "@/lib/firebase/config";
 import {
@@ -32,15 +33,18 @@ interface Project {
   id: string;
   name: string;
 }
+
 interface UM {
   id: string;
   name: string;
   projectId: string;
 }
+
 interface Technician {
   uid: string;
   nome: string;
 }
+
 interface Filters {
   projectId: string;
   umId: string;
@@ -114,6 +118,7 @@ export default function ReportsPage() {
     ) => {
       setIsLoading(true);
       const activeFilters = currentFilters || filters;
+
       try {
         const conferencesRef = collection(db, "conferences");
         const queryConstraints: QueryConstraint[] = [];
@@ -164,12 +169,14 @@ export default function ReportsPage() {
           orderBy("endTime", "desc"),
           limit(ITEMS_PER_PAGE),
         ];
+
         if (page > 1 && startingAfter) {
           dataQueryConstraints.push(startAfter(startingAfter));
         }
 
         const dataQuery = query(conferencesRef, ...dataQueryConstraints);
         const documentSnapshots = await getDocs(dataQuery);
+
         const conferenceData = documentSnapshots.docs.map(
           (doc) =>
             ({
@@ -177,6 +184,7 @@ export default function ReportsPage() {
               ...doc.data(),
             } as ConferenceData)
         );
+
         setConferences(conferenceData);
         setLastVisible(
           documentSnapshots.docs[documentSnapshots.docs.length - 1] || null
@@ -256,6 +264,7 @@ export default function ReportsPage() {
       Carregadores: data.chargersCount ?? 0,
       "Fones de Ouvido": data.headsetsCount ?? 0,
     }));
+
     const csvData = Papa.unparse(formattedData);
     const blob = new Blob([`\uFEFF${csvData}`], {
       type: "text/csv;charset=utf-8;",
