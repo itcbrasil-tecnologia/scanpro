@@ -36,16 +36,15 @@ export function useQRScanner({
       await scannerRef.current.start(
         {
           facingMode: "environment",
-          // MÁGICA AQUI: Exige a resolução máxima (4K/2K) para garantir
-          // densidade de pixels ao ler micro-etiquetas de 12mm de longe.
-          // Usamos "ideal" em vez de "exact" para não quebrar em celulares mais fracos.
-          width: { ideal: 3840 },
-          height: { ideal: 2160 },
+          // Reduzido para Full HD. Garante altíssima densidade de pixels
+          // para a micro-etiqueta, sem travar o WebRTC do navegador.
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
         },
         {
-          fps: 15, // Aumentamos para 15 FPS para capturar o instante exato do foco
+          fps: 10, // Retornamos para 10 FPS para dar mais tempo de processamento à CPU
           qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0,
+          // REMOVIDO: aspectRatio: 1.0 -> Forçar proporção quadrada em vídeo 16:9 causa tela preta em celulares
           disableFlip: false,
         },
         (decodedText: string) => {
@@ -62,6 +61,10 @@ export function useQRScanner({
       setIsScanning(true);
     } catch (err) {
       console.error("Falha ao iniciar a câmera para QR", err);
+      // Se falhar de novo, passa o erro para frente para não ficar silencioso
+      if (isActiveRef.current && onScanErrorRef.current) {
+        onScanErrorRef.current("Erro de hardware: " + String(err));
+      }
       setIsScanning(false);
     }
   }, [elementId]);
