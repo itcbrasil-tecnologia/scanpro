@@ -17,7 +17,6 @@ export function useQRScanner({
   const [isScanning, setIsScanning] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
 
-  // Callback Refs para evitar o erro exhaustive-deps do ESLint
   const onScanSuccessRef = useRef(onScanSuccess);
   const onScanErrorRef = useRef(onScanError);
   const isActiveRef = useRef(isActive);
@@ -35,9 +34,16 @@ export function useQRScanner({
 
     try {
       await scannerRef.current.start(
-        { facingMode: "environment" },
         {
-          fps: 10,
+          facingMode: "environment",
+          // MÁGICA AQUI: Exige a resolução máxima (4K/2K) para garantir
+          // densidade de pixels ao ler micro-etiquetas de 12mm de longe.
+          // Usamos "ideal" em vez de "exact" para não quebrar em celulares mais fracos.
+          width: { ideal: 3840 },
+          height: { ideal: 2160 },
+        },
+        {
+          fps: 15, // Aumentamos para 15 FPS para capturar o instante exato do foco
           qrbox: { width: 250, height: 250 },
           aspectRatio: 1.0,
           disableFlip: false,
@@ -47,7 +53,6 @@ export function useQRScanner({
             onScanSuccessRef.current(decodedText);
           }
         },
-        // CORREÇÃO: Substituição de 'any' por 'unknown' para satisfazer o ESLint
         (error: unknown) => {
           if (isActiveRef.current && onScanErrorRef.current) {
             onScanErrorRef.current(String(error));
