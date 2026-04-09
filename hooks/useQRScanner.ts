@@ -29,22 +29,18 @@ export function useQRScanner({
 
   const startScanner = useCallback(async () => {
     if (!scannerRef.current) {
-      scannerRef.current = new Html5Qrcode(elementId);
+      scannerRef.current = new Html5Qrcode(elementId, false);
     }
 
     try {
+      // Pedimos apenas a câmera traseira, SEM impor resolução.
+      // Isso garante que não haverá OverconstrainedError e a câmera abrirá.
       await scannerRef.current.start(
+        { facingMode: "environment" },
         {
-          facingMode: "environment",
-          // Reduzido para Full HD. Garante altíssima densidade de pixels
-          // para a micro-etiqueta, sem travar o WebRTC do navegador.
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-        },
-        {
-          fps: 10, // Retornamos para 10 FPS para dar mais tempo de processamento à CPU
-          qrbox: { width: 250, height: 250 },
-          // REMOVIDO: aspectRatio: 1.0 -> Forçar proporção quadrada em vídeo 16:9 causa tela preta em celulares
+          fps: 15,
+          // Box menor atua como um crop/zoom para ler as micro-etiquetas.
+          qrbox: { width: 150, height: 150 },
           disableFlip: false,
         },
         (decodedText: string) => {
@@ -61,10 +57,6 @@ export function useQRScanner({
       setIsScanning(true);
     } catch (err) {
       console.error("Falha ao iniciar a câmera para QR", err);
-      // Se falhar de novo, passa o erro para frente para não ficar silencioso
-      if (isActiveRef.current && onScanErrorRef.current) {
-        onScanErrorRef.current("Erro de hardware: " + String(err));
-      }
       setIsScanning(false);
     }
   }, [elementId]);
