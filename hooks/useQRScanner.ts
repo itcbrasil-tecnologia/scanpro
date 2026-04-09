@@ -33,13 +33,16 @@ export function useQRScanner({
     }
 
     try {
-      // Pedimos apenas a câmera traseira, SEM impor resolução.
-      // Isso garante que não haverá OverconstrainedError e a câmera abrirá.
       await scannerRef.current.start(
-        { facingMode: "environment" },
+        {
+          facingMode: "environment",
+          // AGORA SIM: Com o DOM protegido, podemos escalar a resolução!
+          // Pedimos Full HD (1080p) para garantir densidade de pixels no zoom digital.
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
         {
           fps: 15,
-          // Box menor atua como um crop/zoom para ler as micro-etiquetas.
           qrbox: { width: 150, height: 150 },
           disableFlip: false,
         },
