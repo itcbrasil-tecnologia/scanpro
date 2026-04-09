@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useQRScanner } from "../../hooks/useQRScanner";
-import { QrCode, CameraOff, RefreshCw } from "lucide-react";
+import { QrCode, CameraOff, RefreshCw, AlertTriangle } from "lucide-react";
 
 interface QRScannerProps {
   onCodeScanned: (code: string) => void;
@@ -13,14 +13,14 @@ export function QRScanner({ onCodeScanned }: QRScannerProps) {
   const [isActive, setIsActive] = useState(true);
   const scannerElementId = "qr-scanner-container";
 
-  const { isScanning } = useQRScanner({
+  // Desestruturamos o initError que criamos no Hook
+  const { isScanning, initError } = useQRScanner({
     elementId: scannerElementId,
     isActive: isActive && isMounted,
     onScanSuccess: (code) => {
       setIsActive(false);
       onCodeScanned(code);
     },
-    onScanError: () => {},
   });
 
   useEffect(() => {
@@ -40,18 +40,37 @@ export function QRScanner({ onCodeScanned }: QRScannerProps) {
 
   return (
     <div className="flex flex-col items-center w-full max-w-md mx-auto relative rounded-xl overflow-hidden bg-black shadow-2xl border border-zinc-800">
-      {/* O SEGREDO DA CORREÇÃO: 
-        Este div DEVE ficar 100% vazio. O React não pode ter filhos aqui, 
-        senão ele apaga o vídeo gerado pelo html5-qrcode.
-      */}
       <div
         id={scannerElementId}
         className="w-full min-h-[300px] bg-zinc-950 relative z-0"
       ></div>
 
-      {/* OVERLAYS VISUAIS (Devem ficar FORA do div do scanner, sobrepostos via CSS absolute) */}
+      {/* NOVO: OVERLAY DE ERRO CRÍTICO */}
+      {initError && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-zinc-300 gap-3 bg-zinc-950 z-40 text-center">
+          <AlertTriangle size={40} className="text-red-500 mb-2" />
+          <p className="text-sm font-bold">Câmera Bloqueada</p>
+          <p className="text-xs text-zinc-400">
+            O navegador recusou o acesso à câmera.
+          </p>
+          <p className="text-xs text-red-400 bg-red-500/10 p-2 rounded border border-red-500/20 w-full break-all line-clamp-2">
+            {initError}
+          </p>
+          <p className="text-xs text-amber-500 font-medium mt-1">
+            Dica: Se estiver no WhatsApp, abra no Safari/Chrome.
+          </p>
+          <button
+            onClick={handleRestart}
+            className="mt-3 flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg transition-colors cursor-pointer"
+          >
+            <RefreshCw size={16} />
+            Tentar Novamente
+          </button>
+        </div>
+      )}
 
-      {!isActive && !isScanning && (
+      {/* OVERLAY DE PAUSA */}
+      {!isActive && !isScanning && !initError && (
         <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-zinc-400 gap-4 bg-zinc-950 z-20">
           <CameraOff size={48} className="opacity-50" />
           <p className="text-sm font-medium text-center">Câmera pausada.</p>
@@ -65,7 +84,7 @@ export function QRScanner({ onCodeScanned }: QRScannerProps) {
         </div>
       )}
 
-      {/* Botão Flutuante Superior */}
+      {/* Botão Flutuante */}
       <div className="absolute top-4 right-4 z-30 flex gap-2">
         <button
           onClick={isActive ? handleStop : handleRestart}
@@ -79,10 +98,9 @@ export function QRScanner({ onCodeScanned }: QRScannerProps) {
         </button>
       </div>
 
-      {/* Mira Verde (Só aparece se a câmera injetou o vídeo) */}
-      {isScanning && (
+      {/* Mira Verde */}
+      {isScanning && !initError && (
         <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
-          {/* Box reduzido para 150px para forçar aproximação e zoom */}
           <div className="w-[150px] h-[150px] border-2 border-emerald-500 rounded-2xl flex items-center justify-center relative bg-emerald-500/5">
             <div
               className="absolute w-full h-[2px] bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse"

@@ -15,33 +15,27 @@ export function useQRScanner({
   isActive,
 }: UseQRScannerProps) {
   const [isScanning, setIsScanning] = useState(false);
+  // NOVO: Estado para capturar o motivo da tela preta
+  const [initError, setInitError] = useState<string | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
 
   const onScanSuccessRef = useRef(onScanSuccess);
-  const onScanErrorRef = useRef(onScanError);
   const isActiveRef = useRef(isActive);
 
   useEffect(() => {
     onScanSuccessRef.current = onScanSuccess;
-    onScanErrorRef.current = onScanError;
     isActiveRef.current = isActive;
-  }, [onScanSuccess, onScanError, isActive]);
+  }, [onScanSuccess, isActive]);
 
   const startScanner = useCallback(async () => {
+    setInitError(null);
     if (!scannerRef.current) {
       scannerRef.current = new Html5Qrcode(elementId, false);
     }
 
-    // CONFIGURAÇÃO SNIPER
     const config = {
-      fps: 10, // Mais tempo de CPU por quadro
-      qrbox: { width: 170, height: 170 }, // Área um pouco maior para facilitar enquadramento
-      // O número 0 é o valor bruto do Enum Html5QrcodeSupportedFormats.QR_CODE.
-      // Dribla o bug do Next.js e foca 100% da performance na leitura de matriz 2D.
-      formatsToSupport: [0],
-      experimentalFeatures: {
-        useBarCodeDetectorIfSupported: true, // Usa API de hardware nativo do Android se disponível
-      },
+      fps: 10,
+      qrbox: { width: 150, height: 150 },
       disableFlip: false,
     };
 
@@ -51,42 +45,39 @@ export function useQRScanner({
       }
     };
 
-    const handleError = (error: unknown) => {
-      if (isActiveRef.current && onScanErrorRef.current) {
-        onScanErrorRef.current(String(error));
-      }
-    };
+    // Ignora os alertas de "frame vazio" para não poluir o terminal
+    const handleFrameError = () => {};
 
     try {
-      // TENTATIVA 1: O "Sweet Spot" (Full HD)
-      // Se o celular suportar, teremos a melhor resolução possível.
+      // TENTATIVA 1: O Ponto Ideal (HD Seguro - 720p).
+      // Garante a nitidez para a etiqueta, mas não sofre o bloqueio do 1080p/4K.
       await scannerRef.current.start(
         {
           facingMode: "environment",
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
         },
         config,
         handleSuccess,
-        handleError,
+        handleFrameError,
       );
       setIsScanning(true);
     } catch (err1) {
-      console.warn("1080p recusado pelo hardware. Acionando Fallback...", err1);
+      console.warn("HD recusado. Acionando Fallback de Segurança...", err1);
 
       try {
         // TENTATIVA 2: Fallback Universal
-        // Se o 1080p falhar, captura o erro e pede a câmera padrão sem restrições.
-        // Isso garante que a caixinha de PERMISSÃO vai aparecer e a tela preta não ocorrerá.
+        // Se o HD falhar, pede a câmera do jeito mais básico possível.
         await scannerRef.current.start(
           { facingMode: "environment" },
           config,
           handleSuccess,
-          handleError,
+          handleFrameError,
         );
         setIsScanning(true);
       } catch (err2) {
-        console.error("Falha total na inicialização da câmera", err2);
+        console.error("Falha fatal na inicialização:", err2);
+        setInitError(String(err2)); // Salva o erro para mostrar na tela
         setIsScanning(false);
       }
     }
@@ -118,5 +109,5 @@ export function useQRScanner({
     };
   }, [isActive, startScanner, stopScanner, isScanning]);
 
-  return { isScanning, startScanner, stopScanner };
+  return { isScanning, startScanner, stopScanner, initError };
 }
