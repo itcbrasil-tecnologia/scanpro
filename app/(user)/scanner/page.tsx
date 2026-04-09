@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Fragment } from "react";
 import { useRouter } from "next/navigation";
-import { Scanner, IDetectedBarcode } from "@yudiel/react-qr-scanner";
+import { QRScanner } from "../../../components/scanner/QRScanner";
 import { useAuth } from "@/context/AuthContext";
 import { db as firestoreDB } from "@/lib/firebase/config";
 import {
@@ -84,10 +84,10 @@ export default function ScannerPage() {
   const [scannedDevices, setScannedDevices] = useState<string[]>([]);
   const [expectedPeripherals, setExpectedPeripherals] = useState<string[]>([]);
   const [conferenceStartTime, setConferenceStartTime] = useState<Date | null>(
-    null
+    null,
   );
   const [step, setStep] = useState<"selection" | "scanning" | "peripherals">(
-    "selection"
+    "selection",
   );
   const [miceCount, setMiceCount] = useState(0);
   const [chargersCount, setChargersCount] = useState(0);
@@ -117,18 +117,18 @@ export default function ScannerPage() {
       setIsLoading(true);
       try {
         const umsSnapshot = await getDocs(
-          query(collection(firestoreDB, "ums"), orderBy("name"))
+          query(collection(firestoreDB, "ums"), orderBy("name")),
         );
         const umsList = umsSnapshot.docs.map(
-          (doc) => ({ id: doc.id, ...doc.data() } as UM)
+          (doc) => ({ id: doc.id, ...doc.data() }) as UM,
         );
         setUms(umsList);
 
         const projectsSnapshot = await getDocs(
-          collection(firestoreDB, "projects")
+          collection(firestoreDB, "projects"),
         );
         const projectsList = projectsSnapshot.docs.map(
-          (doc) => ({ id: doc.id, ...doc.data() } as Project)
+          (doc) => ({ id: doc.id, ...doc.data() }) as Project,
         );
         setProjects(projectsList);
       } catch (error) {
@@ -157,16 +157,16 @@ export default function ScannerPage() {
       try {
         const selectedUMData = ums.find((um) => um.id === selectedUmId);
         setExpectedPeripherals(
-          selectedUMData?.expectedPeripherals ?? AVAILABLE_PERIPHERALS
+          selectedUMData?.expectedPeripherals ?? AVAILABLE_PERIPHERALS,
         );
 
         const notebooksQuery = query(
           collection(firestoreDB, "notebooks"),
-          where("umId", "==", selectedUmId)
+          where("umId", "==", selectedUmId),
         );
         const notebooksSnapshot = await getDocs(notebooksQuery);
         const notebooksList: Notebook[] = notebooksSnapshot.docs.map(
-          (doc) => doc.data() as Notebook
+          (doc) => doc.data() as Notebook,
         );
 
         const active = notebooksList
@@ -195,8 +195,7 @@ export default function ScannerPage() {
     fetchNotebooksForUM();
   }, [selectedUmId, ums]);
 
-  const handleScan = (result: IDetectedBarcode[]) => {
-    const scannedText = result[0]?.rawValue;
+  const handleScan = (scannedText: string) => {
     if (!scannedText) return;
 
     if (scannedDevices.includes(scannedText)) {
@@ -206,10 +205,10 @@ export default function ScannerPage() {
 
     if (devicesToScan.includes(scannedText)) {
       setDevicesToScan((previousState) =>
-        previousState.filter((device) => device !== scannedText)
+        previousState.filter((device) => device !== scannedText),
       );
       setScannedDevices((previousState) =>
-        [...previousState, scannedText].sort()
+        [...previousState, scannedText].sort(),
       );
       toast.success(`"${scannedText}" Escaneado com sucesso!`, {
         id: "global-toast",
@@ -217,7 +216,7 @@ export default function ScannerPage() {
     } else {
       toast.error(
         `"${scannedText}" não pertence a esta UM ou está em manutenção.`,
-        { id: "global-toast" }
+        { id: "global-toast" },
       );
     }
   };
@@ -244,7 +243,7 @@ export default function ScannerPage() {
     const endTimeValue = new Date();
     const selectedUM = ums.find((um) => um.id === selectedUmId);
     const selectedProject = projects.find(
-      (project) => project.id === selectedUM?.projectId
+      (project) => project.id === selectedUM?.projectId,
     );
 
     const data: ConferenceData = {
@@ -283,7 +282,7 @@ export default function ScannerPage() {
         toast.dismiss("location-toast");
         toast.error(
           "Não foi possível obter a localização. A conferência será salva sem ela.",
-          { duration: 4000 }
+          { duration: 4000 },
         );
       }
     }
@@ -305,10 +304,10 @@ export default function ScannerPage() {
         (chunk) => {
           const notebooksQuery = query(
             collection(firestoreDB, "notebooks"),
-            where("hostname", "in", chunk)
+            where("hostname", "in", chunk),
           );
           return getDocs(notebooksQuery);
-        }
+        },
       );
       const querySnapshots = await Promise.all(queryPromises);
 
@@ -328,7 +327,7 @@ export default function ScannerPage() {
         const notebookId = hostnameToIdMap.get(hostname);
         if (notebookId) {
           const eventRef = doc(
-            collection(firestoreDB, "notebooks", notebookId, "lifecycleEvents")
+            collection(firestoreDB, "notebooks", notebookId, "lifecycleEvents"),
           );
           batch.set(eventRef, {
             timestamp,
@@ -343,7 +342,7 @@ export default function ScannerPage() {
         const notebookId = hostnameToIdMap.get(hostname);
         if (notebookId) {
           const eventRef = doc(
-            collection(firestoreDB, "notebooks", notebookId, "lifecycleEvents")
+            collection(firestoreDB, "notebooks", notebookId, "lifecycleEvents"),
           );
           batch.set(eventRef, {
             timestamp,
@@ -356,12 +355,12 @@ export default function ScannerPage() {
 
       await batch.commit();
       console.log(
-        "Eventos de ciclo de vida da conferência registrados com sucesso."
+        "Eventos de ciclo de vida da conferência registrados com sucesso.",
       );
     } catch (error) {
       console.error(
         "Falha ao registrar eventos de ciclo de vida da conferência:",
-        error
+        error,
       );
     }
   };
@@ -380,7 +379,7 @@ export default function ScannerPage() {
       }
       toast.success(
         "Conexão indisponível. Sua conferência foi salva localmente e será enviada depois.",
-        { duration: 5000 }
+        { duration: 5000 },
       );
       router.push("/inicio");
     } catch (error) {
@@ -418,7 +417,7 @@ export default function ScannerPage() {
     } catch (error) {
       console.error(
         "Erro ao concluir conferência online, salvando localmente:",
-        error
+        error,
       );
       await saveConferenceOffline(summaryData);
     }
@@ -517,12 +516,7 @@ export default function ScannerPage() {
               2. Escaneie os QR Codes
             </h3>
             <div className="w-full max-w-sm mx-auto rounded-lg overflow-hidden border-2 border-dashed dark:border-zinc-600">
-              <Scanner
-                onScan={handleScan}
-                allowMultiple={false}
-                components={{ finder: false }}
-                styles={{ container: { width: "100%" } }}
-              />
+              <QRScanner onCodeScanned={handleScan} />
             </div>
           </div>
 
