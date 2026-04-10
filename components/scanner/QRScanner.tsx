@@ -2,7 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { useQRScanner } from "../../hooks/useQRScanner";
-import { QrCode, CameraOff, RefreshCw, AlertTriangle } from "lucide-react";
+import {
+  QrCode,
+  CameraOff,
+  RefreshCw,
+  AlertTriangle,
+  Play,
+} from "lucide-react";
 
 interface QRScannerProps {
   onCodeScanned: (code: string) => void;
@@ -13,7 +19,6 @@ export function QRScanner({ onCodeScanned }: QRScannerProps) {
   const [isActive, setIsActive] = useState(true);
   const scannerElementId = "qr-scanner-container";
 
-  // Desestruturamos o initError que criamos no Hook
   const { isScanning, initError } = useQRScanner({
     elementId: scannerElementId,
     isActive: isActive && isMounted,
@@ -27,8 +32,18 @@ export function QRScanner({ onCodeScanned }: QRScannerProps) {
     setIsMounted(true);
   }, []);
 
-  const handleRestart = () => setIsActive(true);
+  const handleRestart = () => {
+    // FIX: Força o desligamento e religamento para engatilhar o Hook novamente
+    setIsActive(false);
+    setTimeout(() => setIsActive(true), 100);
+  };
+
   const handleStop = () => setIsActive(false);
+
+  // Identifica se o erro foi apenas o bloqueio do navegador (Not fully active)
+  const isAutoPlayBlock =
+    initError?.includes("fully active") ||
+    initError?.includes("NotAllowedError");
 
   if (!isMounted) {
     return (
@@ -45,26 +60,43 @@ export function QRScanner({ onCodeScanned }: QRScannerProps) {
         className="w-full min-h-[300px] bg-zinc-950 relative z-0"
       ></div>
 
-      {/* NOVO: OVERLAY DE ERRO CRÍTICO */}
+      {/* OVERLAY DE ERRO INTELIGENTE */}
       {initError && (
         <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-zinc-300 gap-3 bg-zinc-950 z-40 text-center">
-          <AlertTriangle size={40} className="text-red-500 mb-2" />
-          <p className="text-sm font-bold">Câmera Bloqueada</p>
+          <AlertTriangle
+            size={40}
+            className={
+              isAutoPlayBlock ? "text-amber-500 mb-2" : "text-red-500 mb-2"
+            }
+          />
+
+          <p className="text-sm font-bold">
+            {isAutoPlayBlock ? "Ação Necessária" : "Câmera Bloqueada"}
+          </p>
+
           <p className="text-xs text-zinc-400">
-            O navegador recusou o acesso à câmera.
+            {isAutoPlayBlock
+              ? "O navegador exige que você inicie a câmera manualmente."
+              : "O navegador recusou o acesso ao hardware."}
           </p>
-          <p className="text-xs text-red-400 bg-red-500/10 p-2 rounded border border-red-500/20 w-full break-all line-clamp-2">
-            {initError}
-          </p>
-          <p className="text-xs text-amber-500 font-medium mt-1">
-            Dica: Se estiver no WhatsApp, abra no Safari/Chrome.
-          </p>
+
+          {/* Esconde o log feio se for apenas bloqueio de autoplay */}
+          {!isAutoPlayBlock && (
+            <p className="text-xs text-red-400 bg-red-500/10 p-2 rounded border border-red-500/20 w-full break-all line-clamp-2">
+              {initError}
+            </p>
+          )}
+
           <button
             onClick={handleRestart}
-            className="mt-3 flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg transition-colors cursor-pointer"
+            className={`mt-3 flex items-center gap-2 text-white px-5 py-3 rounded-xl transition-colors cursor-pointer font-medium ${
+              isAutoPlayBlock
+                ? "bg-amber-600 hover:bg-amber-500"
+                : "bg-zinc-800 hover:bg-zinc-700"
+            }`}
           >
-            <RefreshCw size={16} />
-            Tentar Novamente
+            {isAutoPlayBlock ? <Play size={18} /> : <RefreshCw size={18} />}
+            {isAutoPlayBlock ? "Iniciar Câmera" : "Tentar Novamente"}
           </button>
         </div>
       )}

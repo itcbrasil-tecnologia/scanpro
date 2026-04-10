@@ -4,18 +4,15 @@ import { Html5Qrcode } from "html5-qrcode";
 interface UseQRScannerProps {
   elementId: string;
   onScanSuccess: (decodedText: string) => void;
-  onScanError?: (error: string) => void;
   isActive: boolean;
 }
 
 export function useQRScanner({
   elementId,
   onScanSuccess,
-  onScanError,
   isActive,
 }: UseQRScannerProps) {
   const [isScanning, setIsScanning] = useState(false);
-  // NOVO: Estado para capturar o motivo da tela preta
   const [initError, setInitError] = useState<string | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
 
@@ -29,6 +26,12 @@ export function useQRScanner({
 
   const startScanner = useCallback(async () => {
     setInitError(null);
+
+    // Fôlego de 300ms para evitar a restrição "Document not fully active"
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    if (!isActiveRef.current) return;
+
     if (!scannerRef.current) {
       scannerRef.current = new Html5Qrcode(elementId, false);
     }
@@ -45,12 +48,9 @@ export function useQRScanner({
       }
     };
 
-    // Ignora os alertas de "frame vazio" para não poluir o terminal
     const handleFrameError = () => {};
 
     try {
-      // TENTATIVA 1: O Ponto Ideal (HD Seguro - 720p).
-      // Garante a nitidez para a etiqueta, mas não sofre o bloqueio do 1080p/4K.
       await scannerRef.current.start(
         {
           facingMode: "environment",
@@ -62,12 +62,9 @@ export function useQRScanner({
         handleFrameError,
       );
       setIsScanning(true);
-    } catch (err1) {
-      console.warn("HD recusado. Acionando Fallback de Segurança...", err1);
-
+      // FIX: Removido o 'err1' inútil. Apenas usamos catch para o Fallback.
+    } catch {
       try {
-        // TENTATIVA 2: Fallback Universal
-        // Se o HD falhar, pede a câmera do jeito mais básico possível.
         await scannerRef.current.start(
           { facingMode: "environment" },
           config,
@@ -77,7 +74,7 @@ export function useQRScanner({
         setIsScanning(true);
       } catch (err2) {
         console.error("Falha fatal na inicialização:", err2);
-        setInitError(String(err2)); // Salva o erro para mostrar na tela
+        setInitError(String(err2));
         setIsScanning(false);
       }
     }
