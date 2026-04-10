@@ -16,8 +16,6 @@ export function useQRScanner({
   const [initError, setInitError] = useState<string | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
 
-  // A MÁGICA AQUI: O Mutex (Trava de Transição)
-  // Garante que a câmera nunca tente ligar enquanto está desligando e vice-versa.
   const isTransitioning = useRef(false);
 
   const onScanSuccessRef = useRef(onScanSuccess);
@@ -29,32 +27,44 @@ export function useQRScanner({
   }, [onScanSuccess, isActive]);
 
   const startScanner = useCallback(async () => {
-    // 1. FILA DE ESPERA: Se a câmera estiver processando outra ordem, aguarda em loop.
     while (isTransitioning.current) {
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
 
-    // 2. BLOQUEIA A PORTA: Nenhuma outra função pode mexer na câmera agora.
     isTransitioning.current = true;
     setInitError(null);
 
     await new Promise((resolve) => setTimeout(resolve, 300));
 
     if (!isActiveRef.current) {
-      isTransitioning.current = false; // Libera a porta antes de sair
-      return;
-    }
-
-    if (!scannerRef.current) {
-      scannerRef.current = new Html5Qrcode(elementId, false);
-    }
-
-    // Se por algum motivo já estiver escaneando nativamente, apenas atualiza o estado
-    if (scannerRef.current.isScanning) {
-      setIsScanning(true);
       isTransitioning.current = false;
       return;
     }
+
+    // --- A MÁGICA DO "NUKE": DESTRUIÇÃO DE ESTADO ZUMBI ---
+    // Se existe uma instância antiga (mesmo que corrompida), nós a matamos sem dó.
+    if (scannerRef.current) {
+      try {
+        if (scannerRef.current.isScanning) {
+          await scannerRef.current.stop();
+        }
+        scannerRef.current.clear();
+      } catch (e) {
+        console.warn(
+          "Ignorando falha na instância velha. Forçando limpeza.",
+          e,
+        );
+      } finally {
+        // Zera a referência na memória
+        scannerRef.current = null;
+        // Expurga o HTML injetado no DOM na força bruta (Vanilla JS)
+        const container = document.getElementById(elementId);
+        if (container) container.innerHTML = "";
+      }
+    }
+
+    // Criamos um "cérebro" 100% novo e limpo para a biblioteca
+    scannerRef.current = new Html5Qrcode(elementId, false);
 
     const config = {
       fps: 10,
@@ -97,32 +107,35 @@ export function useQRScanner({
         setIsScanning(false);
       }
     } finally {
-      // 3. ABRE A PORTA: O processo de ligar terminou.
       isTransitioning.current = false;
     }
   }, [elementId]);
 
   const stopScanner = useCallback(async () => {
-    // 1. FILA DE ESPERA: Se estiver ligando, espera terminar para poder desligar.
     while (isTransitioning.current) {
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
 
-    if (scannerRef.current && scannerRef.current.isScanning) {
-      // 2. BLOQUEIA A PORTA
+    if (scannerRef.current) {
       isTransitioning.current = true;
       try {
-        await scannerRef.current.stop();
+        if (scannerRef.current.isScanning) {
+          await scannerRef.current.stop();
+        }
         scannerRef.current.clear();
-        setIsScanning(false);
       } catch (err) {
-        console.error("Falha ao parar a câmera", err);
+        console.warn("Ignorando erro ao parar:", err);
       } finally {
-        // 3. ABRE A PORTA
+        // NUKE DE DESLIGAMENTO: Nunca deixa um zumbi para trás
+        scannerRef.current = null;
+        const container = document.getElementById(elementId);
+        if (container) container.innerHTML = "";
+
+        setIsScanning(false);
         isTransitioning.current = false;
       }
     }
-  }, []);
+  }, [elementId]);
 
   useEffect(() => {
     if (isActive && !isScanning) {
