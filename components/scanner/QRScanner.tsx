@@ -19,7 +19,6 @@ export function QRScanner({ onCodeScanned }: QRScannerProps) {
     videoRef, // Passamos a referência em vez de um ID de div
     isActive: isActive && isMounted,
     onScanSuccess: (code) => {
-      setIsActive(false);
       onCodeScanned(code);
     },
   });

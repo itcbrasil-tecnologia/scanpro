@@ -20,6 +20,11 @@ export function useQRScanner({
   const onScanSuccessRef = useRef(onScanSuccess);
   const readerRunning = useRef(false);
 
+  // Lógica de Antiduplicação (Cooldown)
+  const lastCodeRef = useRef<string | null>(null);
+  const lastTimeRef = useRef<number>(0);
+  const COOLDOWN_MS = 2000; // Tempo de espera para ler o MESMO código novamente
+
   useEffect(() => {
     isActiveRef.current = isActive;
     onScanSuccessRef.current = onScanSuccess;
@@ -38,52 +43,35 @@ export function useQRScanner({
   const startScanner = useCallback(async () => {
     stopScanner();
     setInitError(null);
-
     await new Promise((resolve) => setTimeout(resolve, 200));
     if (!isActiveRef.current) return;
 
     try {
-      // 1. FORÇA BRUTA DE RESOLUÇÃO
-      // Pede 4K. O WebRTC puro é inteligente: se o celular não tiver 4K,
-      // ele entrega 1080p silenciosamente sem dar erro de Overconstrained.
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "environment",
           width: { ideal: 3840 },
           height: { ideal: 2160 },
-          // @ts-expect-error - O TypeScript ainda não possui a tipagem oficial para focusMode
+          // @ts-expect-error - Foco contínuo para micro-etiquetas
           advanced: [{ focusMode: "continuous" }],
         },
       });
 
       streamRef.current = stream;
 
-      // 2. A MÁGICA DO ZOOM NATIVO (O Game Changer)
-      // Capturamos a lente que acabou de abrir e verificamos seus poderes.
+      // Aplicar Zoom Nativo se disponível
       const track = stream.getVideoTracks()[0];
       const capabilities = track.getCapabilities?.() || {};
-      const settings = track.getSettings?.() || {};
 
-      // Se o hardware suportar controle de zoom via código
-      // @ts-expect-error - A propriedade zoom não existe na interface padrão de MediaTrackCapabilities
+      // @ts-expect-error - A propriedade zoom não existe na tipagem padrao do dom
       if (capabilities.zoom) {
-        // Pega o valor máximo de zoom (Limitamos a 3x para não virar um borrão digital)
-        // @ts-expect-error - O TypeScript não sabe que zoom possui a propriedade max
+        // @ts-expect-error - TypeScript nao reconhece a propriedade max interna do zoom
         const maxZoom = Math.min(capabilities.zoom.max || 3, 3);
-
-        // Aqui o TS já reconhece, então não precisamos de ignore
-        const currentZoom = settings.zoom || 1;
-
-        if (currentZoom < maxZoom) {
-          try {
-            await track.applyConstraints({
-              // @ts-expect-error - Constraints avançadas de zoom ainda não tipadas oficialmente
-              advanced: [{ zoom: maxZoom }],
-            });
-            console.log("Zoom nativo ativado!");
-          } catch (e) {
-            console.warn("Hardware recusou aplicar o zoom", e);
-          }
+        try {
+          // @ts-expect-error - Constraints de zoom avancadas ainda nao possuem tipagem
+          await track.applyConstraints({ advanced: [{ zoom: maxZoom }] });
+        } catch (e) {
+          console.warn("Hardware recusou aplicar o zoom", e);
         }
       }
 
@@ -105,13 +93,7 @@ export function useQRScanner({
             videoElement.readyState === videoElement.HAVE_ENOUGH_DATA
           ) {
             try {
-              // 3. OTIMIZAÇÃO DE MEMÓRIA (Thermal Throttling)
-              // Se a câmera abriu em 4K, não podemos passar a imagem inteira pro WASM
-              // senão a bateria vai embora em 5 minutos. Nós reduzimos o canvas para no máx 1080p.
-              // O zoom nativo já fez o trabalho duro de "aumentar" a etiqueta.
-              const maxWidth = 1920;
-              const scale = Math.min(1, maxWidth / videoElement.videoWidth);
-
+              const scale = Math.min(1, 1920 / videoElement.videoWidth);
               canvas.width = videoElement.videoWidth * scale;
               canvas.height = videoElement.videoHeight * scale;
 
@@ -123,7 +105,6 @@ export function useQRScanner({
                   canvas.width,
                   canvas.height,
                 );
-
                 const results: ReadResult[] = await readBarcodesFromImageData(
                   imageData,
                   {
@@ -134,23 +115,31 @@ export function useQRScanner({
                 );
 
                 if (results && results.length > 0 && results[0].text) {
-                  onScanSuccessRef.current(results[0].text);
-                  stopScanner();
-                  break;
+                  const code = results[0].text;
+                  const now = Date.now();
+
+                  // MÁGICA DO MODO CONTÍNUO:
+                  // Só emite sucesso se for um código novo OU se já passou o tempo de cooldown
+                  if (
+                    code !== lastCodeRef.current ||
+                    now - lastTimeRef.current > COOLDOWN_MS
+                  ) {
+                    lastCodeRef.current = code;
+                    lastTimeRef.current = now;
+                    onScanSuccessRef.current(code);
+                    // REMOVIDO: stopScanner() -> O vídeo continua rodando!
+                  }
                 }
               }
             } catch {
-              // Ignora frames vazios
+              /* erro silencioso de leitura */
             }
-            // Fôlego de 100ms (10 FPS) para imagens gigantescas não travarem o navegador
             await new Promise((r) => setTimeout(r, 100));
           }
         };
-
         startReading();
       }
     } catch (err) {
-      console.error("Falha ao acessar câmera nativa", err);
       setInitError("Erro de Hardware: " + String(err));
       setIsScanning(false);
     }
@@ -159,7 +148,6 @@ export function useQRScanner({
   useEffect(() => {
     if (isActive) startScanner();
     else stopScanner();
-
     return () => stopScanner();
   }, [isActive, startScanner, stopScanner]);
 
