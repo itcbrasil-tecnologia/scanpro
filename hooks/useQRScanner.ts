@@ -18,8 +18,6 @@ export function useQRScanner({
   const streamRef = useRef<MediaStream | null>(null);
   const isActiveRef = useRef(isActive);
   const onScanSuccessRef = useRef(onScanSuccess);
-
-  // Controle do loop de leitura WebAssembly
   const readerRunning = useRef(false);
 
   useEffect(() => {
@@ -45,12 +43,14 @@ export function useQRScanner({
     if (!isActiveRef.current) return;
 
     try {
-      // Abre a câmera HD nativamente
+      // 1. FORÇA O AUTOFOCO FÍSICO DA LENTE (se o celular suportar)
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "environment",
           width: { ideal: 1280 },
           height: { ideal: 720 },
+          // @ts-expect-error - Propriedade avançada que o TS as vezes não reconhece
+          advanced: [{ focusMode: "continuous" }],
         },
       });
 
@@ -65,9 +65,7 @@ export function useQRScanner({
         setIsScanning(true);
         readerRunning.current = true;
 
-        // O MOTOR ZXING-WASM COM CORTE OTIMIZADO
         const startReading = async () => {
-          // Cria o canvas invisível na memória
           const canvas = document.createElement("canvas");
           const ctx = canvas.getContext("2d", { willReadFrequently: true });
 
@@ -76,37 +74,32 @@ export function useQRScanner({
             videoElement.readyState === videoElement.HAVE_ENOUGH_DATA
           ) {
             try {
+              // Prepara o canvas do tamanho exato do frame de vídeo
               canvas.width = videoElement.videoWidth;
               canvas.height = videoElement.videoHeight;
 
               if (ctx) {
+                // Desenha o frame inteiro
                 ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
 
-                // OTIMIZAÇÃO: Recorta apenas um quadrado de 400x400 no centro.
-                // Isso evita que o WASM processe o teto, o chão e os dedos do usuário,
-                // focando 100% da CPU apenas na etiqueta.
-                const cropSize = 400;
-                const startX = Math.max(0, (canvas.width - cropSize) / 2);
-                const startY = Math.max(0, (canvas.height - cropSize) / 2);
-
+                // 2. FORÇA BRUTA: Pega a imagem TODA, sem recorte.
+                // Onde o QR Code estiver batendo no sensor, o WASM vai ler.
                 const imageData = ctx.getImageData(
-                  startX,
-                  startY,
-                  cropSize,
-                  cropSize,
+                  0,
+                  0,
+                  canvas.width,
+                  canvas.height,
                 );
 
-                // O Motor WASM tenta ler os pixels puros do recorte
                 const results: ReadResult[] = await readBarcodesFromImageData(
                   imageData,
                   {
-                    tryHarder: true, // Aciona a inteligência avançada para códigos borrados
+                    tryHarder: true, // Força a leitura de códigos difíceis/densos
                     formats: ["QRCode"],
                     maxNumberOfSymbols: 1,
                   },
                 );
 
-                // Se achou texto, comemora e desliga!
                 if (results && results.length > 0 && results[0].text) {
                   onScanSuccessRef.current(results[0].text);
                   stopScanner();
@@ -114,9 +107,9 @@ export function useQRScanner({
                 }
               }
             } catch {
-              // Erros normais de "código não encontrado nesse frame" são ignorados
+              // Erro de "código não encontrado" é ignorado silenciosamente
             }
-            // Dá um fôlego de 50ms para a CPU do celular não fritar
+            // Mantemos o fôlego de 50ms para a CPU
             await new Promise((r) => setTimeout(r, 50));
           }
         };
