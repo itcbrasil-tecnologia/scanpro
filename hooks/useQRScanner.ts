@@ -43,18 +43,49 @@ export function useQRScanner({
     if (!isActiveRef.current) return;
 
     try {
-      // 1. FORÇA O AUTOFOCO FÍSICO DA LENTE (se o celular suportar)
+      // 1. FORÇA BRUTA DE RESOLUÇÃO
+      // Pede 4K. O WebRTC puro é inteligente: se o celular não tiver 4K,
+      // ele entrega 1080p silenciosamente sem dar erro de Overconstrained.
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "environment",
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          // @ts-expect-error - Propriedade avançada que o TS as vezes não reconhece
+          width: { ideal: 3840 },
+          height: { ideal: 2160 },
+          // @ts-expect-error - O TypeScript ainda não possui a tipagem oficial para focusMode
           advanced: [{ focusMode: "continuous" }],
         },
       });
 
       streamRef.current = stream;
+
+      // 2. A MÁGICA DO ZOOM NATIVO (O Game Changer)
+      // Capturamos a lente que acabou de abrir e verificamos seus poderes.
+      const track = stream.getVideoTracks()[0];
+      const capabilities = track.getCapabilities?.() || {};
+      const settings = track.getSettings?.() || {};
+
+      // Se o hardware suportar controle de zoom via código
+      // @ts-expect-error - A propriedade zoom não existe na interface padrão de MediaTrackCapabilities
+      if (capabilities.zoom) {
+        // Pega o valor máximo de zoom (Limitamos a 3x para não virar um borrão digital)
+        // @ts-expect-error - O TypeScript não sabe que zoom possui a propriedade max
+        const maxZoom = Math.min(capabilities.zoom.max || 3, 3);
+
+        // Aqui o TS já reconhece, então não precisamos de ignore
+        const currentZoom = settings.zoom || 1;
+
+        if (currentZoom < maxZoom) {
+          try {
+            await track.applyConstraints({
+              // @ts-expect-error - Constraints avançadas de zoom ainda não tipadas oficialmente
+              advanced: [{ zoom: maxZoom }],
+            });
+            console.log("Zoom nativo ativado!");
+          } catch (e) {
+            console.warn("Hardware recusou aplicar o zoom", e);
+          }
+        }
+      }
 
       if (videoRef.current) {
         const videoElement = videoRef.current;
@@ -74,16 +105,18 @@ export function useQRScanner({
             videoElement.readyState === videoElement.HAVE_ENOUGH_DATA
           ) {
             try {
-              // Prepara o canvas do tamanho exato do frame de vídeo
-              canvas.width = videoElement.videoWidth;
-              canvas.height = videoElement.videoHeight;
+              // 3. OTIMIZAÇÃO DE MEMÓRIA (Thermal Throttling)
+              // Se a câmera abriu em 4K, não podemos passar a imagem inteira pro WASM
+              // senão a bateria vai embora em 5 minutos. Nós reduzimos o canvas para no máx 1080p.
+              // O zoom nativo já fez o trabalho duro de "aumentar" a etiqueta.
+              const maxWidth = 1920;
+              const scale = Math.min(1, maxWidth / videoElement.videoWidth);
+
+              canvas.width = videoElement.videoWidth * scale;
+              canvas.height = videoElement.videoHeight * scale;
 
               if (ctx) {
-                // Desenha o frame inteiro
                 ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-
-                // 2. FORÇA BRUTA: Pega a imagem TODA, sem recorte.
-                // Onde o QR Code estiver batendo no sensor, o WASM vai ler.
                 const imageData = ctx.getImageData(
                   0,
                   0,
@@ -94,7 +127,7 @@ export function useQRScanner({
                 const results: ReadResult[] = await readBarcodesFromImageData(
                   imageData,
                   {
-                    tryHarder: true, // Força a leitura de códigos difíceis/densos
+                    tryHarder: true,
                     formats: ["QRCode"],
                     maxNumberOfSymbols: 1,
                   },
@@ -107,10 +140,10 @@ export function useQRScanner({
                 }
               }
             } catch {
-              // Erro de "código não encontrado" é ignorado silenciosamente
+              // Ignora frames vazios
             }
-            // Mantemos o fôlego de 50ms para a CPU
-            await new Promise((r) => setTimeout(r, 50));
+            // Fôlego de 100ms (10 FPS) para imagens gigantescas não travarem o navegador
+            await new Promise((r) => setTimeout(r, 100));
           }
         };
 
