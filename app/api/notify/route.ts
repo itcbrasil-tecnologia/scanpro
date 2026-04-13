@@ -12,11 +12,11 @@ export async function POST(request: Request) {
   const chatId = process.env.TELEGRAM_CHAT_ID;
   if (!botToken || !chatId) {
     console.error(
-      "[ERRO FATAL] Variáveis de ambiente do Telegram não configuradas."
+      "[ERRO FATAL] Variáveis de ambiente do Telegram não configuradas.",
     );
     return NextResponse.json(
       { message: "Erro de configuração no servidor." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -28,19 +28,24 @@ export async function POST(request: Request) {
 
     const startTimeDate = new Timestamp(
       startTimeJson.seconds,
-      startTimeJson.nanoseconds
+      startTimeJson.nanoseconds,
     ).toDate();
     const endTimeDate = new Timestamp(
       endTimeJson.seconds,
-      endTimeJson.nanoseconds
+      endTimeJson.nanoseconds,
     ).toDate();
 
-    const formattedDate = endTimeDate.toLocaleDateString("pt-BR");
+    // CORREÇÃO DO FUSO HORÁRIO: Forçando o horário de Brasília (UTC-3)
+    const formattedDate = endTimeDate.toLocaleDateString("pt-BR", {
+      timeZone: "America/Sao_Paulo",
+    });
     const formattedStartTime = startTimeDate.toLocaleTimeString("pt-BR", {
+      timeZone: "America/Sao_Paulo",
       hour: "2-digit",
       minute: "2-digit",
     });
     const formattedEndTime = endTimeDate.toLocaleTimeString("pt-BR", {
+      timeZone: "America/Sao_Paulo",
       hour: "2-digit",
       minute: "2-digit",
     });
@@ -118,10 +123,10 @@ export async function POST(request: Request) {
     if (!result.ok) {
       console.error(
         "[ERRO TELEGRAM] A API do Telegram retornou um erro:",
-        result
+        result,
       );
       throw new Error(
-        `Falha ao enviar mensagem para o Telegram: ${result.description}`
+        `Falha ao enviar mensagem para o Telegram: ${result.description}`,
       );
     }
 
@@ -130,7 +135,7 @@ export async function POST(request: Request) {
     console.error("--- [API /api/notify] Erro no bloco catch ---", error);
     return NextResponse.json(
       { message: "Erro ao processar a notificação." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
