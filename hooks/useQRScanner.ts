@@ -5,7 +5,7 @@ interface UseQRScannerProps {
   videoRef: React.RefObject<HTMLVideoElement | null>;
   onScanSuccess: (decodedText: string) => void;
   isActive: boolean;
-  scanMode: "qr" | "barcode"; // NOVO: Prop para o modo de leitura
+  scanMode: "qr" | "barcode";
 }
 
 export function useQRScanner({
@@ -17,7 +17,6 @@ export function useQRScanner({
   const [isScanning, setIsScanning] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
 
-  // Estados da Lanterna
   const [hasTorch, setHasTorch] = useState(false);
   const [isTorchOn, setIsTorchOn] = useState(false);
 
@@ -26,9 +25,7 @@ export function useQRScanner({
   const onScanSuccessRef = useRef(onScanSuccess);
   const readerRunning = useRef(false);
 
-  // Ref dinâmico para o modo de leitura (permite trocar sem reiniciar a câmera)
   const scanModeRef = useRef(scanMode);
-
   const lastCodeRef = useRef<string | null>(null);
   const lastTimeRef = useRef<number>(0);
   const COOLDOWN_MS = 2000;
@@ -36,7 +33,7 @@ export function useQRScanner({
   useEffect(() => {
     isActiveRef.current = isActive;
     onScanSuccessRef.current = onScanSuccess;
-    scanModeRef.current = scanMode; // Atualiza silenciosamente
+    scanModeRef.current = scanMode;
   }, [isActive, onScanSuccess, scanMode]);
 
   const stopScanner = useCallback(() => {
@@ -46,11 +43,11 @@ export function useQRScanner({
 
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => {
-        // Tenta apagar a lanterna antes de matar a track
         try {
-          // @ts-expect-error
+          // @ts-expect-error - A propriedade torch nao possui tipagem nativa no DOM
           track.applyConstraints({ advanced: [{ torch: false }] });
-        } catch (e) {}
+          // FIX: Removido o '(e)' inutilizado que o ESLint reclamou
+        } catch {}
         track.stop();
       });
       streamRef.current = null;
@@ -59,13 +56,12 @@ export function useQRScanner({
     setIsScanning(false);
   }, [videoRef]);
 
-  // Função para o botão da Lanterna
   const toggleTorch = useCallback(async () => {
     if (streamRef.current && hasTorch) {
       const track = streamRef.current.getVideoTracks()[0];
       try {
         const newState = !isTorchOn;
-        // @ts-expect-error - A propriedade torch não é tipada nativamente no TS
+        // @ts-expect-error - A propriedade torch nao possui tipagem nativa no DOM
         await track.applyConstraints({ advanced: [{ torch: newState }] });
         setIsTorchOn(newState);
       } catch (e) {
@@ -86,7 +82,7 @@ export function useQRScanner({
           facingMode: "environment",
           width: { ideal: 3840 },
           height: { ideal: 2160 },
-          // @ts-expect-error
+          // @ts-expect-error - FocusMode continuo nao possui tipagem nativa no DOM
           advanced: [{ focusMode: "continuous" }],
         },
       });
@@ -96,18 +92,17 @@ export function useQRScanner({
       const track = stream.getVideoTracks()[0];
       const capabilities = track.getCapabilities?.() || {};
 
-      // Verifica se o celular suporta ligar a lanterna via web
-      // @ts-expect-error
+      // @ts-expect-error - Torch nao possui tipagem nativa na interface de capabilities
       if (capabilities.torch) {
         setHasTorch(true);
       }
 
-      // @ts-expect-error
+      // @ts-expect-error - Zoom nao possui tipagem nativa na interface de capabilities
       if (capabilities.zoom) {
-        // @ts-expect-error
+        // @ts-expect-error - A propriedade max do zoom tambem nao possui tipagem
         const maxZoom = Math.min(capabilities.zoom.max || 3, 3);
         try {
-          // @ts-expect-error
+          // @ts-expect-error - Constraints avancadas de zoom nao sao tipadas
           await track.applyConstraints({ advanced: [{ zoom: maxZoom }] });
         } catch (e) {
           console.warn(e);
@@ -145,17 +140,15 @@ export function useQRScanner({
                   canvas.height,
                 );
 
-                // NOVO: Lê o ref para saber qual formato procurar neste frame exato
-                const formatsToRead =
-                  scanModeRef.current === "qr"
-                    ? ["QRCode"]
-                    : ["Code128", "Code39"];
-
                 const results: ReadResult[] = await readBarcodesFromImageData(
                   imageData,
                   {
                     tryHarder: true,
-                    formats: formatsToRead, // Injeta o formato dinamicamente
+                    // FIX: Passando inline! Assim o TS sabe exatamente que são os literais de código e não strings genéricas
+                    formats:
+                      scanModeRef.current === "qr"
+                        ? ["QRCode"]
+                        : ["Code128", "Code39"],
                     maxNumberOfSymbols: 1,
                   },
                 );
