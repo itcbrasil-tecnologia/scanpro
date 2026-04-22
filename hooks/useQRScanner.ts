@@ -46,7 +46,6 @@ export function useQRScanner({
         try {
           // @ts-expect-error - A propriedade torch nao possui tipagem nativa no DOM
           track.applyConstraints({ advanced: [{ torch: false }] });
-          // FIX: Removido o '(e)' inutilizado que o ESLint reclamou
         } catch {}
         track.stop();
       });
@@ -127,28 +126,59 @@ export function useQRScanner({
             videoElement.readyState === videoElement.HAVE_ENOUGH_DATA
           ) {
             try {
-              const scale = Math.min(1, 1920 / videoElement.videoWidth);
-              canvas.width = videoElement.videoWidth * scale;
-              canvas.height = videoElement.videoHeight * scale;
-
               if (ctx) {
-                ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-                const imageData = ctx.getImageData(
-                  0,
-                  0,
-                  canvas.width,
-                  canvas.height,
-                );
+                let imageData;
+                const isQRCode = scanModeRef.current === "qr";
+
+                if (isQRCode) {
+                  // MODO QR CODE (PADRÃO): Comprime a tela toda para máxima área de busca
+                  const scale = Math.min(1, 1920 / videoElement.videoWidth);
+                  canvas.width = videoElement.videoWidth * scale;
+                  canvas.height = videoElement.videoHeight * scale;
+
+                  ctx.drawImage(
+                    videoElement,
+                    0,
+                    0,
+                    canvas.width,
+                    canvas.height,
+                  );
+                  imageData = ctx.getImageData(
+                    0,
+                    0,
+                    canvas.width,
+                    canvas.height,
+                  );
+                } else {
+                  // MODO BARRAS (ALTERNATIVO): Recorte 1:1 no centro para nitidez extrema
+                  const cropWidth = Math.min(videoElement.videoWidth, 1200);
+                  const cropHeight = Math.min(videoElement.videoHeight, 400);
+
+                  canvas.width = cropWidth;
+                  canvas.height = cropHeight;
+
+                  const startX = (videoElement.videoWidth - cropWidth) / 2;
+                  const startY = (videoElement.videoHeight - cropHeight) / 2;
+
+                  ctx.drawImage(
+                    videoElement,
+                    startX,
+                    startY,
+                    cropWidth,
+                    cropHeight,
+                    0,
+                    0,
+                    cropWidth,
+                    cropHeight,
+                  );
+                  imageData = ctx.getImageData(0, 0, cropWidth, cropHeight);
+                }
 
                 const results: ReadResult[] = await readBarcodesFromImageData(
                   imageData,
                   {
                     tryHarder: true,
-                    // FIX: Passando inline! Assim o TS sabe exatamente que são os literais de código e não strings genéricas
-                    formats:
-                      scanModeRef.current === "qr"
-                        ? ["QRCode"]
-                        : ["Code128", "Code39"],
+                    formats: isQRCode ? ["QRCode"] : ["Code128", "Code39"],
                     maxNumberOfSymbols: 1,
                   },
                 );
