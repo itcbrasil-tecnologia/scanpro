@@ -198,7 +198,13 @@ export function useQRScanner({
                 }
               }
             } catch {}
-            await new Promise((r) => setTimeout(r, 100));
+
+            // OVERCLOCK INTELIGENTE:
+            // Se for QR Code, 10 FPS (100ms) é mais que suficiente.
+            // Se for Barras, aceleramos para 25 FPS (40ms) para aumentar a
+            // chance de "pescar" um frame perfeito entre os tremores da mão.
+            const delay = scanModeRef.current === "barcode" ? 40 : 100;
+            await new Promise((r) => setTimeout(r, delay));
           }
         };
         startReading();
